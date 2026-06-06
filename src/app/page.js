@@ -640,46 +640,75 @@ function MainSite({ user }) {
               Pick a template, add your design, and preview photorealistic mockups before ordering.
             </p>
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 20 }}>
             {[
-              { title: 'Regular T-Shirt Studio', emoji: '\u{1F455}', url: 'https://dynamicmockups.com' },
-              { title: 'Fitted T-Shirt Studio', emoji: '\u{1F454}', url: 'https://dynamicmockups.com' },
-              { title: 'Hoodie Studio', emoji: '\u{1F9E5}', url: 'https://dynamicmockups.com' },
-              { title: 'Zip Hoodie Studio', emoji: '\u{1FAB1}', url: 'https://dynamicmockups.com' },
-              { title: 'Joggers Studio', emoji: '\u{1F456}', url: 'https://dynamicmockups.com' },
+              { title: 'Regular T-Shirt Studio', url: 'https://www.virtualthreads.io/configerator-regular-t-shirt', svg: '👕' },
+              { title: 'Fitted T-Shirt Studio', url: 'https://www.virtualthreads.io/configurator', svg: '👔' },
+              { title: 'Hoodie Studio', url: 'https://www.virtualthreads.io/configerator-hoodie', svg: '🧥' },
+              { title: 'Zip Hoodie Studio', url: 'https://www.virtualthreads.io/studio/sweatsl', svg: '🫱' },
+              { title: 'Joggers Studio', url: 'https://www.virtualthreads.io/info/3d-joggers-mockup', svg: '👖' },
             ].map((studio, i) => (
-              <div key={i}
-                style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 16, padding: '28px 32px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 24, transition: 'background 0.2s, border-color 0.2s' }}
-                onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.08)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.2)' }}
-                onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)' }}
+              <div key={i} style={{
+                background: 'rgba(255,255,255,0.06)',
+                border: '1px solid rgba(255,255,255,0.12)',
+                borderRadius: 20,
+                padding: 24,
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 16,
+                transition: 'background 0.2s, border-color 0.2s, transform 0.2s',
+                cursor: 'default',
+              }}
+                onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.1)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.25)'; e.currentTarget.style.transform = 'translateY(-2px)' }}
+                onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.06)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.12)'; e.currentTarget.style.transform = 'translateY(0)' }}
               >
-                <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
-                  <div style={{ width: 72, height: 72, background: 'rgba(255,255,255,0.08)', borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 32, flexShrink: 0 }}>{studio.emoji}</div>
-                  <div>
-                    <h3 style={{ fontSize: 18, fontWeight: 700, color: '#fff', marginBottom: 12 }}>{studio.title}</h3>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-                      {['6 CAMERA ANIMATIONS', '6 GARMENT ANIMATIONS', '4K EXPORT'].map(feat => (
-                        <div key={feat} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                          <div style={{ width: 14, height: 14, borderRadius: 3, border: '1px solid rgba(255,255,255,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                            <div style={{ width: 6, height: 6, borderRadius: 1, background: 'rgba(255,255,255,0.4)' }} />
-                          </div>
-                          <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', color: 'rgba(255,255,255,0.4)' }}>{feat}</span>
-                        </div>
-                      ))}
-                    </div>
+                {/* Garment preview area */}
+                <div style={{
+                  height: 140,
+                  background: 'rgba(255,255,255,0.04)',
+                  borderRadius: 12,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: 64,
+                }}>
+                  {studio.svg}
+                </div>
+
+                {/* Info */}
+                <div>
+                  <h3 style={{ fontSize: 16, fontWeight: 700, color: '#fff', marginBottom: 10 }}>{studio.title}</h3>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                    {['6 CAMERA ANIMATIONS', '6 GARMENT ANIMATIONS', '4K EXPORT'].map(feat => (
+                      <div key={feat} style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+                        <div style={{ width: 4, height: 4, borderRadius: '50%', background: 'rgba(255,255,255,0.3)', flexShrink: 0 }} />
+                        <span style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.1em', color: 'rgba(255,255,255,0.35)' }}>{feat}</span>
+                      </div>
+                    ))}
                   </div>
                 </div>
+
+                {/* CTA */}
                 <button
                   onClick={() => window.open(studio.url, '_blank')}
-                  style={{ background: '#fff', color: '#0a0a0a', border: 'none', borderRadius: 50, padding: '14px 28px', fontSize: 14, fontWeight: 700, cursor: 'pointer', flexShrink: 0, fontFamily: 'DM Sans, sans-serif', transition: 'transform 0.15s, box-shadow 0.15s', boxShadow: '0 4px 16px rgba(0,0,0,0.3)' }}
-                  onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = '0 8px 24px rgba(0,0,0,0.4)' }}
-                  onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 4px 16px rgba(0,0,0,0.3)' }}
-                >Open Studio</button>
+                  style={{
+                    background: '#fff', color: '#0a1f5d',
+                    border: 'none', borderRadius: 50,
+                    padding: '12px 20px', fontSize: 13, fontWeight: 700,
+                    cursor: 'pointer', width: '100%',
+                    fontFamily: 'DM Sans, sans-serif',
+                    transition: 'opacity 0.15s',
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.opacity = '0.88'}
+                  onMouseLeave={e => e.currentTarget.style.opacity = '1'}
+                >Open Studio →</button>
               </div>
             ))}
           </div>
+
           <p style={{ textAlign: 'center', marginTop: 32, fontSize: 12, color: 'rgba(255,255,255,0.3)' }}>
-            Powered by Dynamic Mockups · Free to preview · No sign-up required
+            Powered by VirtualThreads.io · Free to preview · No sign-up required
           </p>
         </div>
       </section>
@@ -767,7 +796,7 @@ export default function Home() {
       }
       if (event === 'SIGNED_OUT') {
         setUser(null)
-        setScreen('splash')
+        setScreen('intro')
       }
     })
 
@@ -835,7 +864,7 @@ export default function Home() {
         }
       `}</style>
 
-      {screen === 'splash' && <SplashScreen onDone={() => setScreen('intro')} />}
+      {screen === 'splash' && <SplashScreen onDone={() => setScreen(s => s === 'main' ? 'main' : 'intro')} />}
       {screen === 'intro' && <IntroScreen onLogin={() => {}} />}
       {screen === 'main' && <MainSite user={user} />}
     </>

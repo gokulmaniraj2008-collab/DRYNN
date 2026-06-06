@@ -40,7 +40,7 @@ const FAQS = [
   { q:'What file formats do you accept?',     a:'We accept PNG, JPG, JPEG, and SVG files. Minimum 300 DPI is recommended for best print quality.' },
   { q:'Do you offer Cash on Delivery?',       a:'Yes! We accept UPI, Razorpay, and Cash on Delivery (COD) for all orders across India.' },
   { q:'Can I return or exchange my order?',   a:'We offer replacements only for manufacturing defects or incorrect items. Custom printed items cannot be returned due to change of mind.' },
-  { q:'What is the minimum order quantity?',  a:'We accept single piece orders. Bulk discounts apply for orders of 10+ pieces — contact us on WhatsApp for a custom quote.' },
+  { q:'What is the minimum order quantity?',  a:'We accept single piece orders. Bulk discounts apply for orders of 10+ pieces  -  contact us on WhatsApp for a custom quote.' },
   { q:'How do I track my order?',             a:'Once shipped, you will receive a WhatsApp message with your tracking link and courier details.' },
 ]
 
@@ -201,7 +201,7 @@ function SplashScreen({ onDone }) {
 }
 
 // ══════════════════════════════════════════════════════════════
-// INTRO PAGE (brand info — no login)
+// INTRO PAGE (brand info  -  no login)
 // ══════════════════════════════════════════════════════════════
 function IntroPage({ onGoToLogin }) {
   return (
@@ -222,7 +222,7 @@ function IntroPage({ onGoToLogin }) {
           YOUR DESIGN.<br/><span style={{ color:'#c8102e' }}>YOUR STYLE.</span><br/>YOUR DRYNN.
         </h1>
         <p style={{ fontSize:15, lineHeight:1.85, color:'#555', marginBottom:28, maxWidth:480 }}>
-          Upload your artwork, pick your garment, and we deliver premium custom clothing straight to your door — anywhere in India.
+          Upload your artwork, pick your garment, and we deliver premium custom clothing straight to your door  -  anywhere in India.
         </p>
         <div className="hero-cta" style={{ display:'flex', gap:12, flexWrap:'wrap' }}>
           <button className="btn-primary" style={{ fontSize:14, padding:'14px 28px' }} onClick={onGoToLogin}>Get Started Free</button>
@@ -235,7 +235,7 @@ function IntroPage({ onGoToLogin }) {
           { icon:'👕', label:'Custom Print',        desc:'Any design, any garment, any colour',    bg:'rgba(200,16,46,0.07)'  },
           { icon:'🚚', label:'Fast Delivery',        desc:'5-7 days across India, COD available',   bg:'rgba(10,31,93,0.07)'   },
           { icon:'💎', label:'Quality Guaranteed',   desc:'Heat press, wash-proof, 100% guarantee', bg:'rgba(0,168,107,0.07)'  },
-          { icon:'💳', label:'Easy Payment',         desc:'UPI, Razorpay, COD — all accepted',       bg:'rgba(245,166,35,0.10)' },
+          { icon:'💳', label:'Easy Payment',         desc:'UPI, Razorpay, COD  -  all accepted',       bg:'rgba(245,166,35,0.10)' },
         ].map((f,i) => (
           <div key={i} style={{ display:'flex', alignItems:'center', gap:14, background:f.bg, borderRadius:12, padding:'16px 18px' }}>
             <div style={{ fontSize:28, flexShrink:0 }}>{f.icon}</div>
@@ -265,7 +265,7 @@ function IntroPage({ onGoToLogin }) {
       {/* CTA Banner */}
       <div style={{ background:'#0a1f5d', padding:'48px 20px', textAlign:'center' }}>
         <h2 style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:'clamp(28px,6vw,52px)', color:'#fff', letterSpacing:'.03em', marginBottom:12 }}>READY TO CREATE YOUR CUSTOM GARMENT?</h2>
-        <p style={{ color:'rgba(255,255,255,.65)', fontSize:15, marginBottom:24 }}>Sign in with Google — free, fast, and secure.</p>
+        <p style={{ color:'rgba(255,255,255,.65)', fontSize:15, marginBottom:24 }}>Sign in with Google  -  free, fast, and secure.</p>
         <button className="btn-primary" style={{ fontSize:14, padding:'14px 32px' }} onClick={onGoToLogin}>Start Now →</button>
       </div>
       {/* Footer mini */}
@@ -527,7 +527,7 @@ function MockupStudio() {
               <label style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:8, padding:'20px 16px', border:'1.5px dashed rgba(255,255,255,.2)', borderRadius:10, cursor:'pointer', background:'rgba(255,255,255,.04)' }}>
                 <input type="file" accept=".png,.jpg,.jpeg,.svg,.webp" style={{ display:'none' }} onChange={onUpload} />
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.4)" strokeWidth="1.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-                <span style={{ fontSize:12, color:'rgba(255,255,255,.5)', textAlign:'center' }}>{img?'✓ Loaded — click to change':'Click to upload PNG/JPG/SVG'}</span>
+                <span style={{ fontSize:12, color:'rgba(255,255,255,.5)', textAlign:'center' }}>{img?'✓ Loaded  -  click to change':'Click to upload PNG/JPG/SVG'}</span>
               </label>
             </div>
             {img && <div style={{ background:'rgba(200,16,46,.1)', border:'1px solid rgba(200,16,46,.25)', borderRadius:8, padding:'10px 14px', fontSize:11, color:'rgba(255,255,255,.6)', lineHeight:1.7 }}><strong style={{ color:'#fff' }}>Drag</strong> to move · <strong style={{ color:'#fff' }}>Red dot</strong> to resize</div>}
@@ -811,7 +811,7 @@ function StudioPage({ user }) {
               <input id="studioFile" type="file" accept=".png,.jpg,.jpeg,.svg" style={{ display:'none' }} onChange={handleFile} />
               {uploadedFile
                 ? <div><p style={{ fontSize:13, fontWeight:600, color:'#00a86b' }}>{uploadedFile}</p><p style={{ fontSize:11, color:'#888', marginTop:4 }}>Click to change</p></div>
-                : <div><p style={{ fontSize:13, fontWeight:600, marginBottom:4 }}>Click to upload design</p><p style={{ fontSize:11, color:'#888' }}>PNG, JPG, SVG — Min 300 DPI recommended</p></div>}
+                : <div><p style={{ fontSize:13, fontWeight:600, marginBottom:4 }}>Click to upload design</p><p style={{ fontSize:11, color:'#888' }}>PNG, JPG, SVG  -  Min 300 DPI recommended</p></div>}
             </div></div>
           {/* Address */}
           <div><label style={{ fontSize:11, fontWeight:700, letterSpacing:'.12em', textTransform:'uppercase', color:'#555', display:'block', marginBottom:7 }}>Delivery Address</label>
@@ -847,9 +847,9 @@ function AboutPage() {
       <div style={{ maxWidth:720, margin:'0 auto', padding:'48px 16px' }}>
         <div style={{ display:'grid', gap:32 }}>
           {[
-            { title:'Who We Are', color:'#c8102e', text:'DRYNN is a custom garment printing service based in Tamil Nadu, India. We bring your designs to life on premium quality t-shirts, hoodies, polos, and joggers — delivered right to your door.' },
+            { title:'Who We Are', color:'#c8102e', text:'DRYNN is a custom garment printing service based in Tamil Nadu, India. We bring your designs to life on premium quality t-shirts, hoodies, polos, and joggers  -  delivered right to your door.' },
             { title:'Our Mission', color:'#0a1f5d', text:'We believe everyone deserves to wear exactly what they imagine. From individual pieces to bulk corporate orders, we treat every print with the same precision and care.' },
-            { title:'Quality First', color:'#00a86b', text:'We use heat press printing technology on pre-shrunk, premium fabrics. Every order goes through quality checks before dispatch. If it's not right, we reprint it — simple as that.' },
+            { title:'Quality First', color:'#00a86b', text:'We use heat press printing technology on pre-shrunk, premium fabrics. Every order goes through quality checks before dispatch. If it's not right, we reprint it  -  simple as that.' },
             { title:'Delivery',    color:'#f5a623', text:'We deliver across India in 5-7 working days. Cash on delivery is available. For bulk orders of 10+ pieces, contact us on WhatsApp for custom pricing and express timelines.' },
           ].map((s,i) => (
             <div key={i} style={{ display:'flex', gap:16 }}>
@@ -1250,7 +1250,7 @@ export default function Home() {
       }
     }
 
-    // Check existing session — auto-login returning users immediately
+    // Check existing session  -  auto-login returning users immediately
     supabase.auth.getSession().then(({ data:{ session } }) => {
       if (session?.user) {
         setUser(session.user)

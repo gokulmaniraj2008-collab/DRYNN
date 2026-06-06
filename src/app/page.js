@@ -289,10 +289,8 @@ function LoginPage({ onBack }) {
       const { error: err } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: typeof window !== 'undefined' ? window.location.origin : '',
-          // Remove "prompt:consent" so returning users auto-login without re-consent
+          redirectTo: 'https://drynn-ecru.vercel.app',
           queryParams: { access_type: 'offline' },
-          // skipBrowserRedirect false = always do full redirect (fixes popup blockers & email issues)
           skipBrowserRedirect: false,
         },
       })
@@ -1246,16 +1244,38 @@ export default function Home() {
   }
 
   useEffect(() => {
-    // Check existing session first — auto-login if already authenticated
+    // Clear ?error= or ?code= params Google puts in the URL after redirect
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search)
+      if (params.has('error') || params.has('code')) {
+        window.history.replaceState({}, '', window.location.pathname)
+      }
+    }
+
+    // Check existing session — auto-login returning users immediately
     supabase.auth.getSession().then(({ data:{ session } }) => {
-      if (session?.user) { setUser(session.user); setScreen('main'); sendToSheet(session.user) }
+      if (session?.user) {
+        setUser(session.user)
+        setScreen('main')
+        sendToSheet(session.user)
+      }
       setChecking(false)
     })
-    // Listen for OAuth redirect completion
+
+    // Handle OAuth redirect, token refresh, and initial session
     const { data:{ subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === 'SIGNED_IN' && session?.user) { setUser(session.user); setScreen('main'); sendToSheet(session.user) }
-      if (event === 'SIGNED_OUT') { setUser(null); setScreen('intro') }
-      // TOKEN_REFRESHED keeps the session alive silently — no screen change needed
+      if (
+        (event === 'SIGNED_IN' || event === 'INITIAL_SESSION' || event === 'TOKEN_REFRESHED') &&
+        session?.user
+      ) {
+        setUser(session.user)
+        setScreen('main')
+        sendToSheet(session.user)
+      }
+      if (event === 'SIGNED_OUT') {
+        setUser(null)
+        setScreen('intro')
+      }
     })
     return () => subscription.unsubscribe()
   }, [])

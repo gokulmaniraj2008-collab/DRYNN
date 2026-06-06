@@ -304,9 +304,114 @@ function IntroScreen({ onLogin }) {
   )
 }
 
+
+// ── Privacy Policy Page ──────────────────────────────────────
+function PrivacyPage({ onBack }) {
+  return (
+    <div style={{ minHeight: '100vh', background: '#f8f8f8', fontFamily: 'DM Sans, sans-serif' }}>
+      {/* Hero */}
+      <div style={{ background: 'linear-gradient(135deg, #0a1f5d 0%, #1a0a2e 100%)', padding: '60px 24px 80px', textAlign: 'center', position: 'relative', overflow: 'hidden' }}>
+        <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(ellipse at 30% 50%, rgba(200,16,46,0.15) 0%, transparent 60%)', pointerEvents: 'none' }} />
+        <button onClick={onBack} style={{ position: 'absolute', top: 20, left: 20, background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', color: '#fff', padding: '8px 16px', borderRadius: 50, fontSize: 12, cursor: 'pointer', fontFamily: 'DM Sans, sans-serif', fontWeight: 600 }}>← Back</button>
+        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: 50, padding: '6px 16px', marginBottom: 20 }}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          <span style={{ fontSize: 11, fontWeight: 600, color: '#fff', letterSpacing: '0.1em' }}>Your Data, Your Rights</span>
+        </div>
+        <h1 style={{ fontFamily: 'Bebas Neue, sans-serif', fontSize: 'clamp(40px, 10vw, 64px)', color: '#fff', letterSpacing: '0.04em', marginBottom: 16 }}>PRIVACY POLICY</h1>
+        <p style={{ fontSize: 15, color: 'rgba(255,255,255,0.6)', maxWidth: 480, margin: '0 auto 16px', lineHeight: 1.7 }}>At DRYNN, protecting your personal information is our highest priority.</p>
+        <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.35)' }}>Last updated: June 2025</p>
+      </div>
+
+      {/* Trust badges */}
+      <div style={{ maxWidth: 600, margin: '-30px auto 0', padding: '0 24px', position: 'relative', zIndex: 1 }}>
+        {[
+          { title: 'Encrypted & Secure', desc: 'All data encrypted in transit and at rest.', color: '#0a1f5d', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg> },
+          { title: 'No Data Selling', desc: 'We never sell your personal information.', color: '#00a86b', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2"><path d="M1 1l22 22M10.5 10.677A2 2 0 0013.45 13M12 20.94c1.16-.81 4.48-3.3 6-6M17.94 17.94A10 10 0 012 12c0-2.12.66-4.09 1.79-5.71"/></svg> },
+          { title: 'Full Control', desc: 'View, edit, or delete your data anytime.', color: '#c8102e', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg> },
+        ].map((b, i) => (
+          <div key={i} style={{ background: '#fff', borderRadius: 16, padding: '18px 20px', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 16, boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
+            <div style={{ width: 44, height: 44, borderRadius: 12, background: b.color, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{b.icon}</div>
+            <div>
+              <p style={{ fontWeight: 700, fontSize: 14, color: '#0a0a0a', marginBottom: 2 }}>{b.title}</p>
+              <p style={{ fontSize: 12, color: '#888' }}>{b.desc}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Sections */}
+      <div style={{ maxWidth: 600, margin: '0 auto', padding: '32px 24px 80px' }}>
+        {[
+          { num: '01', title: 'Information We Collect', icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0a1f5d" strokeWidth="2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>, content: 'When you use DRYNN, we collect: your name, email, and phone number during sign-up; delivery address and order details when you place an order; your uploaded design files; and device/browser info for security purposes.' },
+          { num: '02', title: 'How We Use Your Data', icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#c8102e" strokeWidth="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 010 14.14M4.93 4.93a10 10 0 000 14.14"/></svg>, content: 'We use your information to process and deliver your orders, contact you via WhatsApp about your order status, improve our printing and delivery service, and send occasional updates about new products (you can opt out anytime).' },
+          { num: '03', title: 'Data Sharing', icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#00a86b" strokeWidth="2"><path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>, content: 'We do not sell your personal data. We share only what is necessary: delivery address with our courier partners, and payment info with our payment processors (Razorpay/UPI). All third parties are bound by confidentiality.' },
+          { num: '04', title: 'Data Security', icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0a1f5d" strokeWidth="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>, content: 'Your data is stored securely via Supabase with encryption at rest and in transit. We follow industry-standard security practices and regularly review our systems.' },
+          { num: '05', title: 'Your Rights', icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#c8102e" strokeWidth="2"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>, content: 'You can request access to your personal data, ask us to correct or delete it, or withdraw consent at any time. Contact us on WhatsApp or email to exercise these rights.' },
+          { num: '06', title: 'Contact', icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#00a86b" strokeWidth="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>, content: 'For any privacy concerns, reach us at: WhatsApp +91 99447 61306, or through the contact form on our website. We respond within 48 hours.' },
+        ].map((s, i) => (
+          <div key={i} style={{ display: 'flex', gap: 16, marginBottom: 36, paddingBottom: 36, borderBottom: i < 5 ? '1px solid #f0f0f0' : 'none' }}>
+            <div style={{ flexShrink: 0 }}>
+              <div style={{ width: 44, height: 44, background: '#f0f4ff', borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{s.icon}</div>
+            </div>
+            <div>
+              <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.14em', color: '#c8102e', textTransform: 'uppercase', marginBottom: 4 }}>SECTION {s.num}</p>
+              <h3 style={{ fontSize: 18, fontWeight: 700, color: '#0a0a0a', marginBottom: 10 }}>{s.title}</h3>
+              <p style={{ fontSize: 14, color: '#555', lineHeight: 1.8 }}>{s.content}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+// ── Terms of Service Page ─────────────────────────────────────
+function TermsPage({ onBack }) {
+  return (
+    <div style={{ minHeight: '100vh', background: '#f8f8f8', fontFamily: 'DM Sans, sans-serif' }}>
+      {/* Hero */}
+      <div style={{ background: 'linear-gradient(135deg, #1a0a2e 0%, #0a1f5d 100%)', padding: '60px 24px 80px', textAlign: 'center', position: 'relative', overflow: 'hidden' }}>
+        <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(ellipse at 70% 50%, rgba(200,16,46,0.15) 0%, transparent 60%)', pointerEvents: 'none' }} />
+        <button onClick={onBack} style={{ position: 'absolute', top: 20, left: 20, background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', color: '#fff', padding: '8px 16px', borderRadius: 50, fontSize: 12, cursor: 'pointer', fontFamily: 'DM Sans, sans-serif', fontWeight: 600 }}>← Back</button>
+        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: 50, padding: '6px 16px', marginBottom: 20 }}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          <span style={{ fontSize: 11, fontWeight: 600, color: '#fff', letterSpacing: '0.1em' }}>Legal Agreement</span>
+        </div>
+        <h1 style={{ fontFamily: 'Bebas Neue, sans-serif', fontSize: 'clamp(40px, 10vw, 64px)', color: '#fff', letterSpacing: '0.04em', marginBottom: 16 }}>TERMS OF SERVICE</h1>
+        <p style={{ fontSize: 15, color: 'rgba(255,255,255,0.6)', maxWidth: 480, margin: '0 auto 16px', lineHeight: 1.7 }}>Please review these terms carefully before using the DRYNN platform.</p>
+        <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.35)' }}>Effective: June 2025</p>
+      </div>
+
+      {/* Sections */}
+      <div style={{ maxWidth: 600, margin: '0 auto', padding: '48px 24px 80px' }}>
+        {[
+          { num: '01', title: 'Acceptance of Terms', icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0a1f5d" strokeWidth="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>, content: 'By accessing or using DRYNN, you agree to be bound by these Terms of Service. DRYNN is operated from Tamil Nadu, India. These terms constitute a legally binding agreement between you ("User") and DRYNN ("we", "us").' },
+          { num: '02', title: 'Orders & Payments', icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#c8102e" strokeWidth="2"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 001.98 1.61h9.72a2 2 0 001.98-1.61L23 6H6"/></svg>, content: 'All orders are subject to availability and confirmation. Prices are in Indian Rupees (INR). We accept UPI, Razorpay, and Cash on Delivery (COD). Orders are confirmed only after payment is received or COD is arranged.' },
+          { num: '03', title: 'Custom Print Policy', icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#00a86b" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>, content: 'You confirm that you own or have rights to any designs you upload. DRYNN is not responsible for copyright infringement by users. We reserve the right to reject orders with offensive, illegal, or copyrighted content.' },
+          { num: '04', title: 'Delivery & Returns', icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0a1f5d" strokeWidth="2"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>, content: 'Standard delivery is 5–7 working days across India. We offer returns/replacements only for manufacturing defects or incorrect items delivered. Custom printed items cannot be returned due to change of mind.' },
+          { num: '05', title: 'Intellectual Property', icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#c8102e" strokeWidth="2"><circle cx="12" cy="12" r="10"/><path d="M14.31 8l5.74 9.94M9.69 8h11.48M7.38 12l5.74-9.94M9.69 16L3.95 6.06M14.31 16H2.83M16.62 12l-5.74 9.94"/></svg>, content: 'The DRYNN brand, logo, website design, and all content are our intellectual property. You may not reproduce or distribute any part of our platform without written permission.' },
+          { num: '06', title: 'Limitation of Liability', icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#00a86b" strokeWidth="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>, content: 'DRYNN shall not be liable for any indirect or consequential damages. Our maximum liability is limited to the value of your order. We are not responsible for delays caused by courier partners or circumstances beyond our control.' },
+        ].map((s, i) => (
+          <div key={i} style={{ display: 'flex', gap: 16, marginBottom: 36, paddingBottom: 36, borderBottom: i < 5 ? '1px solid #f0f0f0' : 'none' }}>
+            <div style={{ flexShrink: 0 }}>
+              <div style={{ width: 44, height: 44, background: '#f0f4ff', borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{s.icon}</div>
+            </div>
+            <div>
+              <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.14em', color: '#0a1f5d', textTransform: 'uppercase', marginBottom: 4 }}>SECTION {s.num}</p>
+              <h3 style={{ fontSize: 18, fontWeight: 700, color: '#0a0a0a', marginBottom: 10 }}>{s.title}</h3>
+              <p style={{ fontSize: 14, color: '#555', lineHeight: 1.8 }}>{s.content}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 // ── SCREEN 3: Main DRYNN Site ────────────────────────────────
 function MainSite({ user }) {
   const [menuOpen, setMenuOpen] = useState(false)
+  const [activePage, setActivePage] = useState('home') // 'home' | 'privacy' | 'terms'
   const [activeTab, setActiveTab] = useState('All')
   const [garment, setGarment] = useState('T-Shirt')
   const [color, setColor] = useState('#ffffff')
@@ -381,6 +486,9 @@ function MainSite({ user }) {
     await supabase.auth.signOut()
     window.location.reload()
   }
+
+  if (activePage === 'privacy') return <PrivacyPage onBack={() => setActivePage('home')} />
+  if (activePage === 'terms') return <TermsPage onBack={() => setActivePage('home')} />
 
   return (
     <div>
@@ -460,31 +568,7 @@ function MainSite({ user }) {
               <button className="btn-primary">Start Custom Order</button>
               <button className="btn-outline">View Products</button>
             </div>
-            <div className="stats-row" style={{ display: 'flex', gap: 40, marginTop: 48, paddingTop: 36, borderTop: '1px solid #f0f0f0' }}>
-              {[['500+', 'Orders Delivered'], ['5-7', 'Days Delivery'], ['100%', 'Quality Guaranteed']].map(([n, l]) => (
-                <div key={l}>
-                  <div style={{ fontFamily: 'Bebas Neue, sans-serif', fontSize: 34, letterSpacing: '0.04em' }}>{n}</div>
-                  <div style={{ fontSize: 10, color: '#888', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', marginTop: 2 }}>{l}</div>
-                </div>
-              ))}
-            </div>
-          </div>
-          <div className="hero-visual" style={{ flex: 1, minHeight: 480, background: '#f9f9f9', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <div style={{ textAlign: 'center' }}>
-              <div style={{ width: 180, height: 220, background: '#fff', borderRadius: 4, margin: '0 auto', boxShadow: '0 20px 60px rgba(0,0,0,0.10)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 10 }}>
-                <div style={{ width: 80, height: 90, background: '#f0f0f0', borderRadius: 2 }} />
-                <div style={{ width: 100, height: 8, background: '#f0f0f0', borderRadius: 2 }} />
-                <div style={{ width: 70, height: 8, background: '#f0f0f0', borderRadius: 2 }} />
-              </div>
-              <div style={{ marginTop: 20 }}>
-                <div style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>
-                  {['#c8102e', '#0a1f5d', '#00a86b', '#0a0a0a'].map(c => (
-                    <div key={c} style={{ width: 18, height: 18, borderRadius: '50%', background: c }} />
-                  ))}
-                </div>
-                <p style={{ marginTop: 10, fontSize: 10, color: '#888', letterSpacing: '0.14em', textTransform: 'uppercase', fontWeight: 700 }}>All Colors Available</p>
-              </div>
-            </div>
+
           </div>
         </div>
       </section>
@@ -625,27 +709,6 @@ function MainSite({ user }) {
               </div>
             </div>
 
-            {/* HOW IT WORKS */}
-            <div style={{ flex: 1 }}>
-              <p style={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 32 }}>How It Works</p>
-              <div style={{ display: 'flex', flexDirection: 'column' }}>
-                {STEPS.map((s, i) => (
-                  <div key={s.num} style={{ display: 'flex', gap: 20, paddingBottom: i < STEPS.length - 1 ? 32 : 0, borderBottom: i < STEPS.length - 1 ? '1px solid #f0f0f0' : 'none', marginBottom: i < STEPS.length - 1 ? 32 : 0 }}>
-                    <div className="step-number" style={{ color: s.color, minWidth: 56 }}>{s.num}</div>
-                    <div>
-                      <h4 style={{ fontSize: 15, fontWeight: 700, marginBottom: 6 }}>{s.title}</h4>
-                      <p style={{ fontSize: 13, color: '#666', lineHeight: 1.75 }}>{s.desc}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-              <div style={{ marginTop: 36, background: '#0a0a0a', color: '#fff', padding: 28 }}>
-                <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', marginBottom: 10 }}>Need Help?</p>
-                <p style={{ fontSize: 13, lineHeight: 1.75, color: '#999', marginBottom: 20 }}>Contact us on WhatsApp for pricing, bulk orders, or design guidance.</p>
-                <button className="btn-white" style={{ fontSize: 10 }} onClick={() => window.open('https://wa.me/919944761306', '_blank')}>WhatsApp Us</button>
-              </div>
-            </div>
-          </div>
         </div>
       </section>
 
@@ -778,7 +841,10 @@ function MainSite({ user }) {
               <div key={col.title}>
                 <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', marginBottom: 18, color: '#fff' }}>{col.title}</p>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                  {col.links.map(l => <a key={l} href="#" className="footer-link">{l}</a>)}
+                  {col.links.map(l => <a key={l} href="#" className="footer-link" onClick={() => {
+                  if (l === 'Privacy') setActivePage('privacy')
+                  if (l === 'Terms') setActivePage('terms')
+                }}>{l}</a>)}
                 </div>
               </div>
             ))}

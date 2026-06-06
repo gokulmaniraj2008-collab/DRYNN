@@ -425,25 +425,58 @@ function MockupStudio() {
   const render = useCallback(() => {
     const cv = canvasRef.current; if (!cv) return
     const ctx = cv.getContext('2d')
-    ctx.clearRect(0,0,400,480)
-    ctx.fillStyle='#1a2744'; ctx.fillRect(0,0,400,480)
+
+    // Clear and draw dark background
+    ctx.clearRect(0, 0, 400, 480)
+    ctx.fillStyle = '#1a2744'
+    ctx.fillRect(0, 0, 400, 480)
+
+    // Draw garment fill — save/restore to isolate state
+    ctx.save()
     drawPath(ctx, type)
-    ctx.fillStyle = gColor; ctx.fill()
-    ctx.strokeStyle = gColor==='#ffffff'?'#c8c8c8':'rgba(0,0,0,.15)'; ctx.lineWidth=1.5; ctx.stroke()
+    ctx.fillStyle = gColor
+    ctx.fill()
+    ctx.strokeStyle = gColor === '#ffffff' ? '#c8c8c8' : 'rgba(0,0,0,0.2)'
+    ctx.lineWidth = 2
+    ctx.stroke()
+    ctx.restore()
+
+    // Draw uploaded design clipped to garment
     if (img) {
-      ctx.save(); drawPath(ctx,type); ctx.clip()
+      ctx.save()
+      drawPath(ctx, type)
+      ctx.clip()
       ctx.drawImage(img, pos.x, pos.y, pos.w, pos.h)
       ctx.restore()
-      ctx.strokeStyle='#c8102e'; ctx.lineWidth=1.5; ctx.setLineDash([4,3])
-      ctx.strokeRect(pos.x,pos.y,pos.w,pos.h); ctx.setLineDash([])
-      [[pos.x,pos.y],[pos.x+pos.w,pos.y],[pos.x,pos.y+pos.h],[pos.x+pos.w,pos.y+pos.h]].forEach(([cx,cy])=>{
-        ctx.fillStyle='#fff'; ctx.strokeStyle='#c8102e'; ctx.lineWidth=1.5
-        ctx.beginPath(); ctx.arc(cx,cy,5,0,Math.PI*2); ctx.fill(); ctx.stroke()
+
+      // Selection border
+      ctx.save()
+      ctx.strokeStyle = '#c8102e'
+      ctx.lineWidth = 1.5
+      ctx.setLineDash([4, 3])
+      ctx.strokeRect(pos.x, pos.y, pos.w, pos.h)
+      ctx.setLineDash([])
+
+      // Corner handles
+      [[pos.x,pos.y],[pos.x+pos.w,pos.y],[pos.x,pos.y+pos.h],[pos.x+pos.w,pos.y+pos.h]].forEach(([cx,cy]) => {
+        ctx.fillStyle = '#fff'
+        ctx.strokeStyle = '#c8102e'
+        ctx.lineWidth = 1.5
+        ctx.beginPath(); ctx.arc(cx, cy, 5, 0, Math.PI*2); ctx.fill(); ctx.stroke()
       })
-      ctx.fillStyle='#c8102e'; ctx.beginPath(); ctx.arc(pos.x+pos.w,pos.y+pos.h,7,0,Math.PI*2); ctx.fill()
+
+      // Resize handle
+      ctx.fillStyle = '#c8102e'
+      ctx.beginPath(); ctx.arc(pos.x+pos.w, pos.y+pos.h, 8, 0, Math.PI*2); ctx.fill()
+      ctx.restore()
     } else {
-      ctx.font='13px DM Sans,sans-serif'; ctx.fillStyle='rgba(255,255,255,.3)'; ctx.textAlign='center'
-      ctx.fillText('Upload your design below',200,462)
+      // Hint text
+      ctx.save()
+      ctx.font = 'bold 13px sans-serif'
+      ctx.fillStyle = 'rgba(255,255,255,0.35)'
+      ctx.textAlign = 'center'
+      ctx.fillText('Upload your design below', 200, 462)
+      ctx.restore()
     }
   }, [type, gColor, img, pos, drawPath])
 
@@ -476,13 +509,14 @@ function MockupStudio() {
   }
 
   const download = () => {
-    const cv=document.createElement('canvas'); cv.width=400; cv.height=480
-    const ctx=cv.getContext('2d')
-    ctx.fillStyle='#1a2744'; ctx.fillRect(0,0,400,480)
-    drawPath(ctx,type); ctx.fillStyle=gColor; ctx.fill()
-    ctx.strokeStyle=gColor==='#ffffff'?'#c8c8c8':'rgba(0,0,0,.15)'; ctx.lineWidth=1.5; ctx.stroke()
-    if (img) { ctx.save(); drawPath(ctx,type); ctx.clip(); ctx.drawImage(img,pos.x,pos.y,pos.w,pos.h); ctx.restore() }
-    const a=document.createElement('a'); a.download='drynn-mockup.png'; a.href=cv.toDataURL(); a.click()
+    const cv = document.createElement('canvas')
+    cv.width = 400; cv.height = 480
+    const ctx = cv.getContext('2d')
+    ctx.fillStyle = '#1a2744'; ctx.fillRect(0, 0, 400, 480)
+    ctx.save(); drawPath(ctx, type); ctx.fillStyle = gColor; ctx.fill()
+    ctx.strokeStyle = gColor === '#ffffff' ? '#c8c8c8' : 'rgba(0,0,0,0.2)'; ctx.lineWidth = 2; ctx.stroke(); ctx.restore()
+    if (img) { ctx.save(); drawPath(ctx, type); ctx.clip(); ctx.drawImage(img, pos.x, pos.y, pos.w, pos.h); ctx.restore() }
+    const a = document.createElement('a'); a.download = 'drynn-mockup.png'; a.href = cv.toDataURL('image/png'); a.click()
   }
 
   return (

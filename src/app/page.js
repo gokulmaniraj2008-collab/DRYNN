@@ -848,8 +848,8 @@ function AboutPage() {
         <div style={{ display:'grid', gap:32 }}>
           {[
             { title:'Who We Are', color:'#c8102e', text:'DRYNN is a custom garment printing service based in Tamil Nadu, India. We bring your designs to life on premium quality t-shirts, hoodies, polos, and joggers  -  delivered right to your door.' },
-            { title:'Our Mission', color:'#0a1f5d', text:'We believe everyone deserves to wear exactly what they imagine. From individual pieces to bulk corporate orders, we treat every print with the same precision and care.' },
-            { title:'Quality First', color:'#00a86b', text:'We use heat press printing technology on pre-shrunk, premium fabrics. Every order goes through quality checks before dispatch. If it's not right, we reprint it  -  simple as that.' },
+            { title:'Our Mission', color:'#0a1f5d', text:"We believe everyone deserves to wear exactly what they imagine. From individual pieces to bulk corporate orders, we treat every print with the same precision and care." },
+            { title:"Quality First", color:"#00a86b", text:"We use heat press printing technology on pre-shrunk, premium fabrics. Every order goes through quality checks before dispatch. If it's not right, we reprint it - simple as that." },
             { title:'Delivery',    color:'#f5a623', text:'We deliver across India in 5-7 working days. Cash on delivery is available. For bulk orders of 10+ pieces, contact us on WhatsApp for custom pricing and express timelines.' },
           ].map((s,i) => (
             <div key={i} style={{ display:'flex', gap:16 }}>

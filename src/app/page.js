@@ -384,14 +384,14 @@ function MainSite({ user }) {
 
   return (
     <div>
-      {/* ── NAVBAR ── */}
+      {/* ── NAVBAR (desktop) ── */}
       <nav style={{ position: 'sticky', top: 0, zIndex: 100, background: '#fff', borderBottom: '1px solid #f0f0f0' }}>
         <div style={{ maxWidth: 1200, margin: '0 auto', padding: '0 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: 64 }}>
           <a href="/" style={{ fontFamily: 'Bebas Neue, sans-serif', fontSize: 28, letterSpacing: '0.15em', color: '#0a0a0a', textDecoration: 'none' }}>DRYNN</a>
           <div className="desktop-nav" style={{ display: 'flex', gap: 32 }}>
             {NAV.map(l => <a key={l} href="#" className="nav-link">{l}</a>)}
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div className="desktop-nav" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             {user && (
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 {user.user_metadata?.avatar_url && (
@@ -405,20 +405,46 @@ function MainSite({ user }) {
               </div>
             )}
             <button className="btn-primary" style={{ padding: '10px 20px', fontSize: 10 }}>Order Now</button>
-            <button
-              className="mobile-menu-btn"
-              onClick={() => setMenuOpen(!menuOpen)}
-              style={{ display: 'none', background: 'none', border: 'none', cursor: 'pointer', flexDirection: 'column', gap: 5, padding: 4 }}
-            >
-              {[0,1,2].map(i => <span key={i} style={{ display: 'block', width: 22, height: 2, background: '#0a0a0a' }} />)}
-            </button>
           </div>
         </div>
-        {menuOpen && (
-          <div style={{ borderTop: '1px solid #f0f0f0', padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 18, background: '#fff' }}>
-            {NAV.map(l => <a key={l} href="#" className="nav-link" style={{ fontSize: 14 }} onClick={() => setMenuOpen(false)}>{l}</a>)}
-          </div>
-        )}
+      </nav>
+
+      {/* ── MOBILE BOTTOM NAV ── */}
+      <nav className="mobile-bottom-nav" style={{
+        display: 'none', position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 200,
+        background: '#fff', borderTop: '1px solid #ebebeb',
+        height: 64, alignItems: 'center', justifyContent: 'space-around',
+        boxShadow: '0 -4px 24px rgba(0,0,0,0.07)',
+      }}>
+        {[
+          { label: 'Home', icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#aaa" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9.5L12 3l9 6.5V20a1 1 0 01-1 1H4a1 1 0 01-1-1V9.5z"/><path d="M9 21V12h6v9"/></svg> },
+          { label: 'Products', icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#aaa" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a4 4 0 00-8 0v2"/></svg> },
+          { label: 'Order', special: true, icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 001.98 1.61h9.72a2 2 0 001.98-1.61L23 6H6"/></svg> },
+          { label: 'Studio', icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#aaa" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg> },
+          { label: 'Account', icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#aaa" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg> },
+        ].map((item) => (
+          <button
+            key={item.label}
+            onClick={() => { if (item.label === 'Account' && user) handleLogout() }}
+            style={{
+              display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+              gap: 4, background: item.special ? '#c8102e' : 'none',
+              border: 'none', cursor: 'pointer',
+              padding: item.special ? '12px 20px' : '8px 12px',
+              borderRadius: item.special ? 50 : 8,
+              transform: item.special ? 'translateY(-14px)' : 'none',
+              boxShadow: item.special ? '0 4px 18px rgba(200,16,46,0.4)' : 'none',
+              minWidth: 48,
+            }}
+          >
+            {item.icon}
+            {!item.special && (
+              <span style={{ fontSize: 9, fontWeight: 600, letterSpacing: '0.05em', color: '#bbb', textTransform: 'uppercase' }}>
+                {item.label}
+              </span>
+            )}
+          </button>
+        ))}
       </nav>
 
       {/* ── HERO ── */}
@@ -734,7 +760,7 @@ function MainSite({ user }) {
       </section>
 
       {/* ── FOOTER ── */}
-      <footer style={{ background: '#0a0a0a', color: '#fff', padding: '60px 24px 28px' }}>
+      <footer style={{ background: '#0a0a0a', color: '#fff', padding: '60px 24px 96px' }}>
         <div style={{ maxWidth: 1200, margin: '0 auto' }}>
           <div className="footer-grid" style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr', gap: 48, marginBottom: 48 }}>
             <div>
@@ -861,6 +887,9 @@ export default function Home() {
         @media (max-width: 768px) {
           .drynn-intro-layout { flex-direction: column !important; gap: 36px !important; }
           .drynn-login-card { width: 100% !important; }
+          .desktop-nav { display: none !important; }
+          .mobile-bottom-nav { display: flex !important; }
+          body { padding-bottom: 64px; }
         }
       `}</style>
 

@@ -26,7 +26,7 @@ const STEPS = [
   { num:'01', color:'#c8102e', title:'Choose Garment',   desc:'Pick from t-shirts, hoodies, polos, or joggers in your preferred color.' },
   { num:'02', color:'#0a1f5d', title:'Upload Design',    desc:'Upload your artwork in PNG, JPG, or SVG. Minimum 300 DPI recommended.' },
   { num:'03', color:'#00a86b', title:'Preview & Order',  desc:'Confirm your design placement, size, and place your order securely.' },
-  { num:'04', color:'#0a0a0a', title:'Delivered to You', desc:'We print and deliver your custom piece within 5–7 working days across India.' },
+  { num:'04', color:'#0a0a0a', title:'Delivered to You', desc:'We print and deliver your custom piece within 5-7 working days across India.' },
 ]
 const REVIEWS = [
   { name:'Arjun R.',   location:'Chennai',    color:'#c8102e', rating:5, text:'The print quality is outstanding. Ordered 10 jerseys for our college team and every piece was perfect.' },
@@ -36,7 +36,7 @@ const REVIEWS = [
   { name:'Ravi T.',    location:'Trichy',     color:'#f5a623', rating:4, text:'Ordered joggers with our logo. Delivered in 5 days and the print is very clean and durable.' },
 ]
 const FAQS = [
-  { q:'How long does delivery take?',         a:'We deliver within 5–7 working days across India. Express delivery (2–3 days) is available for select pincodes.' },
+  { q:'How long does delivery take?',         a:'We deliver within 5-7 working days across India. Express delivery (2-3 days) is available for select pincodes.' },
   { q:'What file formats do you accept?',     a:'We accept PNG, JPG, JPEG, and SVG files. Minimum 300 DPI is recommended for best print quality.' },
   { q:'Do you offer Cash on Delivery?',       a:'Yes! We accept UPI, Razorpay, and Cash on Delivery (COD) for all orders across India.' },
   { q:'Can I return or exchange my order?',   a:'We offer replacements only for manufacturing defects or incorrect items. Custom printed items cannot be returned due to change of mind.' },
@@ -233,7 +233,7 @@ function IntroPage({ onGoToLogin }) {
       <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(220px,1fr))', gap:16, padding:'0 20px 48px', maxWidth:900, margin:'0 auto', width:'100%' }}>
         {[
           { icon:'👕', label:'Custom Print',        desc:'Any design, any garment, any colour',    bg:'rgba(200,16,46,0.07)'  },
-          { icon:'🚚', label:'Fast Delivery',        desc:'5–7 days across India, COD available',   bg:'rgba(10,31,93,0.07)'   },
+          { icon:'🚚', label:'Fast Delivery',        desc:'5-7 days across India, COD available',   bg:'rgba(10,31,93,0.07)'   },
           { icon:'💎', label:'Quality Guaranteed',   desc:'Heat press, wash-proof, 100% guarantee', bg:'rgba(0,168,107,0.07)'  },
           { icon:'💳', label:'Easy Payment',         desc:'UPI, Razorpay, COD — all accepted',       bg:'rgba(245,166,35,0.10)' },
         ].map((f,i) => (
@@ -360,7 +360,7 @@ function LoginPage({ onBack }) {
 
           {/* Trust stats */}
           <div style={{ display:'flex', justifyContent:'space-around', marginTop:24, paddingTop:20, borderTop:'1px solid #f5f5f5' }}>
-            {[['500+','Orders'],['5–7d','Delivery'],['100%','Quality']].map(([n,l]) => (
+            {[['500+','Orders'],['5-7d','Delivery'],['100%','Quality']].map(([n,l]) => (
               <div key={l} style={{ textAlign:'center' }}>
                 <div style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:22, letterSpacing:'.04em' }}>{n}</div>
                 <div style={{ fontSize:9, color:'#bbb', fontWeight:700, letterSpacing:'.12em', textTransform:'uppercase' }}>{l}</div>
@@ -558,7 +558,7 @@ function HomePage({ user, onNav, cart, onAddToCart }) {
             YOUR DESIGN.<br/><span style={{ color:'#c8102e' }}>YOUR STYLE.</span> YOUR DRYNN.
           </h1>
           <p style={{ fontSize:15, color:'rgba(255,255,255,.65)', maxWidth:440, lineHeight:1.8, marginBottom:24 }}>
-            Upload artwork, pick a garment, and we deliver premium custom clothing across India in 5–7 days.
+            Upload artwork, pick a garment, and we deliver premium custom clothing across India in 5-7 days.
           </p>
           <div className="hero-cta" style={{ display:'flex', gap:12, flexWrap:'wrap' }}>
             <button className="btn-primary" style={{ padding:'13px 26px', fontSize:14 }} onClick={()=>onNav('studio')}>Design Now</button>
@@ -665,7 +665,7 @@ function HomePage({ user, onNav, cart, onAddToCart }) {
       {/* CTA Banner */}
       <div style={{ background:'linear-gradient(135deg,#c8102e,#0a1f5d)', padding:'56px 16px', textAlign:'center' }}>
         <h2 style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:'clamp(28px,6vw,52px)', color:'#fff', letterSpacing:'.03em', marginBottom:10 }}>READY TO PRINT YOUR DESIGN?</h2>
-        <p style={{ color:'rgba(255,255,255,.7)', fontSize:14, marginBottom:24 }}>Free delivery above ₹1,500 · COD available · Delivered in 5–7 days</p>
+        <p style={{ color:'rgba(255,255,255,.7)', fontSize:14, marginBottom:24 }}>Free delivery above ₹1,500 · COD available · Delivered in 5-7 days</p>
         <button className="btn-primary" style={{ fontSize:14, padding:'14px 32px', background:'#fff', color:'#c8102e' }} onClick={()=>onNav('studio')}>Start Designing →</button>
       </div>
     </div>
@@ -850,7 +850,7 @@ function AboutPage() {
             { title:'Who We Are', color:'#c8102e', text:'DRYNN is a custom garment printing service based in Tamil Nadu, India. We bring your designs to life on premium quality t-shirts, hoodies, polos, and joggers — delivered right to your door.' },
             { title:'Our Mission', color:'#0a1f5d', text:'We believe everyone deserves to wear exactly what they imagine. From individual pieces to bulk corporate orders, we treat every print with the same precision and care.' },
             { title:'Quality First', color:'#00a86b', text:'We use heat press printing technology on pre-shrunk, premium fabrics. Every order goes through quality checks before dispatch. If it's not right, we reprint it — simple as that.' },
-            { title:'Delivery',    color:'#f5a623', text:'We deliver across India in 5–7 working days. Cash on delivery is available. For bulk orders of 10+ pieces, contact us on WhatsApp for custom pricing and express timelines.' },
+            { title:'Delivery',    color:'#f5a623', text:'We deliver across India in 5-7 working days. Cash on delivery is available. For bulk orders of 10+ pieces, contact us on WhatsApp for custom pricing and express timelines.' },
           ].map((s,i) => (
             <div key={i} style={{ display:'flex', gap:16 }}>
               <div style={{ width:4, minHeight:60, background:s.color, borderRadius:2, flexShrink:0 }} />
@@ -864,7 +864,7 @@ function AboutPage() {
 
         {/* Stats */}
         <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:16, margin:'48px 0', textAlign:'center' }}>
-          {[['500+','Orders Completed'],['5★','Average Rating'],['5–7d','Delivery']].map(([n,l])=>(
+          {[['500+','Orders Completed'],['5★','Average Rating'],['5-7d','Delivery']].map(([n,l])=>(
             <div key={l} style={{ background:'#f8f8f8', borderRadius:10, padding:'24px 16px' }}>
               <div style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:40, color:'#c8102e', lineHeight:1, marginBottom:6 }}>{n}</div>
               <div style={{ fontSize:12, color:'#888', fontWeight:600 }}>{l}</div>
@@ -920,8 +920,8 @@ function ContactPage() {
               {[
                 { icon:'📱', label:'WhatsApp', value:'+91 99447 61306', color:'#00a86b' },
                 { icon:'📍', label:'Location',  value:'Tamil Nadu, India', color:'#c8102e' },
-                { icon:'⏰', label:'Hours',     value:'Mon–Sat 9am–7pm',   color:'#0a1f5d' },
-                { icon:'📦', label:'Delivery',  value:'5–7 working days',  color:'#f5a623' },
+                { icon:'⏰', label:'Hours',     value:'Mon-Sat 9am-7pm',   color:'#0a1f5d' },
+                { icon:'📦', label:'Delivery',  value:'5-7 working days',  color:'#f5a623' },
               ].map((c,i)=>(
                 <div key={i} style={{ background:'#f8f8f8', borderRadius:10, padding:'16px 14px', display:'flex', gap:12, alignItems:'center' }}>
                   <div style={{ width:38, height:38, background:c.color, borderRadius:10, display:'flex', alignItems:'center', justifyContent:'center', fontSize:18, flexShrink:0 }}>{c.icon}</div>
@@ -1066,7 +1066,7 @@ function TermsPage({ onBack }) {
           { num:'01', title:'Acceptance of Terms',     content:'By using DRYNN, you agree to these Terms of Service. DRYNN is operated from Tamil Nadu, India.' },
           { num:'02', title:'Orders & Payments',       content:'All orders are subject to availability. Prices in INR. We accept UPI, Razorpay, and COD. Orders confirmed after payment.' },
           { num:'03', title:'Custom Print Policy',     content:'You confirm you own rights to uploaded designs. DRYNN is not liable for copyright infringement. We reserve the right to reject offensive or illegal content.' },
-          { num:'04', title:'Delivery & Returns',      content:'Standard delivery 5–7 working days. Replacements only for manufacturing defects. Custom printed items are non-returnable due to change of mind.' },
+          { num:'04', title:'Delivery & Returns',      content:'Standard delivery 5-7 working days. Replacements only for manufacturing defects. Custom printed items are non-returnable due to change of mind.' },
           { num:'05', title:'Intellectual Property',   content:'The DRYNN brand, logo, and website content are our intellectual property. Unauthorised reproduction is prohibited.' },
           { num:'06', title:'Limitation of Liability', content:'DRYNN liability is limited to the value of your order. We are not responsible for delays caused by courier partners.' },
         ].map((s,i)=>(

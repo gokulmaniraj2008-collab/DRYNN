@@ -289,15 +289,13 @@ function LoginPage({ onBack }) {
       const { error: err } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: 'https://drynn-ecru.vercel.app',
-          queryParams: { access_type: 'offline' },
-          skipBrowserRedirect: false,
+          redirectTo: window.location.origin,
         },
       })
-      if (err) throw err
+      if (err) setError(err.message)
     } catch (e) {
-      console.error(e)
-      setError('Login failed. Please try again or use a different browser.')
+      setError('Login failed. Please try again.')
+    } finally {
       setLoading(false)
     }
   }

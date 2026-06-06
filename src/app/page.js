@@ -686,21 +686,23 @@ export default function Home() {
 
   useEffect(() => {
     // Check if user is already logged in
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user) {
-        await saveUserData(session.user)
         setUser(session.user)
         setScreen('main')
+        // Save to Google Sheets in background (non-blocking)
+        sendToGoogleSheet(session.user)
       }
       setChecking(false)
     })
 
     // Listen for auth state changes (after Google redirect)
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === 'SIGNED_IN' && session?.user) {
-        await saveUserData(session.user)
         setUser(session.user)
         setScreen('main')
+        // Save to Google Sheets in background (non-blocking)
+        sendToGoogleSheet(session.user)
       }
       if (event === 'SIGNED_OUT') {
         setUser(null)
@@ -711,37 +713,22 @@ export default function Home() {
     return () => subscription.unsubscribe()
   }, [])
 
-  const saveUserData = async (u) => {
-    const timestamp = new Date().toISOString()
-
-    // Save to Supabase
-    const { error } = await supabase
-      .from('drynn_users')
-      .upsert({
-        id: u.id,
-        email: u.email,
+  // Only sends to Google Sheets — no Supabase table write on login
+  // Supabase Auth automatically records the user in Authentication → Users
+  const sendToGoogleSheet = (u) => {
+    if (!GOOGLE_SHEET_WEBHOOK) return
+    fetch(GOOGLE_SHEET_WEBHOOK, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        sheet: 'DRYNN_Users',
+        userId: u.id,
         name: u.user_metadata?.full_name || '',
-        avatar: u.user_metadata?.avatar_url || '',
-        registered_at: timestamp,
-      }, { onConflict: 'id' })
-
-    if (error) console.error('Supabase user save error:', error.message)
-
-    // Save to Google Sheets (non-blocking)
-    if (GOOGLE_SHEET_WEBHOOK) {
-      fetch(GOOGLE_SHEET_WEBHOOK, {
-        method: 'POST',
-        mode: 'no-cors',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          sheet: 'DRYNN_Users',
-          userId: u.id,
-          name: u.user_metadata?.full_name || '',
-          email: u.email,
-          registeredAt: timestamp,
-        }),
-      }).catch(e => console.error('Google Sheet error:', e))
-    }
+        email: u.email,
+        registeredAt: new Date().toISOString(),
+      }),
+    }).catch(e => console.error('Google Sheet error:', e))
   }
 
   if (checking) {

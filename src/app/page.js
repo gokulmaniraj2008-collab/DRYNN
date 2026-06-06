@@ -623,6 +623,67 @@ function MainSite({ user }) {
         </div>
       </section>
 
+      {/* ── 3D MOCKUP STUDIO ── */}
+      <section style={{ background: '#0d1b3e', padding: '80px 24px', position: 'relative', overflow: 'hidden' }}>
+        <div style={{ position: 'absolute', top: '20%', left: '10%', width: 300, height: 300, background: 'radial-gradient(circle, rgba(200,16,46,0.12) 0%, transparent 70%)', pointerEvents: 'none' }} />
+        <div style={{ position: 'absolute', bottom: '10%', right: '10%', width: 400, height: 400, background: 'radial-gradient(circle, rgba(59,130,246,0.1) 0%, transparent 70%)', pointerEvents: 'none' }} />
+        <div style={{ maxWidth: 900, margin: '0 auto', position: 'relative', zIndex: 1 }}>
+          <div style={{ textAlign: 'center', marginBottom: 56 }}>
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: 'rgba(200,16,46,0.15)', border: '1px solid rgba(200,16,46,0.3)', borderRadius: 100, padding: '5px 16px', marginBottom: 20 }}>
+              <div style={{ width: 5, height: 5, borderRadius: '50%', background: '#c8102e' }} />
+              <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.22em', textTransform: 'uppercase', color: '#c8102e' }}>Design Studio</span>
+            </div>
+            <h2 style={{ fontFamily: 'Bebas Neue, sans-serif', fontSize: 'clamp(36px, 7vw, 64px)', color: '#fff', letterSpacing: '0.02em', lineHeight: 1.1, marginBottom: 16 }}>
+              CONVERT YOUR 2D DESIGNS TO 3D
+            </h2>
+            <p style={{ fontSize: 15, color: 'rgba(255,255,255,0.5)', maxWidth: 480, margin: '0 auto', lineHeight: 1.7 }}>
+              Pick a template, add your design, and preview photorealistic mockups before ordering.
+            </p>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            {[
+              { title: 'Regular T-Shirt Studio', emoji: '\u{1F455}', url: 'https://dynamicmockups.com' },
+              { title: 'Fitted T-Shirt Studio', emoji: '\u{1F454}', url: 'https://dynamicmockups.com' },
+              { title: 'Hoodie Studio', emoji: '\u{1F9E5}', url: 'https://dynamicmockups.com' },
+              { title: 'Zip Hoodie Studio', emoji: '\u{1FAB1}', url: 'https://dynamicmockups.com' },
+              { title: 'Joggers Studio', emoji: '\u{1F456}', url: 'https://dynamicmockups.com' },
+            ].map((studio, i) => (
+              <div key={i}
+                style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 16, padding: '28px 32px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 24, transition: 'background 0.2s, border-color 0.2s' }}
+                onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.08)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.2)' }}
+                onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)' }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
+                  <div style={{ width: 72, height: 72, background: 'rgba(255,255,255,0.08)', borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 32, flexShrink: 0 }}>{studio.emoji}</div>
+                  <div>
+                    <h3 style={{ fontSize: 18, fontWeight: 700, color: '#fff', marginBottom: 12 }}>{studio.title}</h3>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                      {['6 CAMERA ANIMATIONS', '6 GARMENT ANIMATIONS', '4K EXPORT'].map(feat => (
+                        <div key={feat} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <div style={{ width: 14, height: 14, borderRadius: 3, border: '1px solid rgba(255,255,255,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                            <div style={{ width: 6, height: 6, borderRadius: 1, background: 'rgba(255,255,255,0.4)' }} />
+                          </div>
+                          <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', color: 'rgba(255,255,255,0.4)' }}>{feat}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+                <button
+                  onClick={() => window.open(studio.url, '_blank')}
+                  style={{ background: '#fff', color: '#0a0a0a', border: 'none', borderRadius: 50, padding: '14px 28px', fontSize: 14, fontWeight: 700, cursor: 'pointer', flexShrink: 0, fontFamily: 'DM Sans, sans-serif', transition: 'transform 0.15s, box-shadow 0.15s', boxShadow: '0 4px 16px rgba(0,0,0,0.3)' }}
+                  onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = '0 8px 24px rgba(0,0,0,0.4)' }}
+                  onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 4px 16px rgba(0,0,0,0.3)' }}
+                >Open Studio</button>
+              </div>
+            ))}
+          </div>
+          <p style={{ textAlign: 'center', marginTop: 32, fontSize: 12, color: 'rgba(255,255,255,0.3)' }}>
+            Powered by Dynamic Mockups · Free to preview · No sign-up required
+          </p>
+        </div>
+      </section>
+
       {/* ── REVIEWS ── */}
       <section style={{ padding: '80px 24px' }}>
         <div style={{ maxWidth: 1200, margin: '0 auto' }}>

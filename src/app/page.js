@@ -1100,8 +1100,8 @@ function HomePage({ user, onNav, cart, onAddToCart }) {
           <div className="products-grid" style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:16 }}>
             {products.slice(0,4).map(p => (
               <div key={p.id} className="product-card" onClick={()=>onNav('products')}>
-                <div style={{ background:'#f8f8f8', height:200, display:'flex', alignItems:'center', justifyContent:'center', fontSize:80, position:'relative' }}>
-                  {p.emoji}
+                <div style={{ background:'#f8f8f8', height:200, display:'flex', alignItems:'center', justifyContent:'center', fontSize:80, position:'relative', overflow:'hidden' }}>
+                  {p.image_url ? <img src={p.image_url} alt={p.name} style={{ width:'100%', height:'100%', objectFit:'contain' }} /> : p.emoji}
                   <div style={{ position:'absolute', top:10, left:10, background:p.tagColor, color:'#fff', fontSize:9, fontWeight:700, letterSpacing:'.1em', textTransform:'uppercase', padding:'3px 8px', borderRadius:2 }}>{p.tag}</div>
                   <div style={{ position:'absolute', top:10, right:10, background:'#e8f5e9', color:'#00a86b', fontSize:10, fontWeight:700, padding:'3px 8px', borderRadius:2 }}>{disc(p.price,p.mrp)}% off</div>
                 </div>
@@ -1202,8 +1202,8 @@ function ProductDetailPage({ product, onBack, onAddToCart }) {
         <div style={{ display:'flex', gap:32, flexWrap:'wrap' }}>
           {/* Image */}
           <div style={{ flex:'0 0 auto', width:'100%', maxWidth:340 }}>
-            <div style={{ background:'#f8f8f8', borderRadius:12, height:320, display:'flex', alignItems:'center', justifyContent:'center', fontSize:140, position:'relative' }}>
-              {product.emoji}
+            <div style={{ background:'#f8f8f8', borderRadius:12, height:320, display:'flex', alignItems:'center', justifyContent:'center', fontSize:140, position:'relative', overflow:'hidden' }}>
+              {product.image_url ? <img src={product.image_url} alt={product.name} style={{ width:'100%', height:'100%', objectFit:'contain' }} /> : product.emoji}
               <div style={{ position:'absolute', top:14, left:14, background:product.tagColor, color:'#fff', fontSize:9, fontWeight:700, letterSpacing:'.1em', textTransform:'uppercase', padding:'4px 10px', borderRadius:3 }}>{product.tag}</div>
             </div>
           </div>
@@ -1367,8 +1367,8 @@ function ProductsPage({ onAddToCart }) {
           <div className="products-grid" style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:16 }}>
             {sorted.map(p => (
               <div key={p.id} className="product-card" onClick={()=>setSelectedProduct(p)}>
-                <div style={{ background:'#f8f8f8', height:200, display:'flex', alignItems:'center', justifyContent:'center', fontSize:80, position:'relative' }}>
-                  {p.emoji}
+                <div style={{ background:'#f8f8f8', height:200, display:'flex', alignItems:'center', justifyContent:'center', fontSize:80, position:'relative', overflow:'hidden' }}>
+                  {p.image_url ? <img src={p.image_url} alt={p.name} style={{ width:'100%', height:'100%', objectFit:'contain' }} /> : p.emoji}
                   <div style={{ position:'absolute', top:10, left:10, background:p.tagColor, color:'#fff', fontSize:9, fontWeight:700, letterSpacing:'.1em', textTransform:'uppercase', padding:'3px 8px', borderRadius:2 }}>{p.tag}</div>
                   <button onClick={e=>{ e.stopPropagation(); setWishlist(w=>w.includes(p.id)?w.filter(x=>x!==p.id):[...w,p.id]) }}
                     style={{ position:'absolute', top:8, right:8, background:'#fff', border:'none', borderRadius:'50%', width:30, height:30, display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', fontSize:16, boxShadow:'0 2px 8px rgba(0,0,0,.1)' }}>
@@ -2671,7 +2671,11 @@ function AdminPanel({ onBack }) {
                     <ProductEditRow product={p} onSave={saveProduct} onCancel={()=>setEditProd(null)} />
                   ) : (
                     <div style={{ display:'flex', gap:16, alignItems:'center', flexWrap:'wrap' }}>
-                      <div style={{ fontSize:36, width:52, textAlign:'center', flexShrink:0 }}>{p.emoji}</div>
+                      <div style={{ width:60, height:60, borderRadius:8, overflow:'hidden', background:'#f8f8f8', border:'1px solid #e8e8e8', flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center' }}>
+                        {p.image_url
+                          ? <img src={p.image_url} alt={p.name} style={{ width:'100%', height:'100%', objectFit:'contain' }} />
+                          : <span style={{ fontSize:30 }}>{p.emoji}</span>}
+                      </div>
                       <div style={{ flex:1 }}>
                         <div style={{ fontSize:14, fontWeight:700 }}>{p.name}</div>
                         <div style={{ fontSize:12, color:'#888' }}>{p.category} · ₹{Number(p.price).toLocaleString()} (MRP ₹{Number(p.mrp).toLocaleString()})</div>
@@ -2780,19 +2784,64 @@ function OrderEditRow({ order, onSave, onCancel, statuses, colors }) {
 }
 
 function ProductEditRow({ product, onSave, onCancel }) {
-  const [p, setP] = useState({...product})
+  const [p, setP]           = useState({...product})
+  const [imgFile, setImgFile] = useState(null)
+  const [imgPct, setImgPct]   = useState(0)
+  const [imgSaving, setImgSaving] = useState(false)
+
+  const handleImgUpload = async () => {
+    if (!imgFile) { onSave(p); return }
+    setImgSaving(true)
+    try {
+      const url = await uploadToCloudinary(imgFile, pct => setImgPct(pct))
+      onSave({ ...p, image_url: url })
+    } catch(e) {
+      alert('Image upload failed: ' + e.message)
+    } finally { setImgSaving(false) }
+  }
+
   return (
     <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
       <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(180px,1fr))', gap:12 }}>
         {[['name','Name',p.name],['price','Price (₹)',p.price],['mrp','MRP (₹)',p.mrp],['tag','Tag',p.tag],['rating','Rating',p.rating]].map(([k,label,val])=>(
           <div key={k}>
             <label style={{ fontSize:10, fontWeight:700, letterSpacing:'.1em', color:'#888', textTransform:'uppercase', display:'block', marginBottom:4 }}>{label}</label>
-            <input className="input-field" value={val} onChange={e=>setP({...p,[k]:e.target.value})} style={{ padding:'8px 12px', fontSize:13 }} />
+            <input className="input-field" value={val||''} onChange={e=>setP({...p,[k]:e.target.value})} style={{ padding:'8px 12px', fontSize:13 }} />
           </div>
         ))}
       </div>
+
+      {/* Image upload */}
+      <div>
+        <label style={{ fontSize:10, fontWeight:700, letterSpacing:'.1em', color:'#888', textTransform:'uppercase', display:'block', marginBottom:6 }}>Product Image</label>
+        <div style={{ display:'flex', gap:12, alignItems:'center', flexWrap:'wrap' }}>
+          {(p.image_url) && (
+            <img src={p.image_url} alt="" style={{ width:64, height:64, objectFit:'contain', borderRadius:8, border:'1px solid #e0e0e0', background:'#f8f8f8' }} />
+          )}
+          <div onClick={()=>document.getElementById(`imgUpload_${product.id}`).click()}
+            style={{ flex:1, minWidth:160, padding:'12px', border:'1.5px dashed #d0d0d0', borderRadius:8, background:'#fafafa', cursor:'pointer', textAlign:'center' }}>
+            <input id={`imgUpload_${product.id}`} type="file" accept=".png,.jpg,.jpeg,.webp" style={{ display:'none' }}
+              onChange={e=>{ const f=e.target.files[0]; if(f) setImgFile(f) }} />
+            <div style={{ fontSize:11, color: imgFile ? '#00a86b' : '#888', fontWeight:600 }}>
+              {imgFile ? `✓ ${imgFile.name}` : '📷 Upload new image'}
+            </div>
+            <div style={{ fontSize:10, color:'#bbb', marginTop:2 }}>PNG, JPG · replaces current</div>
+          </div>
+        </div>
+        {imgPct > 0 && imgPct < 100 && (
+          <div style={{ marginTop:8 }}>
+            <div style={{ height:4, background:'#f0f0f0', borderRadius:2 }}>
+              <div style={{ height:'100%', width:`${imgPct}%`, background:'#c8102e', borderRadius:2, transition:'width .3s' }} />
+            </div>
+            <div style={{ fontSize:10, color:'#888', marginTop:2 }}>Uploading… {imgPct}%</div>
+          </div>
+        )}
+      </div>
+
       <div style={{ display:'flex', gap:10 }}>
-        <button className="btn-primary" style={{ padding:'8px 20px', fontSize:12 }} onClick={()=>onSave(p)}>Save Product</button>
+        <button className="btn-primary" style={{ padding:'8px 20px', fontSize:12, opacity:imgSaving?.6:1 }} onClick={handleImgUpload} disabled={imgSaving}>
+          {imgSaving ? 'Uploading…' : 'Save Product'}
+        </button>
         <button onClick={onCancel} style={{ padding:'8px 16px', fontSize:12, background:'none', border:'1px solid #e0e0e0', borderRadius:4, cursor:'pointer', color:'#888' }}>Cancel</button>
       </div>
     </div>

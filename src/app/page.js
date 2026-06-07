@@ -436,6 +436,19 @@ function MockupStudio() {
   const [contrast,    setContrast]    = useState(100)
   const [saturation,  setSaturation]  = useState(100)
 
+  // Samples
+  const [studioSamples,     setStudioSamples]     = useState([])
+  const [studioSamplesLoad, setStudioSamplesLoad] = useState(false)
+  const [studioSampleCat,   setStudioSampleCat]   = useState('All')
+
+  const loadStudioSamples = async () => {
+    if (studioSamples.length > 0) return // already loaded
+    setStudioSamplesLoad(true)
+    const { data, error } = await supabase.from('drynn_samples').select('*').order('created_at', { ascending: false })
+    if (!error) setStudioSamples(data || [])
+    setStudioSamplesLoad(false)
+  }
+
   // Customer Upload
   const [custFile,    setCustFile]    = useState(null)
   const [custPreview, setCustPreview] = useState(null)
@@ -479,6 +492,7 @@ function MockupStudio() {
     { key:'effects', label:'Effects', icon:'✨' },
     { key:'camera',  label:'360°',    icon:'🔄' },
     { key:'upload',  label:'Upload',  icon:'📤' },
+    { key:'samples', label:'Samples', icon:'🖼' },
   ]
   const BG_PRESETS = [
     { label:'Navy',   value:'#1a2744' },
@@ -707,7 +721,7 @@ function MockupStudio() {
       <div style={{ maxWidth:900, margin:'0 auto', borderTop:'1px solid rgba(255,255,255,.08)' }}>
         <div style={{ display:'flex', justifyContent:'space-around', background:'rgba(0,0,0,.3)', overflowX:'auto' }}>
           {TABS.map(t=>(
-            <button key={t.key} onClick={()=>setTab(t.key)}
+            <button key={t.key} onClick={()=>{ setTab(t.key); if(t.key==='samples') loadStudioSamples() }}
               style={{ flex:1, minWidth:54, padding:'11px 4px', background:'none', border:'none', cursor:'pointer', display:'flex', flexDirection:'column', alignItems:'center', gap:2, borderBottom:tab===t.key?'2px solid #c8102e':'2px solid transparent', transition:'all .15s', whiteSpace:'nowrap' }}>
               <span style={{ fontSize:18 }}>{t.icon}</span>
               <span style={{ fontSize:9, fontWeight:700, letterSpacing:'.07em', textTransform:'uppercase', color:tab===t.key?'#c8102e':'rgba(255,255,255,.4)' }}>{t.label}</span>
@@ -910,6 +924,56 @@ function MockupStudio() {
                   {autoSpin?'⏸ Stop':'▶ Spin'}
                 </button>
               </div>
+            </div>
+          )}
+
+          {/* SAMPLES TAB */}
+          {tab==='samples' && (
+            <div>
+              <p style={{ fontSize:12, color:'rgba(255,255,255,.4)', marginBottom:14, lineHeight:1.65 }}>
+                Choose a ready-made design. It will appear on your T-shirt instantly.
+              </p>
+              {/* Category filter */}
+              {studioSamples.length > 0 && (
+                <div style={{ display:'flex', gap:6, flexWrap:'wrap', marginBottom:14 }}>
+                  {['All', ...new Set(studioSamples.map(s=>s.category).filter(Boolean))].map(cat=>(
+                    <button key={cat} onClick={()=>setStudioSampleCat(cat)}
+                      style={{ padding:'4px 12px', borderRadius:100, fontSize:11, fontWeight:600, border:'1.5px solid', cursor:'pointer', transition:'all .15s',
+                        borderColor: studioSampleCat===cat ? '#c8102e' : 'rgba(255,255,255,.2)',
+                        background:  studioSampleCat===cat ? '#c8102e' : 'transparent',
+                        color:       studioSampleCat===cat ? '#fff' : 'rgba(255,255,255,.5)' }}>
+                      {cat}
+                    </button>
+                  ))}
+                </div>
+              )}
+              {studioSamplesLoad ? (
+                <div style={{ textAlign:'center', padding:32, color:'rgba(255,255,255,.4)', fontSize:13 }}>Loading designs…</div>
+              ) : studioSamples.length === 0 ? (
+                <div style={{ textAlign:'center', padding:32, background:'rgba(255,255,255,.04)', borderRadius:10, color:'rgba(255,255,255,.35)', fontSize:13 }}>
+                  No sample designs yet. Admin will add designs soon!
+                </div>
+              ) : (
+                <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:10 }}>
+                  {studioSamples
+                    .filter(s => studioSampleCat==='All' || s.category===studioSampleCat)
+                    .map(s => (
+                      <div key={s.id}
+                        onClick={()=>{ setDesignImg(s.image_url); setTab('design') }}
+                        style={{ borderRadius:10, overflow:'hidden', border:`2px solid ${designImg===s.image_url?'#c8102e':'rgba(255,255,255,.12)'}`, cursor:'pointer', background:'rgba(255,255,255,.05)', transition:'all .15s', position:'relative' }}>
+                        <img src={s.image_url} alt={s.name}
+                          style={{ width:'100%', aspectRatio:'1', objectFit:'cover', display:'block' }} />
+                        {designImg===s.image_url && (
+                          <div style={{ position:'absolute', top:5, right:5, width:20, height:20, borderRadius:'50%', background:'#c8102e', display:'flex', alignItems:'center', justifyContent:'center', fontSize:11, color:'#fff', fontWeight:700 }}>✓</div>
+                        )}
+                        <div style={{ padding:'6px 8px' }}>
+                          <div style={{ fontSize:10, fontWeight:700, color:'rgba(255,255,255,.8)', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{s.name}</div>
+                          {s.category && <div style={{ fontSize:9, color:'rgba(255,255,255,.4)' }}>{s.category}</div>}
+                        </div>
+                      </div>
+                    ))}
+                </div>
+              )}
             </div>
           )}
 
@@ -1479,108 +1543,24 @@ function StudioPage({ user }) {
           {/* Qty */}
           <div><label style={{ fontSize:11, fontWeight:700, letterSpacing:'.12em', textTransform:'uppercase', color:'#555', display:'block', marginBottom:7 }}>Quantity</label>
             <input className="input-field" type="number" min="1" value={form.qty} onChange={e=>setForm({...form,qty:e.target.value})} style={{ maxWidth:120 }} /></div>
-          {/* DESIGN CHOICE */}
+          {/* DESIGN — upload only, samples are in MockupStudio above */}
           <div>
-            <label style={{ fontSize:11, fontWeight:700, letterSpacing:'.12em', textTransform:'uppercase', color:'#555', display:'block', marginBottom:10 }}>Your Design</label>
-            {/* Mode selector */}
-            {!designMode && (
-              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
-                <button onClick={()=>handleModeSelect('upload')}
-                  style={{ padding:'20px 12px', border:'2px dashed #d0d0d0', borderRadius:12, background:'#fafafa', cursor:'pointer', textAlign:'center', transition:'all .15s' }}
-                  onMouseOver={e=>{e.currentTarget.style.borderColor='#c8102e';e.currentTarget.style.background='rgba(200,16,46,.03)'}}
-                  onMouseOut={e=>{e.currentTarget.style.borderColor='#d0d0d0';e.currentTarget.style.background='#fafafa'}}>
-                  <div style={{ fontSize:28, marginBottom:8 }}>📁</div>
-                  <div style={{ fontSize:13, fontWeight:700, color:'#0a0a0a', marginBottom:4 }}>Upload Your Own</div>
-                  <div style={{ fontSize:11, color:'#888' }}>PNG, JPG, SVG</div>
-                </button>
-                <button onClick={()=>handleModeSelect('sample')}
-                  style={{ padding:'20px 12px', border:'2px dashed #d0d0d0', borderRadius:12, background:'#fafafa', cursor:'pointer', textAlign:'center', transition:'all .15s' }}
-                  onMouseOver={e=>{e.currentTarget.style.borderColor='#c8102e';e.currentTarget.style.background='rgba(200,16,46,.03)'}}
-                  onMouseOut={e=>{e.currentTarget.style.borderColor='#d0d0d0';e.currentTarget.style.background='#fafafa'}}>
-                  <div style={{ fontSize:28, marginBottom:8 }}>🎨</div>
-                  <div style={{ fontSize:13, fontWeight:700, color:'#0a0a0a', marginBottom:4 }}>Choose Our Samples</div>
-                  <div style={{ fontSize:11, color:'#888' }}>Ready-made designs</div>
-                </button>
-              </div>
-            )}
-
-            {/* Upload mode */}
-            {designMode==='upload' && (
-              <div>
-                <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:10 }}>
-                  <button onClick={()=>handleModeSelect('')} style={{ fontSize:11, color:'#888', background:'none', border:'none', cursor:'pointer', textDecoration:'underline' }}>← Change</button>
-                  <span style={{ fontSize:12, fontWeight:600, color:'#c8102e' }}>📁 Upload Your Own Design</span>
-                </div>
-                <div className="upload-zone" onClick={()=>document.getElementById('studioFile').click()}>
-                  <input id="studioFile" type="file" accept=".png,.jpg,.jpeg,.svg" style={{ display:'none' }} onChange={handleFile} />
-                  {uploadedFile
-                    ? <div>
-                        <p style={{ fontSize:13, fontWeight:600, color:'#00a86b', marginBottom:4 }}>✓ {uploadedFile.name}</p>
-                        <p style={{ fontSize:11, color:'#888' }}>{(uploadedFile.size/1024/1024).toFixed(2)} MB · Click to change</p>
-                        {uploadedFile.type.startsWith('image/') && (
-                          <img src={URL.createObjectURL(uploadedFile)} alt="preview" style={{ marginTop:10, maxHeight:120, maxWidth:'100%', borderRadius:6, objectFit:'contain' }} />
-                        )}
-                      </div>
-                    : <div><p style={{ fontSize:13, fontWeight:600, marginBottom:4 }}>Click to upload design</p><p style={{ fontSize:11, color:'#888' }}>PNG, JPG, SVG · Max 20MB · Min 300 DPI recommended</p></div>}
-                </div>
-              </div>
-            )}
-
-            {/* Sample mode */}
-            {designMode==='sample' && (
-              <div>
-                <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:12 }}>
-                  <button onClick={()=>handleModeSelect('')} style={{ fontSize:11, color:'#888', background:'none', border:'none', cursor:'pointer', textDecoration:'underline' }}>← Change</button>
-                  <span style={{ fontSize:12, fontWeight:600, color:'#c8102e' }}>🎨 Choose a Sample Design</span>
-                </div>
-                {/* Category filter */}
-                {samples.length > 0 && (
-                  <div style={{ display:'flex', gap:6, flexWrap:'wrap', marginBottom:12 }}>
-                    {['All', ...new Set(samples.map(s=>s.category).filter(Boolean))].map(cat=>(
-                      <button key={cat} onClick={()=>setSampleCat(cat)}
-                        style={{ padding:'4px 12px', borderRadius:100, fontSize:11, fontWeight:600, border:'1.5px solid', cursor:'pointer', transition:'all .15s',
-                          borderColor: sampleCategory===cat ? '#c8102e' : '#e0e0e0',
-                          background: sampleCategory===cat ? '#c8102e' : '#fff',
-                          color: sampleCategory===cat ? '#fff' : '#555' }}>
-                        {cat}
-                      </button>
-                    ))}
+            <label style={{ fontSize:11, fontWeight:700, letterSpacing:'.12em', textTransform:'uppercase', color:'#555', display:'block', marginBottom:8 }}>Your Design</label>
+            <p style={{ fontSize:12, color:'#888', marginBottom:10 }}>
+              Use the <strong>🖼 Samples</strong> tab above to pick a ready-made design, or upload your own below.
+            </p>
+            <div className="upload-zone" onClick={()=>document.getElementById('studioFile').click()}>
+              <input id="studioFile" type="file" accept=".png,.jpg,.jpeg,.svg" style={{ display:'none' }} onChange={handleFile} />
+              {uploadedFile
+                ? <div>
+                    <p style={{ fontSize:13, fontWeight:600, color:'#00a86b', marginBottom:4 }}>✓ {uploadedFile.name}</p>
+                    <p style={{ fontSize:11, color:'#888' }}>{(uploadedFile.size/1024/1024).toFixed(2)} MB · Click to change</p>
+                    {uploadedFile.type.startsWith('image/') && (
+                      <img src={URL.createObjectURL(uploadedFile)} alt="preview" style={{ marginTop:10, maxHeight:120, maxWidth:'100%', borderRadius:6, objectFit:'contain' }} />
+                    )}
                   </div>
-                )}
-                {samplesLoading ? (
-                  <div style={{ textAlign:'center', padding:32, color:'#888', fontSize:13 }}>Loading designs…</div>
-                ) : samples.length === 0 ? (
-                  <div style={{ textAlign:'center', padding:32, color:'#888', background:'#f8f8f8', borderRadius:10, fontSize:13 }}>
-                    No sample designs yet. Admin will add designs soon!
-                  </div>
-                ) : (
-                  <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:10 }}>
-                    {samples.filter(s => sampleCategory==='All' || s.category===sampleCategory).map(s=>(
-                      <div key={s.id} onClick={()=>setSample(s)}
-                        style={{ borderRadius:10, overflow:'hidden', border:`2px solid ${selectedSample?.id===s.id?'#c8102e':'#e0e0e0'}`, cursor:'pointer', background:'#f8f8f8', transition:'all .15s', position:'relative' }}>
-                        <img src={s.image_url} alt={s.name} style={{ width:'100%', aspectRatio:'1', objectFit:'cover', display:'block' }} />
-                        {selectedSample?.id===s.id && (
-                          <div style={{ position:'absolute', top:6, right:6, width:22, height:22, borderRadius:'50%', background:'#c8102e', display:'flex', alignItems:'center', justifyContent:'center', fontSize:12, color:'#fff', fontWeight:700 }}>✓</div>
-                        )}
-                        <div style={{ padding:'6px 8px' }}>
-                          <div style={{ fontSize:11, fontWeight:600, color:'#0a0a0a', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{s.name}</div>
-                          {s.category && <div style={{ fontSize:10, color:'#888' }}>{s.category}</div>}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-                {selectedSample && (
-                  <div style={{ marginTop:10, background:'rgba(0,168,107,.06)', border:'1px solid rgba(0,168,107,.2)', borderRadius:8, padding:'10px 14px', display:'flex', alignItems:'center', gap:10 }}>
-                    <img src={selectedSample.image_url} alt="" style={{ width:40, height:40, objectFit:'cover', borderRadius:6 }} />
-                    <div>
-                      <div style={{ fontSize:12, fontWeight:700, color:'#00a86b' }}>✓ Selected: {selectedSample.name}</div>
-                      <div style={{ fontSize:11, color:'#888' }}>This design will be printed on your shirt</div>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
+                : <div><p style={{ fontSize:13, fontWeight:600, marginBottom:4 }}>📁 Upload your own design</p><p style={{ fontSize:11, color:'#888' }}>PNG, JPG, SVG · Max 20MB · Min 300 DPI</p></div>}
+            </div>
           </div>
           {/* Address */}
           <div><label style={{ fontSize:11, fontWeight:700, letterSpacing:'.12em', textTransform:'uppercase', color:'#555', display:'block', marginBottom:7 }}>Delivery Address</label>

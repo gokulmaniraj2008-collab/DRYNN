@@ -1607,13 +1607,7 @@ function StudioPage({ user }) {
         </div>
       </div>
 
-      {/* CSS 3D mockup */}
-      <CSS3DMockup />
-
-      {/* Three.js 3D mockup */}
-      <ThreeJSMockup />
-
-      {/* Canvas mockup tool */}
+      {/* 3D Mockup Studio */}
       <MockupStudio />
     </div>
   )

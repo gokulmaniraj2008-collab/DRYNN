@@ -1217,7 +1217,7 @@ function ProductDetailPage({ product, onBack, onAddToCart }) {
 }
 
 // ── Products Listing Page ─────────────────────────────────────
-function ProductsPage({ onAddToCart }) {
+function ProductsPage({ onAddToCart, onNav }) {
   const products  = usePublicProducts()
   const [activeTab,    setActiveTab]    = useState('All')
   const [sort,         setSort]         = useState('popular')
@@ -3203,6 +3203,11 @@ function MainSite({ user }) {
     { key:'account',  label:'Account', icon:<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg> },
   ]
 
+  // Extra pages accessible via a "more" drawer on mobile
+  const isAdmin = user?.email === ADMIN_EMAIL
+
+  const [mobileMore, setMobileMore] = useState(false)
+
   return (
     <div style={{ paddingBottom:64 }}>
       {/* ── TOP NAVBAR ── */}
@@ -3254,7 +3259,7 @@ function MainSite({ user }) {
 
       {/* ── PAGE CONTENT ── */}
       {page==='home'     && <HomePage     user={user} onNav={setPage} cart={cart} onAddToCart={addToCart} />}
-      {page==='products' && <ProductsPage onAddToCart={addToCart} />}
+      {page==='products' && <ProductsPage onAddToCart={addToCart} onNav={setPage} />}
       {page==='studio'   && <StudioPage   user={user} />}
       {page==='about'    && <AboutPage />}
       {page==='contact'  && <ContactPage />}
@@ -3300,7 +3305,7 @@ function MainSite({ user }) {
       {/* ── MOBILE BOTTOM NAV ── */}
       <nav className="mobile-bottom-nav" style={{ display:'flex', position:'fixed', bottom:0, left:0, right:0, zIndex:200, background:'#fff', borderTop:'1px solid #ebebeb', height:60, alignItems:'center', justifyContent:'space-around', boxShadow:'0 -4px 16px rgba(0,0,0,.08)' }}>
         {NAV_ITEMS.map(item=>(
-          <button key={item.key} onClick={()=>setPage(item.key)}
+          <button key={item.key} onClick={()=>{ setMobileMore(false); setPage(item.key) }}
             className={`bnav-item${page===item.key?' active':''}`}
             style={{ position:'relative', ...(item.special ? { background:'#c8102e', width:48, height:48, borderRadius:'50%', transform:'translateY(-10px)', boxShadow:'0 4px 16px rgba(200,16,46,.45)', flexShrink:0 } : {}) }}>
             <span style={{ color: item.special ? '#fff' : (page===item.key ? '#c8102e' : '#aaa'), display:'flex', alignItems:'center', justifyContent:'center' }}>{item.icon}</span>
@@ -3308,7 +3313,48 @@ function MainSite({ user }) {
             {item.key==='cart' && cart.length>0 && <div className="cart-badge" style={{ top:-4, right:-4 }}>{cart.length}</div>}
           </button>
         ))}
+        {/* More button */}
+        <button onClick={()=>setMobileMore(v=>!v)}
+          className={`bnav-item${mobileMore?' active':''}`}
+          style={{ position:'relative' }}>
+          <span style={{ color: mobileMore ? '#c8102e' : '#aaa', display:'flex', alignItems:'center', justifyContent:'center' }}>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="5" r="1" fill="currentColor"/><circle cx="12" cy="12" r="1" fill="currentColor"/><circle cx="12" cy="19" r="1" fill="currentColor"/>
+            </svg>
+          </span>
+          <span style={{ fontSize:9, fontWeight:700, color:mobileMore?'#c8102e':'#bbb', letterSpacing:'.04em', textTransform:'uppercase', marginTop:1 }}>More</span>
+        </button>
       </nav>
+
+      {/* ── MOBILE MORE DRAWER ── */}
+      {mobileMore && (
+        <div className="mobile-bottom-nav" style={{ position:'fixed', bottom:60, left:0, right:0, zIndex:199, background:'#fff', borderTop:'1px solid #f0f0f0', padding:'12px 16px 8px', boxShadow:'0 -8px 24px rgba(0,0,0,.1)', display:'block' }}>
+          <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:8 }}>
+            {[
+              { key:'track',   label:'Track',  emoji:'📦' },
+              { key:'group',   label:'Group',  emoji:'👥' },
+              { key:'about',   label:'About',  emoji:'ℹ️' },
+              { key:'contact', label:'Contact',emoji:'💬' },
+            ].map(item=>(
+              <button key={item.key} onClick={()=>{ setPage(item.key); setMobileMore(false) }}
+                style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:4, padding:'10px 4px', background: page===item.key ? 'rgba(200,16,46,.07)' : '#f8f8f8', border: page===item.key ? '1px solid rgba(200,16,46,.2)' : '1px solid #f0f0f0', borderRadius:10, cursor:'pointer' }}>
+                <span style={{ fontSize:20 }}>{item.emoji}</span>
+                <span style={{ fontSize:9, fontWeight:700, letterSpacing:'.04em', textTransform:'uppercase', color: page===item.key ? '#c8102e' : '#555' }}>{item.label}</span>
+              </button>
+            ))}
+          </div>
+          {isAdmin && (
+            <button onClick={()=>{ setPage('admin'); setMobileMore(false) }}
+              style={{ width:'100%', marginTop:8, padding:'10px', background:'rgba(200,16,46,.06)', border:'1px solid rgba(200,16,46,.2)', borderRadius:8, fontSize:12, fontWeight:700, color:'#c8102e', cursor:'pointer', letterSpacing:'.04em' }}>
+              ⚙️ Admin Panel
+            </button>
+          )}
+          <button onClick={()=>{ handleLogout(); setMobileMore(false) }}
+            style={{ width:'100%', marginTop:6, padding:'10px', background:'#f8f8f8', border:'1px solid #e8e8e8', borderRadius:8, fontSize:12, fontWeight:700, color:'#888', cursor:'pointer' }}>
+            Sign Out
+          </button>
+        </div>
+      )}
 
       {/* ── TOAST ── */}
       {toast && <div className="toast">{toast}</div>}

@@ -2447,7 +2447,8 @@ function AdminPanel({ onBack }) {
       id: p.id, name: p.name, price: Number(p.price), mrp: Number(p.mrp),
       tag: p.tag, tag_color: p.tagColor || p.tag_color,
       category: p.category, emoji: p.emoji,
-      rating: Number(p.rating), reviews: Number(p.reviews)
+      rating: Number(p.rating), reviews: Number(p.reviews),
+      image_url: p.image_url || null
     }, { onConflict: 'id' })
     if (error) {
       alert('Save failed: ' + error.message)

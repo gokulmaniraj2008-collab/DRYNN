@@ -1341,7 +1341,9 @@ function ProductsPage({ onAddToCart, onNav }) {
       )}
     </div>
   )
-} = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || 'dfhdyp4oq'
+}
+
+const CLOUDINARY_CLOUD = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || 'dfhdyp4oq'
 const CLOUDINARY_PRESET = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET || 'drynn_uploads'
 
 async function uploadToCloudinary(file, onProgress) {

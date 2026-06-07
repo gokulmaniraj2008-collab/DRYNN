@@ -1632,8 +1632,6 @@ function StudioPage({ user, onNav }) {
 
       {/* ── 3D IMAGE VIEWER SECTION ── */}
       <ThreeDImageViewer />
-
-      </div>
     </div>
   )
 }

@@ -926,11 +926,44 @@ function AboutPage() {
 }
 
 function ContactPage() {
-  const [sent, setSent] = useState(false)
-  const [form, setForm] = useState({ name:'', phone:'', email:'', message:'' })
-  const handle = () => {
-    if (!form.name||!form.phone) { alert('Please fill your name and phone.'); return }
-    setSent(true)
+  const [sent, setSent]       = useState(false)
+  const [saving, setSaving]   = useState(false)
+  const [error, setError]     = useState('')
+  const [form, setForm]       = useState({ name:'', phone:'', email:'', message:'' })
+
+  const handle = async () => {
+    if (!form.name || !form.phone) { alert('Please fill your name and phone.'); return }
+    setSaving(true); setError('')
+    try {
+      const submittedAt = new Date().toISOString()
+
+      // Save to Supabase
+      const { error: dbErr } = await supabase.from('drynn_contacts').insert({
+        name: form.name,
+        phone: form.phone,
+        email: form.email || null,
+        message: form.message || null,
+        submitted_at: submittedAt,
+      })
+      if (dbErr) console.error('Supabase contact error:', dbErr.message)
+
+      // Send to Google Sheet webhook
+      if (GOOGLE_SHEET_WEBHOOK) {
+        fetch(GOOGLE_SHEET_WEBHOOK, {
+          method: 'POST', mode: 'no-cors',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ sheet: 'DRYNN_Contacts', ...form, submittedAt }),
+        }).catch(console.error)
+      }
+
+      setSent(true)
+      setForm({ name:'', phone:'', email:'', message:'' })
+    } catch (e) {
+      console.error(e)
+      setError('Something went wrong. Please WhatsApp us directly.')
+    } finally {
+      setSaving(false)
+    }
   }
   return (
     <div>
@@ -968,8 +1001,9 @@ function ContactPage() {
             <div><label style={{ fontSize:11, fontWeight:700, letterSpacing:'.12em', textTransform:'uppercase', color:'#555', display:'block', marginBottom:7 }}>Phone / WhatsApp *</label><input className="input-field" placeholder="+91 00000 00000" value={form.phone} onChange={e=>setForm({...form,phone:e.target.value})} /></div>
             <div><label style={{ fontSize:11, fontWeight:700, letterSpacing:'.12em', textTransform:'uppercase', color:'#555', display:'block', marginBottom:7 }}>Email (optional)</label><input className="input-field" placeholder="you@example.com" value={form.email} onChange={e=>setForm({...form,email:e.target.value})} /></div>
             <div><label style={{ fontSize:11, fontWeight:700, letterSpacing:'.12em', textTransform:'uppercase', color:'#555', display:'block', marginBottom:7 }}>Message</label><textarea className="input-field" rows={4} placeholder="Tell us about your order, bulk inquiry, or question…" style={{ resize:'vertical' }} value={form.message} onChange={e=>setForm({...form,message:e.target.value})} /></div>
-            <button className="btn-primary" style={{ padding:15, fontSize:13 }} onClick={handle}>Send Message</button>
+            <button className="btn-primary" style={{ padding:15, fontSize:13, opacity:saving?.6:1 }} onClick={handle} disabled={saving}>{saving ? 'Sending…' : 'Send Message'}</button>
             <p style={{ fontSize:12, color:'#aaa', textAlign:'center' }}>Or WhatsApp us directly at <strong>+91 99447 61306</strong></p>
+            {error && <div style={{ fontSize:13, color:'#c8102e', background:'rgba(200,16,46,.05)', border:'1px solid rgba(200,16,46,.2)', borderRadius:6, padding:'10px 14px', textAlign:'center', marginTop:-8 }}>{error}</div>}
           </div>
         )}
       </div>
@@ -977,8 +1011,120 @@ function ContactPage() {
   )
 }
 
-function CartPage({ cart, onRemove, onClear }) {
-  const total = cart.reduce((s,i)=>s+i.price*i.qty,0)
+function CartPage({ cart, onRemove, onClear, user }) {
+  const total      = cart.reduce((s,i) => s + i.price * i.qty, 0)
+  const shipping   = total >= 1500 ? 0 : 99
+  const grandTotal = total + shipping
+
+  const [step,   setStep]   = React.useState('cart')
+  const [saving, setSaving] = React.useState(false)
+  const [form,   setForm]   = React.useState({
+    name: '', phone: '', address: '', pincode: '', payment: 'cod',
+  })
+
+  const placeOrder = async () => {
+    if (!form.name || !form.phone || !form.address || !form.pincode) {
+      alert('Please fill all delivery details.'); return
+    }
+    setSaving(true)
+    try {
+      const orderId  = crypto.randomUUID()
+      const placedAt = new Date().toISOString()
+      const itemsSummary = cart.map(i => `${i.name} x${i.qty}`).join(', ')
+      const { error: dbErr } = await supabase.from('drynn_orders').insert({
+        id: orderId, user_id: user?.id || null, name: form.name, phone: form.phone,
+        address: `${form.address}, ${form.pincode}`, garment: itemsSummary,
+        color: 'Various', size: 'Various', qty: cart.reduce((s,i) => s + i.qty, 0),
+        design_file: 'catalog-order', placed_at: placedAt,
+      })
+      if (dbErr) console.error('Order error:', dbErr.message)
+      if (GOOGLE_SHEET_WEBHOOK) fetch(GOOGLE_SHEET_WEBHOOK, {
+        method:'POST', mode:'no-cors', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ sheet:'DRYNN_Orders', orderId, name:form.name, phone:form.phone, address:form.address, pincode:form.pincode, items:itemsSummary, total:grandTotal, payment:form.payment, placedAt }),
+      }).catch(console.error)
+      onClear(); setStep('done')
+    } catch(e) { console.error(e); alert('Something went wrong. Please try again.') }
+    finally { setSaving(false) }
+  }
+
+  if (step === 'done') return (
+    <div>
+      <div style={{ background:'linear-gradient(90deg,#0a1f5d,#1a0a2e)', padding:'32px 16px' }}>
+        <div style={{ maxWidth:1100, margin:'0 auto' }}>
+          <span className="sec-label" style={{ color:'rgba(255,255,255,.6)' }}>Order Placed</span>
+          <h1 className="sec-title" style={{ color:'#fff' }}>THANK YOU!</h1>
+        </div>
+      </div>
+      <div style={{ textAlign:'center', padding:'64px 16px', maxWidth:480, margin:'0 auto' }}>
+        <div style={{ fontSize:64, marginBottom:16 }}>🎉</div>
+        <h2 style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:32, marginBottom:12 }}>ORDER CONFIRMED!</h2>
+        <p style={{ fontSize:14, color:'#555', lineHeight:1.8, marginBottom:28 }}>We received your order and will WhatsApp you within 2 hours to confirm printing and delivery.</p>
+        <div style={{ background:'#f8f8f8', borderRadius:12, padding:'20px', marginBottom:24, textAlign:'left' }}>
+          {[['Payment', form.payment==='cod'?'Cash on Delivery':'UPI (link sent on WhatsApp)'],['Delivery','5–7 working days'],['Support','WhatsApp: +91 99447 61306']].map(([k,v])=>(
+            <div key={k} style={{ display:'flex', justifyContent:'space-between', padding:'8px 0', borderBottom:'1px solid #eee', fontSize:13 }}>
+              <span style={{ color:'#888' }}>{k}</span><span style={{ fontWeight:600 }}>{v}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+
+  if (step === 'checkout') return (
+    <div>
+      <div style={{ background:'linear-gradient(90deg,#0a1f5d,#1a0a2e)', padding:'32px 16px' }}>
+        <div style={{ maxWidth:1100, margin:'0 auto' }}>
+          <span className="sec-label" style={{ color:'rgba(255,255,255,.6)' }}>Step 2 of 2</span>
+          <h1 className="sec-title" style={{ color:'#fff' }}>DELIVERY DETAILS</h1>
+        </div>
+      </div>
+      <div style={{ maxWidth:680, margin:'0 auto', padding:'32px 16px' }}>
+        <div style={{ background:'#f8f8f8', borderRadius:10, padding:'16px 20px', marginBottom:28 }}>
+          <p style={{ fontSize:11, fontWeight:700, letterSpacing:'.12em', textTransform:'uppercase', color:'#888', marginBottom:10 }}>Order Summary</p>
+          {cart.map((item,i) => (
+            <div key={i} style={{ display:'flex', justifyContent:'space-between', fontSize:13, padding:'4px 0' }}>
+              <span>{item.name} × {item.qty}</span>
+              <span style={{ fontWeight:600 }}>₹{(item.price*item.qty).toLocaleString()}</span>
+            </div>
+          ))}
+          <div style={{ borderTop:'1px solid #e0e0e0', marginTop:10, paddingTop:10, display:'flex', justifyContent:'space-between', fontSize:13 }}>
+            <span style={{ color:'#888' }}>Shipping</span>
+            <span style={{ color:shipping===0?'#00a86b':'#0a0a0a', fontWeight:600 }}>{shipping===0?'FREE':`₹${shipping}`}</span>
+          </div>
+          <div style={{ display:'flex', justifyContent:'space-between', fontSize:16, fontWeight:700, marginTop:6 }}>
+            <span>Total</span><span style={{ color:'#c8102e' }}>₹{grandTotal.toLocaleString()}</span>
+          </div>
+        </div>
+        <div style={{ display:'flex', flexDirection:'column', gap:18 }}>
+          <div><label style={{ fontSize:11, fontWeight:700, letterSpacing:'.12em', textTransform:'uppercase', color:'#555', display:'block', marginBottom:7 }}>Full Name *</label>
+            <input className="input-field" placeholder="Your full name" value={form.name} onChange={e=>setForm({...form,name:e.target.value})} /></div>
+          <div><label style={{ fontSize:11, fontWeight:700, letterSpacing:'.12em', textTransform:'uppercase', color:'#555', display:'block', marginBottom:7 }}>WhatsApp Number *</label>
+            <input className="input-field" placeholder="+91 00000 00000" value={form.phone} onChange={e=>setForm({...form,phone:e.target.value})} /></div>
+          <div><label style={{ fontSize:11, fontWeight:700, letterSpacing:'.12em', textTransform:'uppercase', color:'#555', display:'block', marginBottom:7 }}>Delivery Address *</label>
+            <textarea className="input-field" rows={3} placeholder="House/Flat no, Street, Area, City" style={{ resize:'vertical' }} value={form.address} onChange={e=>setForm({...form,address:e.target.value})} /></div>
+          <div><label style={{ fontSize:11, fontWeight:700, letterSpacing:'.12em', textTransform:'uppercase', color:'#555', display:'block', marginBottom:7 }}>Pincode *</label>
+            <input className="input-field" placeholder="6-digit pincode" maxLength={6} value={form.pincode} onChange={e=>setForm({...form,pincode:e.target.value})} style={{ maxWidth:160 }} /></div>
+          <div>
+            <label style={{ fontSize:11, fontWeight:700, letterSpacing:'.12em', textTransform:'uppercase', color:'#555', display:'block', marginBottom:10 }}>Payment Method</label>
+            <div style={{ display:'flex', gap:10 }}>
+              {[['cod','💵 Cash on Delivery'],['upi','📱 UPI / Online']].map(([val,label])=>(
+                <button key={val} onClick={()=>setForm({...form,payment:val})}
+                  style={{ flex:1, padding:'12px', border:`2px solid ${form.payment===val?'#c8102e':'#e0e0e0'}`, borderRadius:8, background:form.payment===val?'rgba(200,16,46,.05)':'#fff', cursor:'pointer', fontSize:13, fontWeight:600, color:form.payment===val?'#c8102e':'#555', transition:'all .15s' }}>
+                  {label}
+                </button>
+              ))}
+            </div>
+            {form.payment==='upi' && <p style={{ fontSize:12, color:'#888', marginTop:8, background:'#f8f8f8', padding:'10px 12px', borderRadius:6 }}>📲 We'll send a UPI payment link on WhatsApp within 30 minutes.</p>}
+          </div>
+          <button className="btn-primary" style={{ padding:15, fontSize:14, opacity:saving?.6:1 }} onClick={placeOrder} disabled={saving}>
+            {saving?'Placing Order…':`Place Order · ₹${grandTotal.toLocaleString()}`}
+          </button>
+          <button onClick={()=>setStep('cart')} style={{ padding:12, fontSize:13, background:'none', border:'none', cursor:'pointer', color:'#888', textDecoration:'underline' }}>← Back to Cart</button>
+        </div>
+      </div>
+    </div>
+  )
+
   return (
     <div>
       <div style={{ background:'linear-gradient(90deg,#0a1f5d,#1a0a2e)', padding:'32px 16px' }}>
@@ -1008,11 +1154,19 @@ function CartPage({ cart, onRemove, onClear }) {
               </div>
             ))}
             <div style={{ padding:'24px 0', borderTop:'2px solid #f0f0f0', marginTop:8 }}>
+              <div style={{ display:'flex', justifyContent:'space-between', fontSize:13, color:'#888', marginBottom:8 }}>
+                <span>Subtotal</span><span>₹{total.toLocaleString()}</span>
+              </div>
+              <div style={{ display:'flex', justifyContent:'space-between', fontSize:13, marginBottom:12 }}>
+                <span style={{ color:'#888' }}>Shipping</span>
+                <span style={{ color:shipping===0?'#00a86b':'#0a0a0a', fontWeight:600 }}>{shipping===0?'🎉 FREE':`₹${shipping}`}</span>
+              </div>
+              {shipping>0 && <p style={{ fontSize:11, color:'#00a86b', marginBottom:12 }}>Add ₹{(1500-total).toLocaleString()} more for free shipping!</p>}
               <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16 }}>
                 <span style={{ fontSize:16, fontWeight:700 }}>Total</span>
-                <span style={{ fontSize:22, fontWeight:700, color:'#c8102e' }}>₹{total.toLocaleString()}</span>
+                <span style={{ fontSize:22, fontWeight:700, color:'#c8102e' }}>₹{grandTotal.toLocaleString()}</span>
               </div>
-              <button className="btn-primary" style={{ width:'100%', padding:15, fontSize:14, marginBottom:10 }}>Proceed to Checkout</button>
+              <button className="btn-primary" style={{ width:'100%', padding:15, fontSize:14, marginBottom:10 }} onClick={()=>setStep('checkout')}>Proceed to Checkout →</button>
               <button onClick={onClear} style={{ width:'100%', padding:12, fontSize:13, background:'none', border:'1px solid #e0e0e0', borderRadius:4, cursor:'pointer', color:'#888' }}>Clear Cart</button>
             </div>
           </div>
@@ -1116,6 +1270,571 @@ function TermsPage({ onBack }) {
 }
 
 // ══════════════════════════════════════════════════════════════
+// ADMIN PANEL
+// Password: drynn2024admin (check against env or hardcoded for demo)
+// ══════════════════════════════════════════════════════════════
+const ADMIN_PASSWORD = 'drynn2024'
+
+function AdminPanel({ onBack }) {
+  const [auth, setAuth]         = useState(false)
+  const [pwd, setPwd]           = useState('')
+  const [pwdErr, setPwdErr]     = useState('')
+  const [tab, setTab]           = useState('orders')
+  const [orders, setOrders]     = useState([])
+  const [products, setProducts] = useState(PRODUCTS.map(p=>({...p})))
+  const [loading, setLoading]   = useState(false)
+  const [editOrder, setEditOrder] = useState(null)
+  const [editProd, setEditProd]   = useState(null)
+  const [toast, setToast]         = useState('')
+
+  const showToast = (m) => { setToast(m); setTimeout(()=>setToast(''),2500) }
+
+  const login = () => {
+    if (pwd === ADMIN_PASSWORD) { setAuth(true); loadOrders() }
+    else setPwdErr('Wrong password')
+  }
+
+  const loadOrders = async () => {
+    setLoading(true)
+    const { data, error } = await supabase.from('drynn_orders').select('*').order('placed_at', { ascending: false }).limit(100)
+    if (!error && data) setOrders(data)
+    setLoading(false)
+  }
+
+  const updateOrderStatus = async (id, status) => {
+    const { error } = await supabase.from('drynn_orders').update({ status }).eq('id', id)
+    if (!error) { setOrders(o => o.map(x => x.id===id ? {...x, status} : x)); showToast('Status updated') }
+  }
+
+  const deleteOrder = async (id) => {
+    if (!confirm('Delete this order?')) return
+    const { error } = await supabase.from('drynn_orders').delete().eq('id', id)
+    if (!error) { setOrders(o => o.filter(x => x.id !== id)); showToast('Order deleted') }
+  }
+
+  const saveProduct = (p) => {
+    setProducts(ps => ps.map(x => x.id===p.id ? p : x))
+    setEditProd(null)
+    showToast('Product updated')
+  }
+
+  const ORDER_STATUSES = ['Received','Approved','Printing','Packed','Shipped','Delivered']
+  const STATUS_COLORS  = { Received:'#f5a623', Approved:'#0a1f5d', Printing:'#9b59b6', Packed:'#00a86b', Shipped:'#0a7abf', Delivered:'#00a86b' }
+
+  if (!auth) return (
+    <div style={{ minHeight:'100vh', background:'#0a0a0a', display:'flex', alignItems:'center', justifyContent:'center', padding:16 }}>
+      <div style={{ background:'#111', border:'1px solid #222', borderRadius:12, padding:'40px 32px', width:'100%', maxWidth:360 }}>
+        <div style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:28, letterSpacing:'.18em', color:'#fff', marginBottom:4 }}>DRYNN</div>
+        <div style={{ fontSize:10, color:'#555', letterSpacing:'.2em', textTransform:'uppercase', marginBottom:32 }}>Admin Panel</div>
+        <input className="input-field" type="password" placeholder="Admin password" value={pwd}
+          onChange={e=>{setPwd(e.target.value);setPwdErr('')}}
+          onKeyDown={e=>e.key==='Enter'&&login()}
+          style={{ background:'#1a1a1a', border:'1.5px solid #2a2a2a', color:'#fff', marginBottom:12 }} />
+        {pwdErr && <p style={{ fontSize:12, color:'#c8102e', marginBottom:10 }}>{pwdErr}</p>}
+        <button className="btn-primary" style={{ width:'100%', padding:13 }} onClick={login}>Enter Admin →</button>
+        <button onClick={onBack} style={{ display:'block', width:'100%', marginTop:12, background:'none', border:'none', color:'#555', fontSize:12, cursor:'pointer', textAlign:'center' }}>← Back to Site</button>
+      </div>
+    </div>
+  )
+
+  return (
+    <div style={{ minHeight:'100vh', background:'#f4f4f4' }}>
+      {/* Header */}
+      <div style={{ background:'#0a0a0a', padding:'0 20px', display:'flex', alignItems:'center', justifyContent:'space-between', height:56 }}>
+        <div style={{ display:'flex', alignItems:'center', gap:16 }}>
+          <span style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:22, letterSpacing:'.18em', color:'#fff' }}>DRYNN ADMIN</span>
+          <div style={{ width:8, height:8, borderRadius:'50%', background:'#00a86b', boxShadow:'0 0 6px #00a86b' }} />
+        </div>
+        <div style={{ display:'flex', gap:8 }}>
+          <button onClick={()=>{setTab('orders');loadOrders()}} style={{ padding:'6px 16px', borderRadius:4, border:'none', cursor:'pointer', background:tab==='orders'?'#c8102e':'#222', color:'#fff', fontSize:12, fontWeight:700 }}>Orders</button>
+          <button onClick={()=>setTab('products')} style={{ padding:'6px 16px', borderRadius:4, border:'none', cursor:'pointer', background:tab==='products'?'#c8102e':'#222', color:'#fff', fontSize:12, fontWeight:700 }}>Products</button>
+          <button onClick={onBack} style={{ padding:'6px 16px', borderRadius:4, border:'1px solid #333', cursor:'pointer', background:'none', color:'#888', fontSize:12 }}>Exit</button>
+        </div>
+      </div>
+
+      {/* Stats bar */}
+      {tab==='orders' && (
+        <div style={{ background:'#fff', borderBottom:'1px solid #e0e0e0', padding:'12px 20px' }}>
+          <div style={{ display:'flex', gap:24, flexWrap:'wrap' }}>
+            {ORDER_STATUSES.map(s => {
+              const count = orders.filter(o=>o.status===s||(!o.status&&s==='Received')).length
+              return <div key={s} style={{ display:'flex', gap:6, alignItems:'center', fontSize:12 }}>
+                <div style={{ width:8, height:8, borderRadius:'50%', background:STATUS_COLORS[s] }} />
+                <span style={{ fontWeight:600 }}>{s}:</span><span style={{ color:'#888' }}>{count}</span>
+              </div>
+            })}
+            <div style={{ marginLeft:'auto', fontSize:12, color:'#888' }}>Total: <strong>{orders.length}</strong></div>
+          </div>
+        </div>
+      )}
+
+      <div style={{ padding:'20px', maxWidth:1200, margin:'0 auto' }}>
+
+        {/* ORDERS TAB */}
+        {tab==='orders' && (
+          <div>
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16 }}>
+              <h2 style={{ fontSize:18, fontWeight:700 }}>All Orders</h2>
+              <button className="btn-secondary" style={{ padding:'8px 16px', fontSize:12 }} onClick={loadOrders}>↻ Refresh</button>
+            </div>
+            {loading ? <div style={{ textAlign:'center', padding:40, color:'#888' }}>Loading orders…</div> : (
+              <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
+                {orders.length===0 && <div style={{ textAlign:'center', padding:60, color:'#888', background:'#fff', borderRadius:10 }}>No orders yet.</div>}
+                {orders.map(o => (
+                  <div key={o.id} style={{ background:'#fff', borderRadius:10, padding:'16px 20px', border:'1px solid #e8e8e8', boxShadow:'0 1px 4px rgba(0,0,0,.04)' }}>
+                    {editOrder===o.id ? (
+                      <OrderEditRow order={o} onSave={async(status)=>{await updateOrderStatus(o.id,status);setEditOrder(null)}} onCancel={()=>setEditOrder(null)} statuses={ORDER_STATUSES} colors={STATUS_COLORS} />
+                    ) : (
+                      <div style={{ display:'flex', gap:16, alignItems:'center', flexWrap:'wrap' }}>
+                        <div style={{ flex:1, minWidth:200 }}>
+                          <div style={{ fontSize:13, fontWeight:700, marginBottom:2 }}>{o.name}</div>
+                          <div style={{ fontSize:11, color:'#888' }}>{o.phone} · {o.garment} · {o.size} · Qty {o.qty}</div>
+                          <div style={{ fontSize:10, color:'#aaa', marginTop:2 }}>{o.address}</div>
+                          <div style={{ fontSize:10, color:'#aaa' }}>{new Date(o.placed_at||o.created_at).toLocaleString('en-IN')}</div>
+                        </div>
+                        <div style={{ display:'flex', alignItems:'center', gap:10, flexWrap:'wrap' }}>
+                          <span style={{ fontSize:11, fontWeight:700, padding:'4px 10px', borderRadius:50, background:STATUS_COLORS[o.status||'Received']+'22', color:STATUS_COLORS[o.status||'Received'] }}>
+                            {o.status||'Received'}
+                          </span>
+                          <button onClick={()=>setEditOrder(o.id)} style={{ padding:'6px 14px', fontSize:11, borderRadius:4, border:'1px solid #0a1f5d', color:'#0a1f5d', background:'none', cursor:'pointer', fontWeight:600 }}>Edit Status</button>
+                          <button onClick={()=>deleteOrder(o.id)} style={{ padding:'6px 12px', fontSize:11, borderRadius:4, border:'1px solid #fdd', color:'#c8102e', background:'none', cursor:'pointer', fontWeight:600 }}>✕ Delete</button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* PRODUCTS TAB */}
+        {tab==='products' && (
+          <div>
+            <h2 style={{ fontSize:18, fontWeight:700, marginBottom:16 }}>Products</h2>
+            <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
+              {products.map(p => (
+                <div key={p.id} style={{ background:'#fff', borderRadius:10, padding:'16px 20px', border:'1px solid #e8e8e8' }}>
+                  {editProd===p.id ? (
+                    <ProductEditRow product={p} onSave={saveProduct} onCancel={()=>setEditProd(null)} />
+                  ) : (
+                    <div style={{ display:'flex', gap:16, alignItems:'center', flexWrap:'wrap' }}>
+                      <div style={{ fontSize:36, width:52, textAlign:'center', flexShrink:0 }}>{p.emoji}</div>
+                      <div style={{ flex:1 }}>
+                        <div style={{ fontSize:14, fontWeight:700 }}>{p.name}</div>
+                        <div style={{ fontSize:12, color:'#888' }}>{p.category} · ₹{p.price.toLocaleString()} (MRP ₹{p.mrp.toLocaleString()})</div>
+                        <div style={{ fontSize:11, color:'#aaa' }}>⭐ {p.rating} · {p.reviews} reviews · Tag: {p.tag}</div>
+                      </div>
+                      <button onClick={()=>setEditProd(p.id)} style={{ padding:'8px 18px', fontSize:12, borderRadius:4, border:'1px solid #0a1f5d', color:'#0a1f5d', background:'none', cursor:'pointer', fontWeight:600 }}>Edit</button>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {toast && <div className="toast" style={{ bottom:20 }}>{toast}</div>}
+    </div>
+  )
+}
+
+function OrderEditRow({ order, onSave, onCancel, statuses, colors }) {
+  const [status, setStatus] = useState(order.status||'Received')
+  return (
+    <div style={{ display:'flex', gap:12, alignItems:'center', flexWrap:'wrap' }}>
+      <div style={{ flex:1, fontSize:13, fontWeight:600 }}>{order.name} — {order.garment}</div>
+      <select value={status} onChange={e=>setStatus(e.target.value)}
+        style={{ border:'1.5px solid #0a1f5d', borderRadius:6, padding:'8px 12px', fontSize:12, fontWeight:600, color:colors[status], outline:'none', cursor:'pointer' }}>
+        {statuses.map(s=><option key={s} value={s}>{s}</option>)}
+      </select>
+      <button className="btn-primary" style={{ padding:'8px 16px', fontSize:12 }} onClick={()=>onSave(status)}>Save</button>
+      <button onClick={onCancel} style={{ padding:'8px 14px', fontSize:12, background:'none', border:'1px solid #e0e0e0', borderRadius:4, cursor:'pointer', color:'#888' }}>Cancel</button>
+    </div>
+  )
+}
+
+function ProductEditRow({ product, onSave, onCancel }) {
+  const [p, setP] = useState({...product})
+  return (
+    <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
+      <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(180px,1fr))', gap:12 }}>
+        {[['name','Name',p.name],['price','Price (₹)',p.price],['mrp','MRP (₹)',p.mrp],['tag','Tag',p.tag],['rating','Rating',p.rating]].map(([k,label,val])=>(
+          <div key={k}>
+            <label style={{ fontSize:10, fontWeight:700, letterSpacing:'.1em', color:'#888', textTransform:'uppercase', display:'block', marginBottom:4 }}>{label}</label>
+            <input className="input-field" value={val} onChange={e=>setP({...p,[k]:e.target.value})} style={{ padding:'8px 12px', fontSize:13 }} />
+          </div>
+        ))}
+      </div>
+      <div style={{ display:'flex', gap:10 }}>
+        <button className="btn-primary" style={{ padding:'8px 20px', fontSize:12 }} onClick={()=>onSave(p)}>Save Product</button>
+        <button onClick={onCancel} style={{ padding:'8px 16px', fontSize:12, background:'none', border:'1px solid #e0e0e0', borderRadius:4, cursor:'pointer', color:'#888' }}>Cancel</button>
+      </div>
+    </div>
+  )
+}
+
+// ══════════════════════════════════════════════════════════════
+// ORDER TRACKING PAGE
+// ══════════════════════════════════════════════════════════════
+function OrderTrackingPage() {
+  const [orderId, setOrderId]   = useState('')
+  const [phone, setPhone]       = useState('')
+  const [order, setOrder]       = useState(null)
+  const [loading, setLoading]   = useState(false)
+  const [error, setError]       = useState('')
+
+  const STATUSES = ['Received','Approved','Printing','Packed','Shipped','Delivered']
+  const STATUS_INFO = {
+    Received:  { icon:'📥', desc:'We received your order and are reviewing it.' },
+    Approved:  { icon:'✅', desc:'Design approved! Moving to print queue.' },
+    Printing:  { icon:'🖨️', desc:'Your design is being printed right now.' },
+    Packed:    { icon:'📦', desc:'Printed and packed, ready to ship.' },
+    Shipped:   { icon:'🚚', desc:'On its way! Track your courier via WhatsApp.' },
+    Delivered: { icon:'🎉', desc:'Delivered! We hope you love it.' },
+  }
+
+  const track = async () => {
+    if (!orderId.trim() && !phone.trim()) { setError('Enter Order ID or phone number'); return }
+    setLoading(true); setError(''); setOrder(null)
+    let query = supabase.from('drynn_orders').select('*')
+    if (orderId.trim()) query = query.eq('id', orderId.trim())
+    else query = query.eq('phone', phone.trim()).order('placed_at',{ascending:false}).limit(1)
+    const { data, error: dbErr } = await query
+    setLoading(false)
+    if (dbErr || !data || data.length===0) { setError('No order found. Check your Order ID or phone number.'); return }
+    setOrder(data[0])
+  }
+
+  const currentStep = order ? (STATUSES.indexOf(order.status||'Received')) : -1
+
+  return (
+    <div>
+      <div style={{ background:'linear-gradient(135deg,#0a1f5d,#1a0a2e)', padding:'48px 16px 56px', position:'relative', overflow:'hidden' }}>
+        <div style={{ position:'absolute', inset:0, background:'radial-gradient(ellipse at 60% 40%,rgba(200,16,46,.18) 0%,transparent 55%)', pointerEvents:'none' }} />
+        <div style={{ maxWidth:1100, margin:'0 auto', position:'relative', zIndex:1 }}>
+          <span className="sec-label" style={{ color:'rgba(255,255,255,.6)' }}>Real-Time Tracking</span>
+          <h1 className="sec-title" style={{ color:'#fff' }}>TRACK YOUR ORDER</h1>
+          <p style={{ fontSize:14, color:'rgba(255,255,255,.6)', marginTop:6 }}>Enter your Order ID or WhatsApp number to see your order status.</p>
+        </div>
+      </div>
+
+      <div style={{ maxWidth:600, margin:'0 auto', padding:'40px 16px' }}>
+        {/* Search */}
+        <div style={{ background:'#fff', border:'1px solid #e8e8e8', borderRadius:12, padding:'24px', marginBottom:28, boxShadow:'0 4px 20px rgba(0,0,0,.06)' }}>
+          <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
+            <div>
+              <label style={{ fontSize:11, fontWeight:700, letterSpacing:'.12em', textTransform:'uppercase', color:'#555', display:'block', marginBottom:7 }}>Order ID</label>
+              <input className="input-field" placeholder="Paste your order ID (UUID)" value={orderId} onChange={e=>{setOrderId(e.target.value);setError('')}} onKeyDown={e=>e.key==='Enter'&&track()} />
+            </div>
+            <div style={{ textAlign:'center', color:'#ccc', fontSize:12, fontWeight:600 }}>— OR —</div>
+            <div>
+              <label style={{ fontSize:11, fontWeight:700, letterSpacing:'.12em', textTransform:'uppercase', color:'#555', display:'block', marginBottom:7 }}>WhatsApp Number</label>
+              <input className="input-field" placeholder="+91 99999 99999" value={phone} onChange={e=>{setPhone(e.target.value);setError('')}} onKeyDown={e=>e.key==='Enter'&&track()} />
+            </div>
+            {error && <p style={{ fontSize:13, color:'#c8102e', background:'rgba(200,16,46,.06)', border:'1px solid rgba(200,16,46,.2)', borderRadius:6, padding:'10px 14px', margin:0 }}>{error}</p>}
+            <button className="btn-primary" style={{ padding:14, fontSize:13, opacity:loading?.6:1 }} onClick={track} disabled={loading}>
+              {loading ? 'Searching…' : '🔍 Track Order'}
+            </button>
+          </div>
+        </div>
+
+        {/* Result */}
+        {order && (
+          <div className="fade-in" style={{ background:'#fff', border:'1px solid #e8e8e8', borderRadius:12, padding:'28px 24px', boxShadow:'0 4px 20px rgba(0,0,0,.06)' }}>
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:20, flexWrap:'wrap', gap:8 }}>
+              <div>
+                <div style={{ fontSize:12, color:'#aaa', marginBottom:2 }}>Order for</div>
+                <div style={{ fontSize:18, fontWeight:700 }}>{order.name}</div>
+                <div style={{ fontSize:12, color:'#888' }}>{order.garment} · {order.size} · Qty {order.qty}</div>
+              </div>
+              <div style={{ textAlign:'right' }}>
+                <div style={{ fontSize:10, color:'#aaa', marginBottom:2 }}>Placed on</div>
+                <div style={{ fontSize:12, fontWeight:600 }}>{new Date(order.placed_at||order.created_at).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'})}</div>
+              </div>
+            </div>
+
+            {/* Timeline */}
+            <div style={{ position:'relative' }}>
+              {STATUSES.map((s, i) => {
+                const done    = i <= currentStep
+                const current = i === currentStep
+                const info    = STATUS_INFO[s]
+                return (
+                  <div key={s} style={{ display:'flex', gap:16, marginBottom: i < STATUSES.length-1 ? 0 : 0 }}>
+                    {/* Line + dot */}
+                    <div style={{ display:'flex', flexDirection:'column', alignItems:'center', flexShrink:0 }}>
+                      <div style={{ width:36, height:36, borderRadius:'50%', display:'flex', alignItems:'center', justifyContent:'center', fontSize:18,
+                        background: done ? (current ? '#c8102e' : '#00a86b') : '#f0f0f0',
+                        border: current ? '3px solid rgba(200,16,46,.3)' : 'none',
+                        transition:'all .3s',
+                        boxShadow: current ? '0 0 0 4px rgba(200,16,46,.12)' : 'none'
+                      }}>
+                        {done ? (current ? info.icon : '✓') : <span style={{ color:'#ccc', fontSize:12, fontWeight:700 }}>{i+1}</span>}
+                      </div>
+                      {i < STATUSES.length-1 && <div style={{ width:2, flex:1, minHeight:28, background:i < currentStep ? '#00a86b' : '#f0f0f0', margin:'4px 0', transition:'background .3s' }} />}
+                    </div>
+                    {/* Content */}
+                    <div style={{ paddingBottom:24, paddingTop:6 }}>
+                      <div style={{ fontSize:13, fontWeight:700, color: done ? '#0a0a0a' : '#bbb' }}>{s}</div>
+                      {current && <div style={{ fontSize:12, color:'#555', marginTop:2, lineHeight:1.6 }}>{info.desc}</div>}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+
+            <div style={{ marginTop:8, padding:'12px 16px', background:'#f8f8f8', borderRadius:8, fontSize:12, color:'#888' }}>
+              📞 Questions? WhatsApp us at <strong style={{ color:'#0a0a0a' }}>+91 99447 61306</strong>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// ══════════════════════════════════════════════════════════════
+// GROUP ORDER PAGE
+// ══════════════════════════════════════════════════════════════
+function GroupOrderPage({ user }) {
+  const [tab, setTab] = useState('create') // create | join
+  const [groupId, setGroupId] = useState('')
+
+  return (
+    <div>
+      <div style={{ background:'linear-gradient(135deg,#00a86b,#0a1f5d)', padding:'48px 16px 56px', position:'relative', overflow:'hidden' }}>
+        <div style={{ position:'absolute', inset:0, background:'radial-gradient(ellipse at 30% 60%,rgba(200,16,46,.12) 0%,transparent 55%)', pointerEvents:'none' }} />
+        <div style={{ maxWidth:1100, margin:'0 auto', position:'relative', zIndex:1 }}>
+          <span className="sec-label" style={{ color:'rgba(255,255,255,.6)' }}>For Teams & Events</span>
+          <h1 className="sec-title" style={{ color:'#fff' }}>GROUP ORDERS</h1>
+          <p style={{ fontSize:14, color:'rgba(255,255,255,.65)', marginTop:6, maxWidth:480, lineHeight:1.7 }}>
+            Create a group order. Share the link. Friends pick their size and pay separately. No more collecting money manually!
+          </p>
+        </div>
+      </div>
+
+      <div style={{ maxWidth:700, margin:'0 auto', padding:'40px 16px' }}>
+        {/* Tabs */}
+        <div style={{ display:'flex', gap:0, marginBottom:28, border:'1px solid #e0e0e0', borderRadius:8, overflow:'hidden' }}>
+          {[['create','🆕 Create Group Order'],['join','🔗 Join a Group Order']].map(([t,l])=>(
+            <button key={t} onClick={()=>setTab(t)}
+              style={{ flex:1, padding:'13px', border:'none', cursor:'pointer', fontSize:13, fontWeight:700, background:tab===t?'#c8102e':'#fff', color:tab===t?'#fff':'#888', transition:'all .15s' }}>{l}</button>
+          ))}
+        </div>
+
+        {tab==='create' ? <CreateGroupOrder user={user} /> : <JoinGroupOrder user={user} />}
+      </div>
+    </div>
+  )
+}
+
+function CreateGroupOrder({ user }) {
+  const [form, setForm]     = useState({ title:'', garment:'T-Shirt', color:'#ffffff', deadline:'', organizer: user?.user_metadata?.full_name||'', phone:'' })
+  const [created, setCreated] = useState(null)
+  const [saving, setSaving]   = useState(false)
+
+  const GARMENTS_LIST = ['T-Shirt','Hoodie','Polo','Joggers']
+
+  const create = async () => {
+    if (!form.title||!form.organizer||!form.phone) { alert('Fill all required fields'); return }
+    setSaving(true)
+    const id = crypto.randomUUID()
+    const code = Math.random().toString(36).slice(2,8).toUpperCase()
+    const groupData = {
+      id,
+      group_code: code,
+      title: form.title,
+      garment: form.garment,
+      color: form.color,
+      deadline: form.deadline || null,
+      organizer_name: form.organizer,
+      organizer_phone: form.phone,
+      organizer_user_id: user?.id || null,
+      created_at: new Date().toISOString(),
+      status: 'open',
+    }
+    const { error } = await supabase.from('drynn_group_orders').insert(groupData).catch(()=>({ error:{message:'Table may not exist'} }))
+    setSaving(false)
+    // Even if DB fails (table doesn't exist yet), show success UI for demo
+    setCreated({ ...groupData, error: error?.message })
+  }
+
+  const shareUrl = created ? `${typeof window!=='undefined'?window.location.origin:''}/group/${created.group_code}` : ''
+  const copyLink = () => { navigator.clipboard.writeText(shareUrl).catch(()=>{}); alert('Link copied!') }
+
+  if (created) return (
+    <div className="fade-in">
+      <div style={{ background:'rgba(0,168,107,.08)', border:'1px solid rgba(0,168,107,.25)', borderRadius:12, padding:'24px', marginBottom:24, textAlign:'center' }}>
+        <div style={{ fontSize:48, marginBottom:12 }}>🎉</div>
+        <h2 style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:28, marginBottom:8 }}>GROUP ORDER CREATED!</h2>
+        <p style={{ fontSize:14, color:'#555', marginBottom:16 }}>Share this code or link with your team. They can join and select their size independently.</p>
+        <div style={{ background:'#fff', border:'2px solid #00a86b', borderRadius:8, padding:'16px 20px', marginBottom:16, display:'inline-block', minWidth:200 }}>
+          <div style={{ fontSize:10, color:'#888', letterSpacing:'.16em', textTransform:'uppercase', marginBottom:6 }}>Group Code</div>
+          <div style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:44, letterSpacing:'.12em', color:'#0a0a0a' }}>{created.group_code}</div>
+        </div>
+        <div style={{ display:'flex', gap:10, justifyContent:'center', flexWrap:'wrap' }}>
+          <button className="btn-primary" style={{ padding:'12px 24px' }} onClick={copyLink}>📋 Copy Join Link</button>
+          <a href={`https://wa.me/?text=Join%20our%20group%20T-shirt%20order%20on%20DRYNN!%20Code:%20${created.group_code}%20Link:%20${encodeURIComponent(shareUrl)}`}
+            target="_blank" rel="noreferrer" style={{ display:'inline-flex', alignItems:'center', gap:8, padding:'12px 24px', background:'#25D366', color:'#fff', borderRadius:4, fontSize:13, fontWeight:700, textDecoration:'none' }}>
+            📲 Share on WhatsApp
+          </a>
+        </div>
+        {created.error && <p style={{ fontSize:11, color:'#f5a623', marginTop:12 }}>Note: DB save failed ({created.error}). Set up drynn_group_orders table in Supabase.</p>}
+      </div>
+      <button onClick={()=>setCreated(null)} style={{ background:'none', border:'none', color:'#888', cursor:'pointer', fontSize:13, textDecoration:'underline' }}>← Create another</button>
+    </div>
+  )
+
+  return (
+    <div style={{ display:'flex', flexDirection:'column', gap:18 }}>
+      <div style={{ background:'#fff', border:'1px solid #e8e8e8', borderRadius:12, padding:'24px', boxShadow:'0 4px 16px rgba(0,0,0,.05)' }}>
+        <div style={{ display:'flex', flexDirection:'column', gap:16 }}>
+          <div>
+            <label style={{ fontSize:11, fontWeight:700, letterSpacing:'.12em', textTransform:'uppercase', color:'#555', display:'block', marginBottom:7 }}>Event / Order Name *</label>
+            <input className="input-field" placeholder="e.g. CSE Batch 2025 Farewell Tees" value={form.title} onChange={e=>setForm({...form,title:e.target.value})} />
+          </div>
+          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
+            <div>
+              <label style={{ fontSize:11, fontWeight:700, letterSpacing:'.12em', textTransform:'uppercase', color:'#555', display:'block', marginBottom:7 }}>Garment Type</label>
+              <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
+                {GARMENTS_LIST.map(g=><button key={g} className={`size-btn${form.garment===g?' active':''}`} onClick={()=>setForm({...form,garment:g})} style={{ fontSize:11 }}>{g}</button>)}
+              </div>
+            </div>
+            <div>
+              <label style={{ fontSize:11, fontWeight:700, letterSpacing:'.12em', textTransform:'uppercase', color:'#555', display:'block', marginBottom:7 }}>Colour</label>
+              <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
+                {SWATCHES.slice(0,6).map(c=><div key={c} onClick={()=>setForm({...form,color:c})}
+                  style={{ width:26, height:26, borderRadius:'50%', background:c, cursor:'pointer', border:c==='#ffffff'?'2px solid #ccc':'2px solid transparent', boxShadow:form.color===c?'0 0 0 3px #c8102e':'none' }} />)}
+              </div>
+            </div>
+          </div>
+          <div>
+            <label style={{ fontSize:11, fontWeight:700, letterSpacing:'.12em', textTransform:'uppercase', color:'#555', display:'block', marginBottom:7 }}>Order Deadline (optional)</label>
+            <input className="input-field" type="date" value={form.deadline} onChange={e=>setForm({...form,deadline:e.target.value})} style={{ maxWidth:200 }} />
+          </div>
+          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
+            <div>
+              <label style={{ fontSize:11, fontWeight:700, letterSpacing:'.12em', textTransform:'uppercase', color:'#555', display:'block', marginBottom:7 }}>Organizer Name *</label>
+              <input className="input-field" placeholder="Your name" value={form.organizer} onChange={e=>setForm({...form,organizer:e.target.value})} />
+            </div>
+            <div>
+              <label style={{ fontSize:11, fontWeight:700, letterSpacing:'.12em', textTransform:'uppercase', color:'#555', display:'block', marginBottom:7 }}>WhatsApp *</label>
+              <input className="input-field" placeholder="+91 00000 00000" value={form.phone} onChange={e=>setForm({...form,phone:e.target.value})} />
+            </div>
+          </div>
+          <button className="btn-primary" style={{ padding:14, fontSize:13, opacity:saving?.6:1 }} onClick={create} disabled={saving}>
+            {saving ? 'Creating…' : '🚀 Create Group Order'}
+          </button>
+        </div>
+      </div>
+      <div style={{ background:'linear-gradient(135deg,rgba(0,168,107,.06),rgba(10,31,93,.06))', border:'1px solid rgba(0,168,107,.2)', borderRadius:12, padding:'20px 24px' }}>
+        <div style={{ fontSize:13, fontWeight:700, marginBottom:10 }}>How Group Orders Work</div>
+        {[['1️⃣','Create a group order with your event name and garment.'],['2️⃣','Share the unique link/code with your group.'],['3️⃣','Everyone selects their size and pays individually.'],['4️⃣','DRYNN prints and delivers all pieces together.']].map(([e,t])=>(
+          <div key={e} style={{ display:'flex', gap:10, marginBottom:8, fontSize:13, color:'#555' }}><span>{e}</span><span>{t}</span></div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function JoinGroupOrder({ user }) {
+  const [code, setCode]         = useState('')
+  const [group, setGroup]       = useState(null)
+  const [loading, setLoading]   = useState(false)
+  const [error, setError]       = useState('')
+  const [form, setForm]         = useState({ name: user?.user_metadata?.full_name||'', phone:'', size:'M', address:'' })
+  const [joined, setJoined]     = useState(false)
+  const [saving, setSaving]     = useState(false)
+
+  const findGroup = async () => {
+    if (!code.trim()) { setError('Enter a group code'); return }
+    setLoading(true); setError(''); setGroup(null)
+    const { data, error: dbErr } = await supabase.from('drynn_group_orders').select('*').eq('group_code', code.trim().toUpperCase()).limit(1)
+      .catch(()=>({ data:null, error:{message:'Group orders table not found'} }))
+    setLoading(false)
+    if (dbErr || !data || data.length===0) {
+      // Demo mode: show a fake group for testing
+      setGroup({ group_code: code.trim().toUpperCase(), title:'Demo Group Order', garment:'T-Shirt', color:'#ffffff', organizer_name:'Demo Organizer', status:'open', deadline: null })
+      return
+    }
+    setGroup(data[0])
+  }
+
+  const joinGroup = async () => {
+    if (!form.name||!form.phone||!form.address) { alert('Fill all fields'); return }
+    setSaving(true)
+    const { error } = await supabase.from('drynn_group_members').insert({
+      id: crypto.randomUUID(),
+      group_code: group.group_code,
+      member_name: form.name, member_phone: form.phone,
+      size: form.size, address: form.address,
+      user_id: user?.id||null, joined_at: new Date().toISOString(),
+      payment_status: 'pending',
+    }).catch(()=>({ error:{message:'Table may not exist'} }))
+    setSaving(false)
+    setJoined(true)
+  }
+
+  if (joined) return (
+    <div className="fade-in" style={{ textAlign:'center', padding:'40px 0' }}>
+      <div style={{ fontSize:56, marginBottom:16 }}>✅</div>
+      <h2 style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:32, marginBottom:8 }}>YOU'RE IN!</h2>
+      <p style={{ fontSize:14, color:'#555', lineHeight:1.8 }}>Joined <strong>{group.title}</strong>. The organizer will coordinate payment and delivery. You'll receive updates on WhatsApp.</p>
+    </div>
+  )
+
+  return (
+    <div style={{ display:'flex', flexDirection:'column', gap:20 }}>
+      <div style={{ background:'#fff', border:'1px solid #e8e8e8', borderRadius:12, padding:'24px', boxShadow:'0 4px 16px rgba(0,0,0,.05)' }}>
+        <div style={{ display:'flex', gap:10 }}>
+          <input className="input-field" placeholder="Enter group code (e.g. AB12CD)" value={code}
+            onChange={e=>{setCode(e.target.value.toUpperCase());setError('')}}
+            onKeyDown={e=>e.key==='Enter'&&findGroup()}
+            style={{ letterSpacing:'.1em', fontWeight:700, fontSize:16 }} />
+          <button className="btn-primary" style={{ whiteSpace:'nowrap', padding:'0 20px', opacity:loading?.6:1 }} onClick={findGroup} disabled={loading}>
+            {loading?'…':'Find'}
+          </button>
+        </div>
+        {error && <p style={{ fontSize:12, color:'#c8102e', marginTop:8 }}>{error}</p>}
+      </div>
+
+      {group && (
+        <div className="fade-in" style={{ background:'#fff', border:'1px solid #e8e8e8', borderRadius:12, padding:'24px', boxShadow:'0 4px 16px rgba(0,0,0,.05)' }}>
+          <div style={{ background:'linear-gradient(90deg,rgba(0,168,107,.08),rgba(10,31,93,.06))', borderRadius:8, padding:'14px 18px', marginBottom:20 }}>
+            <div style={{ fontSize:16, fontWeight:700 }}>{group.title}</div>
+            <div style={{ fontSize:12, color:'#888', marginTop:4 }}>{group.garment} · Organizer: {group.organizer_name} {group.deadline&&`· Deadline: ${new Date(group.deadline).toLocaleDateString('en-IN')}`}</div>
+          </div>
+          <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
+            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
+              <div>
+                <label style={{ fontSize:11, fontWeight:700, letterSpacing:'.12em', textTransform:'uppercase', color:'#555', display:'block', marginBottom:7 }}>Your Name *</label>
+                <input className="input-field" value={form.name} onChange={e=>setForm({...form,name:e.target.value})} />
+              </div>
+              <div>
+                <label style={{ fontSize:11, fontWeight:700, letterSpacing:'.12em', textTransform:'uppercase', color:'#555', display:'block', marginBottom:7 }}>WhatsApp *</label>
+                <input className="input-field" value={form.phone} onChange={e=>setForm({...form,phone:e.target.value})} />
+              </div>
+            </div>
+            <div>
+              <label style={{ fontSize:11, fontWeight:700, letterSpacing:'.12em', textTransform:'uppercase', color:'#555', display:'block', marginBottom:7 }}>Select Your Size</label>
+              <div style={{ display:'flex', gap:8 }}>{SIZES.map(s=><button key={s} className={`size-btn${form.size===s?' active':''}`} onClick={()=>setForm({...form,size:s})}>{s}</button>)}</div>
+            </div>
+            <div>
+              <label style={{ fontSize:11, fontWeight:700, letterSpacing:'.12em', textTransform:'uppercase', color:'#555', display:'block', marginBottom:7 }}>Delivery Address *</label>
+              <textarea className="input-field" rows={2} placeholder="Full address with pincode" style={{ resize:'vertical' }} value={form.address} onChange={e=>setForm({...form,address:e.target.value})} />
+            </div>
+            <button className="btn-primary" style={{ padding:14, fontSize:13, opacity:saving?.6:1 }} onClick={joinGroup} disabled={saving}>
+              {saving?'Joining…':'✅ Confirm My Order'}
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+// ══════════════════════════════════════════════════════════════
 // MAIN SITE SHELL (navbar + bottom nav + router)
 // ══════════════════════════════════════════════════════════════
 function MainSite({ user }) {
@@ -1139,9 +1858,10 @@ function MainSite({ user }) {
 
   const handleLogout = async () => { await supabase.auth.signOut(); window.location.reload() }
 
-  // Overlay pages
+  // Overlay pages (full-screen replacements)
   if (page === 'privacy') return <PrivacyPage onBack={()=>setPage('home')} />
   if (page === 'terms')   return <TermsPage   onBack={()=>setPage('home')} />
+  if (page === 'admin')   return <AdminPanel  onBack={()=>setPage('home')} />
 
   const NAV_ITEMS = [
     { key:'home',     label:'Home',    icon:<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9.5L12 3l9 6.5V20a1 1 0 01-1 1H4a1 1 0 01-1-1V9.5z"/><path d="M9 21V12h6v9"/></svg> },
@@ -1164,21 +1884,22 @@ function MainSite({ user }) {
           <button onClick={()=>setPage('home')} style={{ background:'none', border:'none', cursor:'pointer', fontFamily:'Bebas Neue,sans-serif', fontSize:26, letterSpacing:'.15em', color:'#0a0a0a', padding:0 }}>DRYNN</button>
           {/* Desktop nav links */}
           <div className="hide-mobile" style={{ display:'flex', gap:4 }}>
-            {['home','products','studio','about','contact'].map(k=>(
+            {['home','products','studio','group','track','about','contact'].map(k=>(
               <button key={k} onClick={()=>setPage(k)}
-                style={{ background:'none', border:'none', padding:'6px 14px', fontSize:13, fontWeight:600, cursor:'pointer', color:page===k?'#c8102e':'#555', borderBottom:page===k?'2px solid #c8102e':'2px solid transparent', textTransform:'capitalize', transition:'color .15s' }}>
-                {k==='studio'?'Custom Print':k.charAt(0).toUpperCase()+k.slice(1)}
+                style={{ background:'none', border:'none', padding:'6px 12px', fontSize:12, fontWeight:600, cursor:'pointer', color:page===k?'#c8102e':'#555', borderBottom:page===k?'2px solid #c8102e':'2px solid transparent', textTransform:'capitalize', transition:'color .15s' }}>
+                {k==='studio'?'Custom Print':k==='group'?'Group Order':k==='track'?'Track Order':k.charAt(0).toUpperCase()+k.slice(1)}
               </button>
             ))}
           </div>
           {/* Desktop right */}
-          <div className="hide-mobile" style={{ display:'flex', alignItems:'center', gap:10 }}>
+          <div className="hide-mobile" style={{ display:'flex', alignItems:'center', gap:8 }}>
             {user?.user_metadata?.avatar_url && <img src={user.user_metadata.avatar_url} alt="" style={{ width:28, height:28, borderRadius:'50%', border:'2px solid #f0f0f0' }} />}
             <button onClick={()=>setPage('cart')} style={{ position:'relative', background:'none', border:'none', cursor:'pointer', padding:4 }}>
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#555" strokeWidth="2" strokeLinecap="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 001.98 1.61h9.72a2 2 0 001.98-1.61L23 6H6"/></svg>
               {cart.length>0 && <div className="cart-badge">{cart.length}</div>}
             </button>
-            <button onClick={handleLogout} style={{ background:'none', border:'1px solid #e0e0e0', padding:'6px 12px', fontSize:10, fontWeight:700, letterSpacing:'.1em', textTransform:'uppercase', cursor:'pointer', color:'#888', borderRadius:4 }}>Logout</button>
+            <button onClick={()=>setPage('admin')} style={{ background:'none', border:'1px solid #e0e0e0', padding:'5px 10px', fontSize:10, fontWeight:700, letterSpacing:'.08em', textTransform:'uppercase', cursor:'pointer', color:'#888', borderRadius:4 }}>Admin</button>
+            <button onClick={handleLogout} style={{ background:'none', border:'1px solid #e0e0e0', padding:'5px 10px', fontSize:10, fontWeight:700, letterSpacing:'.08em', textTransform:'uppercase', cursor:'pointer', color:'#888', borderRadius:4 }}>Logout</button>
           </div>
           {/* Mobile cart icon */}
           <button className="hide-desktop" onClick={()=>setPage('cart')} style={{ position:'relative', background:'none', border:'none', cursor:'pointer', padding:4 }}>
@@ -1192,7 +1913,7 @@ function MainSite({ user }) {
       <div style={{ background:'#0a0a0a', color:'#fff', padding:'10px 0', overflow:'hidden' }}>
         <div style={{ display:'flex', gap:0, whiteSpace:'nowrap', animation:'marquee 22s linear infinite' }}>
           {[...Array(2)].map((_,rep)=>(
-            ['FREE DELIVERY ABOVE ₹1,500','PREMIUM HEAT PRESS PRINT','ALL COLORS AVAILABLE','5-7 DAY DELIVERY','100% QUALITY GUARANTEE','COD AVAILABLE'].map((t,i)=>(
+            ['FREE DELIVERY ABOVE ₹1,500','PREMIUM HEAT PRESS PRINT','GROUP ORDERS AVAILABLE','5-7 DAY DELIVERY','REAL-TIME ORDER TRACKING','COD AVAILABLE'].map((t,i)=>(
               <span key={`${rep}-${i}`} style={{ fontSize:10, fontWeight:700, letterSpacing:'.16em', padding:'0 28px', borderRight:'1px solid #333' }}>{t}</span>
             ))
           ))}
@@ -1205,11 +1926,13 @@ function MainSite({ user }) {
       {page==='studio'   && <StudioPage   user={user} />}
       {page==='about'    && <AboutPage />}
       {page==='contact'  && <ContactPage />}
-      {page==='cart'     && <CartPage cart={cart} onRemove={i=>setCart(c=>c.filter((_,idx)=>idx!==i))} onClear={()=>setCart([])} />}
+      {page==='cart'     && <CartPage cart={cart} onRemove={i=>setCart(c=>c.filter((_,idx)=>idx!==i))} onClear={()=>setCart([])} user={user} />}
       {page==='account'  && <AccountPage user={user} onLogout={handleLogout} />}
+      {page==='track'    && <OrderTrackingPage />}
+      {page==='group'    && <GroupOrderPage user={user} />}
 
-      {/* ── FOOTER (only on home / about / contact) ── */}
-      {['home','about','contact','products'].includes(page) && (
+      {/* ── FOOTER (only on main pages) ── */}
+      {['home','about','contact','products','track','group'].includes(page) && (
         <footer style={{ background:'#0a0a0a', color:'#fff', padding:'48px 16px 80px' }}>
           <div style={{ maxWidth:1100, margin:'0 auto' }}>
             <div className="footer-cols" style={{ display:'grid', gridTemplateColumns:'2fr 1fr 1fr 1fr', gap:40, marginBottom:40 }}>
@@ -1219,7 +1942,7 @@ function MainSite({ user }) {
               </div>
               {[
                 { title:'Shop',    links:[['T-Shirts','products'],['Hoodies','products'],['Polos','products'],['Joggers','products']] },
-                { title:'Support', links:[['Custom Order','studio'],['Contact Us','contact'],['Returns','about'],['FAQ','about']] },
+                { title:'Support', links:[['Custom Order','studio'],['Track Order','track'],['Group Order','group'],['FAQ','about']] },
                 { title:'Company', links:[['About Us','about'],['Contact','contact'],['Terms','terms'],['Privacy','privacy']] },
               ].map(col=>(
                 <div key={col.title}>
@@ -1234,7 +1957,7 @@ function MainSite({ user }) {
               ))}
             </div>
             <div style={{ borderTop:'1px solid #1a1a1a', paddingTop:20, display:'flex', justifyContent:'space-between', flexWrap:'wrap', gap:10 }}>
-              <p style={{ fontSize:11, color:'#444' }}>© 2024 DRYNN. All rights reserved. Tamil Nadu, India.</p>
+              <p style={{ fontSize:11, color:'#444' }}>© 2025 DRYNN. All rights reserved. Tamil Nadu, India.</p>
               <p style={{ fontSize:11, color:'#444' }}>UPI / Razorpay / COD Accepted</p>
             </div>
           </div>

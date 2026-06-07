@@ -1292,7 +1292,7 @@ function ProductsPage({ onAddToCart }) {
 
       {/* Grid */}
       <div style={{ maxWidth:1100, margin:'0 auto', padding:'20px 20px' }}>
-        <p style={{ fontSize:12, color:'#aaa', marginBottom:16 }}>{sorted.length} product{sorted.length!==1?'s':''}{search?` for "${search}":''}</p>
+        <p style={{ fontSize:12, color:'#aaa', marginBottom:16 }}>{sorted.length} product{sorted.length!==1?'s':''}{search?` for "${search}"`:''}</p>
         {sorted.length === 0 ? (
           <div style={{ textAlign:'center', padding:'60px 20px' }}>
             <div style={{ fontSize:48, marginBottom:12 }}>🔍</div>

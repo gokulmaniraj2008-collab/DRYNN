@@ -261,13 +261,13 @@ function IntroPage({ onGoToLogin }) {
       {/* Feature strips */}
       <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(220px,1fr))', gap:16, padding:'0 20px 48px', maxWidth:900, margin:'0 auto', width:'100%' }}>
         {[
-          { icon:'👕', label:'Custom Print',        desc:'Any design, any garment, any colour',    bg:'rgba(200,16,46,0.07)'  },
-          { icon:'🚚', label:'Fast Delivery',        desc:'5-7 days across India, express available',   bg:'rgba(10,31,93,0.07)'   },
-          { icon:'💎', label:'Quality Guaranteed',   desc:'Heat press, wash-proof, 100% guarantee', bg:'rgba(0,168,107,0.07)'  },
-          { icon:'💳', label:'Easy Payment',         desc:'UPI & Razorpay  -  secure payment',       bg:'rgba(245,166,35,0.10)' },
+          { icon:<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M20.38 3.46L16 2a4 4 0 01-8 0L3.62 3.46a2 2 0 00-1.34 2.23l.58 3.57a1 1 0 00.99.84H6v10c0 1.1.9 2 2 2h8a2 2 0 002-2V10h2.15a1 1 0 00.99-.84l.58-3.57a2 2 0 00-1.34-2.23z"/></svg>, label:'Custom Print',        desc:'Any design, any garment, any colour',    bg:'rgba(200,16,46,0.07)'  },
+          { icon:<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="3" width="15" height="13" rx="1"/><path d="M16 8h4l3 4v4h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>, label:'Fast Delivery',        desc:'5-7 days across India, express available',   bg:'rgba(10,31,93,0.07)'   },
+          { icon:<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>, label:'Quality Guaranteed',   desc:'Heat press, wash-proof, 100% guarantee', bg:'rgba(0,168,107,0.07)'  },
+          { icon:<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>, label:'Easy Payment',         desc:'UPI & Razorpay  -  secure payment',       bg:'rgba(245,166,35,0.10)' },
         ].map((f,i) => (
           <div key={i} style={{ display:'flex', alignItems:'center', gap:14, background:f.bg, borderRadius:12, padding:'16px 18px' }}>
-            <div style={{ fontSize:28, flexShrink:0 }}>{f.icon}</div>
+            <div style={{ flexShrink:0, color:'#555' }}>{f.icon}</div>
             <div>
               <div style={{ fontSize:13, fontWeight:700, marginBottom:2 }}>{f.label}</div>
               <div style={{ fontSize:11, color:'#888' }}>{f.desc}</div>
@@ -851,7 +851,7 @@ function ThreeDImageViewer() {
                 onMouseEnter={e=>e.currentTarget.style.borderColor='rgba(200,16,46,.5)'}
                 onMouseLeave={e=>e.currentTarget.style.borderColor='rgba(255,255,255,.15)'}>
                 <input type="file" accept=".png,.jpg,.jpeg,.svg,.webp,.gif" style={{ display:'none' }} onChange={onFileChange} />
-                <div style={{ fontSize:48 }}>🖼️</div>
+                <div style={{ color:'rgba(255,255,255,.3)' }}><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg></div>
                 <p style={{ fontSize:14, color:'rgba(255,255,255,.5)', textAlign:'center', lineHeight:1.6 }}>
                   Upload any image<br/>
                   <span style={{ fontSize:11, color:'rgba(255,255,255,.25)' }}>PNG · JPG · SVG · WEBP</span>
@@ -889,10 +889,10 @@ function ThreeDImageViewer() {
               <div style={{ display:'flex', gap:10, flexWrap:'wrap', justifyContent:'center' }}>
                 <label style={{ display:'inline-flex', alignItems:'center', gap:6, padding:'9px 18px', background:'rgba(255,255,255,.08)', border:'1px solid rgba(255,255,255,.15)', borderRadius:6, cursor:'pointer', fontSize:12, fontWeight:600, color:'rgba(255,255,255,.7)' }}>
                   <input type="file" accept=".png,.jpg,.jpeg,.svg,.webp,.gif" style={{ display:'none' }} onChange={onFileChange} />
-                  🔄 Change Image
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 102.13-9.36L1 10"/></svg> Change Image
                 </label>
                 <button onClick={exportImg} style={{ display:'inline-flex', alignItems:'center', gap:6, padding:'9px 18px', background:'rgba(200,16,46,.15)', border:'1px solid rgba(200,16,46,.4)', borderRadius:6, cursor:'pointer', fontSize:12, fontWeight:700, color:'#c8102e' }}>
-                  ⬇️ Export PNG
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Export PNG
                 </button>
               </div>
             )}
@@ -1057,10 +1057,10 @@ function StudioPage({ user, onNav }) {
   const [uploadErr, setUploadErr] = useState('')
 
   const GARMENT_TYPES = [
-    { key:'tshirt', label:'T-Shirt', emoji:'👕' },
-    { key:'hoodie', label:'Hoodie',  emoji:'🧥' },
-    { key:'polo',   label:'Polo',    emoji:'👔' },
-    { key:'joggers',label:'Joggers', emoji:'👖' },
+    { key:'tshirt', label:'T-Shirt', icon:<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20.38 3.46L16 2a4 4 0 01-8 0L3.62 3.46a2 2 0 00-1.34 2.23l.58 3.57a1 1 0 00.99.84H6v10c0 1.1.9 2 2 2h8a2 2 0 002-2V10h2.15a1 1 0 00.99-.84l.58-3.57a2 2 0 00-1.34-2.23z"/></svg> },
+    { key:'hoodie', label:'Hoodie',  icon:<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20.38 3.46L16 2a4 4 0 01-8 0L3.62 3.46a2 2 0 00-1.34 2.23l.58 3.57a1 1 0 00.99.84H6v10c0 1.1.9 2 2 2h8a2 2 0 002-2V10h2.15a1 1 0 00.99-.84l.58-3.57a2 2 0 00-1.34-2.23z"/><path d="M12 2v4"/></svg> },
+    { key:'polo',   label:'Polo',    icon:<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20.38 3.46L16 2a4 4 0 01-8 0L3.62 3.46a2 2 0 00-1.34 2.23l.58 3.57a1 1 0 00.99.84H6v10c0 1.1.9 2 2 2h8a2 2 0 002-2V10h2.15a1 1 0 00.99-.84l.58-3.57a2 2 0 00-1.34-2.23z"/><line x1="12" y1="2" x2="12" y2="8"/></svg> },
+    { key:'joggers',label:'Joggers', icon:<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="6" y="2" width="12" height="4" rx="1"/><path d="M6 6l-2 16h5l3-8 3 8h5l-2-16"/></svg> },
   ]
 
   const canvasFilter = `brightness(${brightness}%) contrast(${contrast}%) saturate(${saturation}%)`
@@ -1137,13 +1137,13 @@ function StudioPage({ user, onNav }) {
   }
 
   const TABS = [
-    { key:'order',   icon:'📋', label:'Order'    },
-    { key:'colour',  icon:'🖌️', label:'Colour'   },
-    { key:'text',    icon:'✍️', label:'Text'     },
-    { key:'motion',  icon:'↔️', label:'Position' },
-    { key:'effects', icon:'✨', label:'Effects'  },
-    { key:'samples', icon:'🖼️', label:'Samples'  },
-    { key:'picks',   icon:'⭐', label:'Picks'    },
+    { key:'order',   icon:<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 12h6M9 16h4"/></svg>, label:'Order'    },
+    { key:'colour',  icon:<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="13.5" cy="6.5" r="1.5"/><circle cx="17.5" cy="10.5" r="1.5"/><circle cx="8.5" cy="7.5" r="1.5"/><circle cx="6.5" cy="12.5" r="1.5"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 011.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"/></svg>, label:'Colour'   },
+    { key:'text',    icon:<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 7V4h16v3"/><path d="M9 20h6"/><path d="M12 4v16"/></svg>, label:'Text'     },
+    { key:'motion',  icon:<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="5 9 2 12 5 15"/><polyline points="19 9 22 12 19 15"/><line x1="2" y1="12" x2="22" y2="12"/></svg>, label:'Position' },
+    { key:'effects', icon:<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3v1m0 16v1m8.66-13l-.87.5M4.21 16.5l-.87.5M20.66 16.5l-.87-.5M4.21 7.5l-.87-.5M21 12h-1M4 12H3"/><circle cx="12" cy="12" r="4"/></svg>, label:'Effects'  },
+    { key:'samples', icon:<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>, label:'Samples'  },
+    { key:'picks',   icon:<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>, label:'Picks'    },
   ]
 
   return (
@@ -1179,13 +1179,13 @@ function StudioPage({ user, onNav }) {
           {GARMENT_TYPES.map(g=>(
             <button key={g.key} onClick={()=>setGarment(g.label)}
               style={{ padding:'8px 13px', borderRadius:50, fontSize:12, fontWeight:600, cursor:'pointer', transition:'all .15s', background:GARMENT_KEY[garment]===g.key?'#c8102e':'rgba(255,255,255,.08)', color:'#fff', border:GARMENT_KEY[garment]===g.key?'1px solid #c8102e':'1px solid rgba(255,255,255,.15)' }}>
-              {g.emoji} {g.label}
+              <span style={{display:'flex',alignItems:'center',gap:4}}>{g.icon} {g.label}</span>
             </button>
           ))}
         </div>
         <button onClick={handleDownload}
           style={{ padding:'9px 16px', borderRadius:50, background:'linear-gradient(135deg,#c8102e,#0a1f5d)', color:'#fff', border:'none', fontSize:12, fontWeight:700, cursor:'pointer' }}>
-          📸 Save Preview
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Save Preview
         </button>
       </div>
 
@@ -1198,9 +1198,7 @@ function StudioPage({ user, onNav }) {
             style={{ width:'100%', display:'block', filter: colorToFilter(color) }}
             onError={e => { e.target.style.display='none' }}
           />
-          <div style={{ position:'absolute', inset:0, display:'flex', alignItems:'center', justifyContent:'center', fontSize:120, opacity:0.08, pointerEvents:'none' }}>
-            {GARMENT_TYPES.find(g=>g.key===GARMENT_KEY[garment])?.emoji}
-          </div>
+
           {designImg && (
             <img
               src={designImg}
@@ -1296,7 +1294,7 @@ function StudioPage({ user, onNav }) {
                 </p>
                 <label style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:8, padding:'20px 16px', border:'1.5px dashed rgba(255,255,255,.18)', borderRadius:10, cursor:'pointer', background:'rgba(255,255,255,.03)' }}>
                   <input type="file" accept=".png,.jpg,.jpeg,.svg" style={{ display:'none' }} onChange={handleFile} />
-                  <span style={{ fontSize:28 }}>🎨</span>
+                  <span style={{ color:'rgba(255,255,255,.4)' }}><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg></span>
                   <span style={{ fontSize:13, color:uploadedFile?'#00a86b':'rgba(255,255,255,.55)', fontWeight:600 }}>
                     {uploadedFile ? `✓ ${uploadedFile.name}` : 'Tap to upload your design'}
                   </span>
@@ -1450,7 +1448,7 @@ function StudioPage({ user, onNav }) {
             <div>
               <p style={{ ...lblStyle, marginBottom:12 }}>View Angle</p>
               <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
-                {[['⬜ Front','front'],['🔄 Back','back'],['◀ Left','left'],['▶ Right','right']].map(([label,val])=>(
+                {[['Front','front'],['Back','back'],['Left','left'],['Right','right']].map(([label,val])=>(
                   <button key={val}
                     style={{ padding:'14px 8px', borderRadius:8, fontSize:12, fontWeight:600, cursor:'pointer', background:'rgba(255,255,255,.06)', color:'rgba(255,255,255,.65)', border:'1px solid rgba(255,255,255,.1)', textAlign:'center' }}>
                     {label}
@@ -1464,7 +1462,37 @@ function StudioPage({ user, onNav }) {
           )}
 
           {/* SAMPLES TAB */}
-          {tab==='samples' && (
+          {tab==='uploads' && (
+          <div>
+            <h2 style={{ fontSize:18, fontWeight:700, marginBottom:16 }}>Customer Design Uploads</h2>
+            {loading ? (
+              <div style={{ textAlign:'center', padding:40, color:'#888' }}>Loading…</div>
+            ) : (
+              <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(180px,1fr))', gap:14 }}>
+                {orders.filter(o=>o.design_file && o.design_file.startsWith('http')).length === 0 && (
+                  <div style={{ gridColumn:'1/-1', textAlign:'center', padding:60, color:'#888', background:'#fff', borderRadius:12, fontSize:13 }}>
+                    No design uploads yet. They appear here once customers place custom print orders.
+                  </div>
+                )}
+                {orders.filter(o=>o.design_file && o.design_file.startsWith('http')).map(o=>(
+                  <div key={o.id} style={{ background:'#fff', borderRadius:10, overflow:'hidden', border:'1px solid #e8e8e8' }}>
+                    <div style={{ height:160, background:'#f8f8f8', display:'flex', alignItems:'center', justifyContent:'center', overflow:'hidden' }}>
+                      <img src={o.design_file} alt="Design" style={{ width:'100%', height:'100%', objectFit:'contain' }} onError={e=>e.target.style.display='none'} />
+                    </div>
+                    <div style={{ padding:'10px 12px' }}>
+                      <div style={{ fontSize:12, fontWeight:700, marginBottom:2 }}>{o.name}</div>
+                      <div style={{ fontSize:10, color:'#888', marginBottom:2 }}>{o.garment} · {o.size} · Qty {o.qty}</div>
+                      <div style={{ fontSize:10, color:'#aaa' }}>{new Date(o.placed_at||o.created_at).toLocaleDateString('en-IN')}</div>
+                      <a href={o.design_file} target="_blank" rel="noreferrer" style={{ display:'block', marginTop:8, fontSize:11, color:'#0a1f5d', fontWeight:600, textDecoration:'underline' }}>View Full Size</a>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {tab==='samples' && (
             <div>
               <p style={{ fontSize:12, color:'rgba(255,255,255,.4)', marginBottom:14, lineHeight:1.65 }}>
                 Choose a ready-made design. It will appear on your T-shirt instantly.
@@ -1536,7 +1564,7 @@ function StudioPage({ user, onNav }) {
                       <div style={{ background:'#f8f8f8', height:120, display:'flex', alignItems:'center', justifyContent:'center', fontSize:60, position:'relative' }}>
                         {p.image_url
                           ? <img src={p.image_url} alt={p.name} style={{ width:'100%', height:'100%', objectFit:'contain' }} />
-                          : p.emoji}
+                          : <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#ddd" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"><path d="M20.38 3.46L16 2a4 4 0 01-8 0L3.62 3.46a2 2 0 00-1.34 2.23l.58 3.57a1 1 0 00.99.84H6v10c0 1.1.9 2 2 2h8a2 2 0 002-2V10h2.15a1 1 0 00.99-.84l.58-3.57a2 2 0 00-1.34-2.23z"/></svg>}
                         <span style={{ position:'absolute', top:6, left:6, background:'#c8102e', color:'#fff', fontSize:8, fontWeight:700, letterSpacing:'.08em', textTransform:'uppercase', padding:'2px 7px', borderRadius:2 }}>
                           {p.tag || 'Studio'}
                         </span>
@@ -1544,7 +1572,7 @@ function StudioPage({ user, onNav }) {
                       <div style={{ padding:'8px 10px' }}>
                         <div style={{ fontSize:12, fontWeight:700, color:'rgba(255,255,255,.9)', marginBottom:2, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{p.name}</div>
                         <div style={{ fontSize:10, color:'rgba(255,255,255,.45)', marginBottom:4 }}>{p.category} · ₹{Number(p.price).toLocaleString()}</div>
-                        <div style={{ fontSize:9, fontWeight:700, color:'#c8102e', textTransform:'uppercase', letterSpacing:'.08em' }}>⭐ Studio Exclusive</div>
+                        <div style={{ fontSize:9, fontWeight:700, color:'#c8102e', textTransform:'uppercase', letterSpacing:'.08em', display:'flex', alignItems:'center', gap:3 }}><svg width="9" height="9" viewBox="0 0 24 24" fill="#c8102e" stroke="none"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg> Studio Exclusive</div>
                       </div>
                     </div>
                   ))}
@@ -1570,7 +1598,7 @@ function StudioPage({ user, onNav }) {
             {/* Mini controls */}
             <div style={{ flex:'1 1 220px', maxWidth:280 }}>
               <p style={{ fontSize:12, fontWeight:700, color:'#333', marginBottom:10, letterSpacing:'.08em', textTransform:'uppercase' }}>How it works</p>
-              {[['1️⃣','Go to Studio → choose a garment and colour above'],['2️⃣','Upload your design or pick a sample'],['3️⃣','See it appear on the fabric here instantly'],['4️⃣','Adjust position and scale in Position tab']].map(([e,t])=>(
+              {[['1.','Go to Studio → choose a garment and colour above'],['2️⃣','Upload your design or pick a sample'],['3️⃣','See it appear on the fabric here instantly'],['4️⃣','Adjust position and scale in Position tab']].map(([e,t])=>(
                 <div key={e} style={{ display:'flex', gap:10, marginBottom:12, fontSize:13, color:'#555', lineHeight:1.6 }}>
                   <span style={{ flexShrink:0 }}>{e}</span><span>{t}</span>
                 </div>
@@ -1619,10 +1647,10 @@ function HomePage({ user, onNav, cart, onAddToCart }) {
       <div style={{ background:'#fff', borderBottom:'1px solid #f0f0f0' }}>
         <div className="feature-bar" style={{ maxWidth:1100, margin:'0 auto', display:'grid', gridTemplateColumns:'repeat(4,1fr)', padding:'0 16px' }}>
           {[
-            { icon:'🚚', label:'Free Delivery', sub:'Above ₹1,500' },
+            { icon:<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="3" width="15" height="13" rx="1"/><path d="M16 8h4l3 4v4h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>, label:'Free Delivery', sub:'Above ₹1,500' },
             { icon:'↩️', label:'Easy Returns',  sub:'Manufacturing defects' },
-            { icon:'🔒', label:'Secure Pay',    sub:'UPI · Razorpay · Secure' },
-            { icon:'💬', label:'WhatsApp Support', sub:'2-hour response' },
+            { icon:<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>, label:'Secure Pay',    sub:'UPI · Razorpay · Secure' },
+            { icon:<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z"/></svg>, label:'WhatsApp Support', sub:'2-hour response' },
           ].map((f,i) => (
             <div key={i} style={{ display:'flex', alignItems:'center', gap:10, padding:'14px 8px', borderRight:i<3?'1px solid #f0f0f0':'none' }}>
               <span style={{ fontSize:22, flexShrink:0 }}>{f.icon}</span>
@@ -1646,7 +1674,7 @@ function HomePage({ user, onNav, cart, onAddToCart }) {
             {products.slice(0,4).map(p => (
               <div key={p.id} className="product-card" onClick={()=>onNav('products')}>
                 <div style={{ background:'#f8f8f8', height:200, display:'flex', alignItems:'center', justifyContent:'center', fontSize:80, position:'relative', overflow:'hidden' }}>
-                  {p.image_url ? <img src={p.image_url} alt={p.name} style={{ width:'100%', height:'100%', objectFit:'contain' }} /> : p.emoji}
+                  {p.image_url ? <img src={p.image_url} alt={p.name} style={{ width:'100%', height:'100%', objectFit:'contain' }} /> : <svg width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="#ddd" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"><path d="M20.38 3.46L16 2a4 4 0 01-8 0L3.62 3.46a2 2 0 00-1.34 2.23l.58 3.57a1 1 0 00.99.84H6v10c0 1.1.9 2 2 2h8a2 2 0 002-2V10h2.15a1 1 0 00.99-.84l.58-3.57a2 2 0 00-1.34-2.23z"/></svg>}
                   <div style={{ position:'absolute', top:10, left:10, background:p.tagColor, color:'#fff', fontSize:9, fontWeight:700, letterSpacing:'.1em', textTransform:'uppercase', padding:'3px 8px', borderRadius:2 }}>{p.tag}</div>
                   <div style={{ position:'absolute', top:10, right:10, background:'#e8f5e9', color:'#00a86b', fontSize:10, fontWeight:700, padding:'3px 8px', borderRadius:2 }}>{disc(p.price,p.mrp)}% off</div>
                 </div>
@@ -1748,7 +1776,7 @@ function ProductDetailPage({ product, onBack, onAddToCart }) {
           {/* Image */}
           <div style={{ flex:'0 0 auto', width:'100%', maxWidth:340 }}>
             <div style={{ background:'#f8f8f8', borderRadius:12, height:320, display:'flex', alignItems:'center', justifyContent:'center', fontSize:140, position:'relative', overflow:'hidden' }}>
-              {product.image_url ? <img src={product.image_url} alt={product.name} style={{ width:'100%', height:'100%', objectFit:'contain' }} /> : product.emoji}
+              {product.image_url ? <img src={product.image_url} alt={product.name} style={{ width:'100%', height:'100%', objectFit:'contain' }} /> : <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="#ddd" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round"><path d="M20.38 3.46L16 2a4 4 0 01-8 0L3.62 3.46a2 2 0 00-1.34 2.23l.58 3.57a1 1 0 00.99.84H6v10c0 1.1.9 2 2 2h8a2 2 0 002-2V10h2.15a1 1 0 00.99-.84l.58-3.57a2 2 0 00-1.34-2.23z"/></svg>}
               <div style={{ position:'absolute', top:14, left:14, background:product.tagColor, color:'#fff', fontSize:9, fontWeight:700, letterSpacing:'.1em', textTransform:'uppercase', padding:'4px 10px', borderRadius:3 }}>{product.tag}</div>
             </div>
           </div>
@@ -1872,7 +1900,7 @@ function ProductsPage({ onAddToCart, onNav }) {
         {/* Search bar */}
         <div style={{ maxWidth:1100, margin:'0 auto', padding:'10px 20px 0' }}>
           <div style={{ position:'relative' }}>
-            <span style={{ position:'absolute', left:12, top:'50%', transform:'translateY(-50%)', fontSize:16, color:'#aaa' }}>🔍</span>
+            <span style={{ position:'absolute', left:12, top:'50%', transform:'translateY(-50%)', color:'#aaa' }}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></span>
             <input
               className="input-field"
               placeholder="Search products..."
@@ -1904,7 +1932,7 @@ function ProductsPage({ onAddToCart, onNav }) {
         <p style={{ fontSize:12, color:'#aaa', marginBottom:16 }}>{sorted.length} product{sorted.length!==1?'s':''}{search?` for "${search}"`:''}</p>
         {sorted.length === 0 ? (
           <div style={{ textAlign:'center', padding:'60px 20px' }}>
-            <div style={{ fontSize:48, marginBottom:12 }}>🔍</div>
+            <div style={{ marginBottom:12, color:'#ddd' }}><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></div>
             <p style={{ fontSize:16, fontWeight:600, marginBottom:6 }}>No products found</p>
             <p style={{ fontSize:13, color:'#aaa' }}>Try a different search or category</p>
           </div>
@@ -1913,11 +1941,11 @@ function ProductsPage({ onAddToCart, onNav }) {
             {sorted.map(p => (
               <div key={p.id} className="product-card" onClick={()=>setSelectedProduct(p)}>
                 <div style={{ background:'#f8f8f8', height:200, display:'flex', alignItems:'center', justifyContent:'center', fontSize:80, position:'relative', overflow:'hidden' }}>
-                  {p.image_url ? <img src={p.image_url} alt={p.name} style={{ width:'100%', height:'100%', objectFit:'contain' }} /> : p.emoji}
+                  {p.image_url ? <img src={p.image_url} alt={p.name} style={{ width:'100%', height:'100%', objectFit:'contain' }} /> : <svg width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="#ddd" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"><path d="M20.38 3.46L16 2a4 4 0 01-8 0L3.62 3.46a2 2 0 00-1.34 2.23l.58 3.57a1 1 0 00.99.84H6v10c0 1.1.9 2 2 2h8a2 2 0 002-2V10h2.15a1 1 0 00.99-.84l.58-3.57a2 2 0 00-1.34-2.23z"/></svg>}
                   <div style={{ position:'absolute', top:10, left:10, background:p.tagColor, color:'#fff', fontSize:9, fontWeight:700, letterSpacing:'.1em', textTransform:'uppercase', padding:'3px 8px', borderRadius:2 }}>{p.tag}</div>
                   <button onClick={e=>{ e.stopPropagation(); setWishlist(w=>w.includes(p.id)?w.filter(x=>x!==p.id):[...w,p.id]) }}
                     style={{ position:'absolute', top:8, right:8, background:'#fff', border:'none', borderRadius:'50%', width:30, height:30, display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', fontSize:16, boxShadow:'0 2px 8px rgba(0,0,0,.1)' }}>
-                    {wishlist.includes(p.id)?'❤️':'🤍'}
+                    {wishlist.includes(p.id)?'♥':'♡'}
                   </button>
                 </div>
                 <div style={{ padding:'12px 14px' }}>
@@ -1942,7 +1970,7 @@ function ProductsPage({ onAddToCart, onNav }) {
       {/* Group Order CTA */}
       {onNav && (
         <div style={{ margin:'0 20px 32px', background:'linear-gradient(135deg,#0a1f5d,#1a0a2e)', borderRadius:12, padding:'20px', display:'flex', alignItems:'center', gap:16, cursor:'pointer' }} onClick={()=>onNav('group')}>
-          <span style={{ fontSize:36, flexShrink:0 }}>👥</span>
+          <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#aaa" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
           <div style={{ flex:1 }}>
             <div style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:20, color:'#fff', letterSpacing:'.05em', marginBottom:2 }}>GROUP ORDER?</div>
             <div style={{ fontSize:12, color:'rgba(255,255,255,.6)', lineHeight:1.5 }}>Bulk discount for 10+ pieces · Teams, colleges, events</div>
@@ -1958,21 +1986,15 @@ const CLOUDINARY_CLOUD = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || 'dfhdy
 const CLOUDINARY_PRESET = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET || 'drynn_uploads'
 
 async function uploadToCloudinary(file, onProgress) {
-  return new Promise((resolve, reject) => {
-    const formData = new FormData()
-    formData.append('file', file)
-    formData.append('upload_preset', CLOUDINARY_PRESET)
-    formData.append('folder', 'drynn/designs')
-    const xhr = new XMLHttpRequest()
-    xhr.open('POST', `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD}/image/upload`)
-    xhr.upload.onprogress = e => { if (e.lengthComputable) onProgress(Math.round((e.loaded/e.total)*100)) }
-    xhr.onload = () => {
-      if (xhr.status === 200) resolve(JSON.parse(xhr.responseText).secure_url)
-      else reject(new Error('Cloudinary upload failed: ' + xhr.responseText))
-    }
-    xhr.onerror = () => reject(new Error('Network error during upload'))
-    xhr.send(formData)
-  })
+  // Upload to Supabase Storage (drynn-designs bucket)
+  onProgress && onProgress(10)
+  const ext = file.name.split('.').pop()
+  const path = `designs/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
+  const { error } = await supabase.storage.from('drynn-designs').upload(path, file, { cacheControl:'3600', upsert:false })
+  if (error) throw new Error(error.message)
+  onProgress && onProgress(100)
+  const { data } = supabase.storage.from('drynn-designs').getPublicUrl(path)
+  return data?.publicUrl || path
 }
 
 function AboutPage({ onNav }) {
@@ -2097,7 +2119,7 @@ function ContactPage({ onNav }) {
       <div style={{ maxWidth:680, margin:'0 auto', padding:'32px 20px' }}>
         {sent ? (
           <div style={{ textAlign:'center', padding:'40px 20px' }}>
-            <div style={{ fontSize:60, marginBottom:16 }}>✅</div>
+            <div style={{ marginBottom:16, color:'#00a86b' }}><svg width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="9 12 11 14 15 10"/></svg></div>
             <h2 style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:36, marginBottom:8 }}>MESSAGE SENT!</h2>
             <p style={{ fontSize:14, color:'#555' }}>We'll WhatsApp you within 2 hours.</p>
           </div>
@@ -2106,10 +2128,10 @@ function ContactPage({ onNav }) {
             {/* Contact cards */}
             <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12, marginBottom:8 }}>
               {[
-                { icon:'📱', label:'WhatsApp', value:'+91 99447 61306', color:'#00a86b' },
-                { icon:'📍', label:'Location',  value:'Tamil Nadu, India', color:'#c8102e' },
+                { icon:<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z"/></svg>, label:'WhatsApp', value:'+91 99447 61306', color:'#00a86b' },
+                { icon:<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>, label:'Location',  value:'Tamil Nadu, India', color:'#c8102e' },
                 { icon:'⏰', label:'Hours',     value:'Mon-Sat 9am-7pm',   color:'#0a1f5d' },
-                { icon:'📦', label:'Delivery',  value:'5-7 working days',  color:'#f5a623' },
+                { icon:<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="16.5" y1="9.4" x2="7.5" y2="4.21"/><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 002 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>, label:'Delivery',  value:'5-7 working days',  color:'#f5a623' },
               ].map((c,i)=>(
                 <div key={i} style={{ background:'#f8f8f8', borderRadius:10, padding:'16px 14px', display:'flex', gap:12, alignItems:'center' }}>
                   <div style={{ width:38, height:38, background:c.color, borderRadius:10, display:'flex', alignItems:'center', justifyContent:'center', fontSize:18, flexShrink:0 }}>{c.icon}</div>
@@ -2183,7 +2205,7 @@ function CartPage({ cart, onRemove, onClear, user, onNav }) {
         </div>
       </div>
       <div style={{ textAlign:'center', padding:'64px 16px', maxWidth:480, margin:'0 auto' }}>
-        <div style={{ fontSize:64, marginBottom:16 }}>🎉</div>
+        <div style={{ marginBottom:16, color:'#00a86b' }}><svg width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="9 12 11 14 15 10"/></svg></div>
         <h2 style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:32, marginBottom:12 }}>ORDER CONFIRMED!</h2>
         <p style={{ fontSize:14, color:'#555', lineHeight:1.8, marginBottom:28 }}>We received your order and will WhatsApp you within 2 hours to confirm printing and delivery.</p>
         <div style={{ background:'#f8f8f8', borderRadius:12, padding:'20px', marginBottom:24, textAlign:'left' }}>
@@ -2234,7 +2256,7 @@ function CartPage({ cart, onRemove, onClear, user, onNav }) {
           <div>
             <label style={{ fontSize:11, fontWeight:700, letterSpacing:'.12em', textTransform:'uppercase', color:'#555', display:'block', marginBottom:10 }}>Payment Method</label>
             <div style={{ padding:'14px 16px', border:'2px solid #c8102e', borderRadius:8, background:'rgba(200,16,46,.04)', display:'flex', alignItems:'center', gap:10 }}>
-              <span style={{ fontSize:20 }}>📱</span>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z"/></svg>
               <div>
                 <div style={{ fontWeight:700, fontSize:13, color:'#c8102e' }}>UPI / Razorpay</div>
                 <div style={{ fontSize:11, color:'#888', marginTop:2 }}>We'll send a payment link on WhatsApp within 30 minutes.</div>
@@ -2264,7 +2286,7 @@ function CartPage({ cart, onRemove, onClear, user, onNav }) {
       <div style={{ maxWidth:800, margin:'0 auto', padding:'28px 20px' }}>
         {cart.length===0 ? (
           <div style={{ textAlign:'center', padding:'64px 16px' }}>
-            <div style={{ fontSize:64, marginBottom:16 }}>🛒</div>
+            <div style={{ marginBottom:16, color:'#ddd' }}><svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 001.98 1.61h9.72a2 2 0 001.98-1.61L23 6H6"/></svg></div>
             <h2 style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:32, marginBottom:8 }}>YOUR CART IS EMPTY</h2>
             <p style={{ color:'#888', fontSize:14 }}>Add some products to get started!</p>
           </div>
@@ -2272,7 +2294,7 @@ function CartPage({ cart, onRemove, onClear, user, onNav }) {
           <div>
             {cart.map((item,i)=>(
               <div key={i} style={{ display:'flex', gap:16, alignItems:'center', padding:'16px 0', borderBottom:'1px solid #f5f5f5' }}>
-                <div style={{ width:72, height:72, background:'#f8f8f8', borderRadius:8, display:'flex', alignItems:'center', justifyContent:'center', fontSize:40, flexShrink:0 }}>{item.emoji}</div>
+                <div style={{ width:72, height:72, background:'#f8f8f8', borderRadius:8, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#ccc" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20.38 3.46L16 2a4 4 0 01-8 0L3.62 3.46a2 2 0 00-1.34 2.23l.58 3.57a1 1 0 00.99.84H6v10c0 1.1.9 2 2 2h8a2 2 0 002-2V10h2.15a1 1 0 00.99-.84l.58-3.57a2 2 0 00-1.34-2.23z"/></svg></div>
                 <div style={{ flex:1, minWidth:0 }}>
                   <p style={{ fontSize:14, fontWeight:600, marginBottom:4, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{item.name}</p>
                   <p style={{ fontSize:12, color:'#aaa', marginBottom:6 }}>Qty: {item.qty}</p>
@@ -2287,7 +2309,7 @@ function CartPage({ cart, onRemove, onClear, user, onNav }) {
               </div>
               <div style={{ display:'flex', justifyContent:'space-between', fontSize:13, marginBottom:12 }}>
                 <span style={{ color:'#888' }}>Shipping</span>
-                <span style={{ color:shipping===0?'#00a86b':'#0a0a0a', fontWeight:600 }}>{shipping===0?'🎉 FREE':`₹${shipping}`}</span>
+                <span style={{ color:shipping===0?'#00a86b':'#0a0a0a', fontWeight:600 }}>{shipping===0?'FREE':`₹${shipping}`}</span>
               </div>
               {shipping>0 && <p style={{ fontSize:11, color:'#00a86b', marginBottom:12 }}>Add ₹{(1500-total).toLocaleString()} more for free shipping!</p>}
               <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16 }}>
@@ -2385,7 +2407,7 @@ function OrdersPage({ user, onBack, onNav }) {
           {/* ORDER CONFIRMED banner */}
           {isConfirmed && (
             <div style={{ background:'linear-gradient(135deg,#00a86b,#00c47a)', borderRadius:14, padding:'20px 20px', marginBottom:24, display:'flex', alignItems:'center', gap:14, boxShadow:'0 4px 20px rgba(0,168,107,.25)' }}>
-              <div style={{ fontSize:44, flexShrink:0 }}>✅</div>
+              <div style={{ flexShrink:0, color:'#00a86b' }}><svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="9 12 11 14 15 10"/></svg></div>
               <div>
                 <div style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:24, color:'#fff', letterSpacing:'.06em' }}>ORDER CONFIRMED!</div>
                 <div style={{ fontSize:13, color:'rgba(255,255,255,.85)', marginTop:2 }}>Your order is on its way. Thank you for shopping with DRYNN!</div>
@@ -2444,7 +2466,7 @@ function OrdersPage({ user, onBack, onNav }) {
           </div>
 
           <div style={{ background:'#f8f8f8', borderRadius:10, padding:'14px 16px', marginTop:24, fontSize:13, color:'#555', lineHeight:1.7 }}>
-            📲 WhatsApp updates sent at every stage. Need help? <strong>+91 99447 61306</strong>
+            WhatsApp updates sent at every stage. Need help? <strong>+91 99447 61306</strong>
           </div>
         </div>
       </div>
@@ -2523,7 +2545,7 @@ function OrdersPage({ user, onBack, onNav }) {
         {/* Search */}
         {!loading && orders.length > 2 && (
           <div style={{ position:'relative', marginBottom:16 }}>
-            <span style={{ position:'absolute', left:12, top:'50%', transform:'translateY(-50%)', fontSize:14, color:'#aaa' }}>🔍</span>
+            <span style={{ position:'absolute', left:12, top:'50%', transform:'translateY(-50%)', color:'#aaa' }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></span>
             <input className="input-field" placeholder="Search by garment or order ID..."
               value={search} onChange={e => setSearch(e.target.value)}
               style={{ paddingLeft:38, borderRadius:50, fontSize:13 }} />
@@ -2549,7 +2571,7 @@ function OrdersPage({ user, onBack, onNav }) {
 
         ) : orders.length === 0 ? (
           <div style={{ textAlign:'center', padding:'64px 16px' }}>
-            <div style={{ fontSize:64, marginBottom:14 }}>📦</div>
+            <div style={{ marginBottom:14, color:'#ddd' }}><svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round"><line x1="16.5" y1="9.4" x2="7.5" y2="4.21"/><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 002 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg></div>
             <h2 style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:28, marginBottom:8 }}>NO ORDERS YET</h2>
             <p style={{ color:'#aaa', fontSize:13, lineHeight:1.7, marginBottom:24 }}>
               You have not placed any orders yet.<br/>Start shopping to see your order history here!
@@ -2560,7 +2582,7 @@ function OrdersPage({ user, onBack, onNav }) {
 
         ) : filteredOrders.length === 0 ? (
           <div style={{ textAlign:'center', padding:'48px 16px' }}>
-            <div style={{ fontSize:48, marginBottom:12 }}>🔍</div>
+            <div style={{ marginBottom:12, color:'#ddd' }}><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></div>
             <p style={{ fontSize:15, fontWeight:600, marginBottom:6 }}>No orders found</p>
             <p style={{ fontSize:13, color:'#aaa' }}>
               {search ? `No results for "${search}"` : `No ${histTab} orders`}
@@ -2657,13 +2679,13 @@ function OrdersPage({ user, onBack, onNav }) {
                     {/* Footer row */}
                     <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', paddingTop:10, borderTop:'1px solid #f8f8f8' }}>
                       <span style={{ fontSize:11, color: isDelivered ? '#00a86b' : '#c8102e', fontWeight:600 }}>
-                        {isDelivered ? '📋 View History →' : 'View Details →'}
+                        {isDelivered ? 'View History →' : 'View Details →'}
                       </span>
                       {isDelivered && (
                         <button
                           onClick={e => { e.stopPropagation(); onNav && onNav('studio') }}
                           style={{ fontSize:11, fontWeight:700, color:'#0a1f5d', background:'#f0f4ff', border:'1px solid #c5d3f6', borderRadius:50, padding:'5px 14px', cursor:'pointer' }}>
-                          🔄 Reorder
+                          Reorder
                         </button>
                       )}
                     </div>
@@ -2693,7 +2715,7 @@ function AccountPage({ user, onLogout, onNav }) {
     <div>
       <div style={{ background:'linear-gradient(135deg,#0a1f5d,#1a0a2e)', padding:'40px 20px', textAlign:'center' }}>
         <div style={{ width:80, height:80, borderRadius:'50%', overflow:'hidden', margin:'0 auto 16px', border:'3px solid rgba(255,255,255,.2)', background:'rgba(255,255,255,.1)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:36 }}>
-          {user?.user_metadata?.avatar_url ? <img src={user.user_metadata.avatar_url} style={{ width:'100%', height:'100%', objectFit:'cover' }} alt="" /> : '👤'}
+          {user?.user_metadata?.avatar_url ? <img src={user.user_metadata.avatar_url} style={{ width:'100%', height:'100%', objectFit:'cover' }} alt="" /> : <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.6)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>}
         </div>
         <h1 style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:32, color:'#fff', letterSpacing:'.1em', marginBottom:4 }}>{user?.user_metadata?.full_name||'My Account'}</h1>
         <p style={{ fontSize:13, color:'rgba(255,255,255,.6)' }}>{user?.email}</p>
@@ -2706,15 +2728,15 @@ function AccountPage({ user, onLogout, onNav }) {
       </div>
       <div style={{ maxWidth:500, margin:'0 auto', padding:'28px 20px' }}>
         {[
-          { icon:'📦', label:'My Orders',     sub:'Track and manage your orders',      page:'orders'  },
-          { icon:'🚚', label:'Track Order',   sub:'Check live delivery status',         page:'track'   },
-          { icon:'👥', label:'Group Order',   sub:'Bulk orders for teams & events',     page:'group'   },
-          { icon:'💳', label:'Payments',      sub:'UPI, Razorpay',                      page:null       },
-          { icon:'📍', label:'Addresses',     sub:'Manage delivery addresses',          page:null       },
-          { icon:'🔔', label:'Notifications', sub:'Order updates on WhatsApp',          page:null       },
+          { icon:<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><line x1="16.5" y1="9.4" x2="7.5" y2="4.21"/><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 002 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>, label:'My Orders',     sub:'Track and manage your orders',      page:'orders'  },
+          { icon:<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="3" width="15" height="13" rx="1"/><path d="M16 8h4l3 4v4h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>, label:'Track Order',   sub:'Check live delivery status',         page:'track'   },
+          { icon:<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>, label:'Group Order',   sub:'Bulk orders for teams & events',     page:'group'   },
+          { icon:<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>, label:'Payments',      sub:'UPI, Razorpay',                      page:null       },
+          { icon:<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>, label:'Addresses',     sub:'Manage delivery addresses',          page:null       },
+          { icon:<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>, label:'Notifications', sub:'Order updates on WhatsApp',          page:null       },
           { icon:'ℹ️',  label:'About DRYNN',  sub:'Our story & how it works',           page:'about'   },
-          { icon:'💬', label:'Contact Us',    sub:'WhatsApp, email & support',          page:'contact' },
-          { icon:'🛡️', label:'Privacy',       sub:'Data & privacy settings',            page:'privacy'  },
+          { icon:<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>, label:'Contact Us',    sub:'WhatsApp, email & support',          page:'contact' },
+          { icon:<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>, label:'Privacy',       sub:'Data & privacy settings',            page:'privacy'  },
         ].map((item,i)=>(
           <div key={i} onClick={()=>{ if(item.page) onNav(item.page) }}
             style={{ display:'flex', alignItems:'center', gap:16, padding:'16px 0', borderBottom:'1px solid #f5f5f5', cursor:'pointer', transition:'padding .15s' }}
@@ -2984,7 +3006,7 @@ function AdminPanel({ onBack }) {
   if (!isAdmin) return (
     <div style={{ minHeight:'100vh', background:'#0a0a0a', display:'flex', alignItems:'center', justifyContent:'center', padding:16 }}>
       <div style={{ background:'#111', border:'1px solid #1e1e1e', borderRadius:12, padding:'40px 32px', width:'100%', maxWidth:380, textAlign:'center' }}>
-        <div style={{ fontSize:48, marginBottom:16 }}>🔒</div>
+        <div style={{ marginBottom:16, color:'#555' }}><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg></div>
         <div style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:28, letterSpacing:'.18em', color:'#fff', marginBottom:8 }}>ACCESS DENIED</div>
         <p style={{ fontSize:13, color:'#555', lineHeight:1.7, marginBottom:24 }}>
           This admin panel is restricted to authorised accounts only.
@@ -3007,7 +3029,8 @@ function AdminPanel({ onBack }) {
         <div style={{ display:'flex', gap:8 }}>
           <button onClick={()=>{setTab('orders');loadOrders()}} style={{ padding:'6px 16px', borderRadius:4, border:'none', cursor:'pointer', background:tab==='orders'?'#c8102e':'#222', color:'#fff', fontSize:12, fontWeight:700 }}>Orders</button>
           <button onClick={()=>{setTab('products');loadProducts()}} style={{ padding:'6px 16px', borderRadius:4, border:'none', cursor:'pointer', background:tab==='products'?'#c8102e':'#222', color:'#fff', fontSize:12, fontWeight:700 }}>Products</button>
-          <button onClick={()=>{setTab('samples');loadSamples()}} style={{ padding:'6px 16px', borderRadius:4, border:'none', cursor:'pointer', background:tab==='samples'?'#c8102e':'#222', color:'#fff', fontSize:12, fontWeight:700 }}>🎨 Samples</button>
+          <button onClick={()=>{setTab('samples');loadSamples()}} style={{ padding:'6px 16px', borderRadius:4, border:'none', cursor:'pointer', background:tab==='samples'?'#c8102e':'#222', color:'#fff', fontSize:12, fontWeight:700 }}>Samples</button>
+          <button onClick={()=>{setTab('uploads');loadOrders()}} style={{ padding:'6px 16px', borderRadius:4, border:'none', cursor:'pointer', background:tab==='uploads'?'#c8102e':'#222', color:'#fff', fontSize:12, fontWeight:700 }}>Uploads</button>
           <button onClick={onBack} style={{ padding:'6px 16px', borderRadius:4, border:'1px solid #333', cursor:'pointer', background:'none', color:'#888', fontSize:12 }}>Exit</button>
         </div>
       </div>
@@ -3067,7 +3090,7 @@ function AdminPanel({ onBack }) {
                           {o.design_file && o.design_file.startsWith('http') && (
                             <a href={o.design_file} target="_blank" rel="noopener noreferrer"
                               style={{ fontSize:10, color:'#0a1f5d', textDecoration:'underline', display:'inline-block', marginTop:3 }}>
-                              🔗 View Design File
+                              View Design File
                             </a>
                           )}
                         </div>
@@ -3076,7 +3099,7 @@ function AdminPanel({ onBack }) {
                             {o.status||'Received'}
                           </span>
                           <button onClick={()=>setEditOrder(o.id)} style={{ padding:'6px 14px', fontSize:11, borderRadius:4, border:'1px solid #0a1f5d', color:'#0a1f5d', background:'none', cursor:'pointer', fontWeight:600 }}>Edit Status</button>
-                          <button onClick={()=>deleteOrder(o.id)} style={{ padding:'6px 12px', fontSize:11, borderRadius:4, border:'1px solid #fdd', color:'#c8102e', background:'none', cursor:'pointer', fontWeight:600 }}>✕ Delete</button>
+                          <button onClick={()=>deleteOrder(o.id)} style={{ padding:'6px 12px', fontSize:11, borderRadius:4, border:'1px solid #fdd', color:'#c8102e', background:'none', cursor:'pointer', fontWeight:600 }}>Delete</button>
                         </div>
                       </div>
                     )}
@@ -3093,7 +3116,7 @@ function AdminPanel({ onBack }) {
             <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16 }}>
               <h2 style={{ fontSize:18, fontWeight:700 }}>Products ({products.length})</h2>
               <button className="btn-primary" style={{ padding:'8px 18px', fontSize:12 }} onClick={()=>setShowAddProduct(v=>!v)}>
-                {showAddProduct ? '✕ Cancel' : '+ Add Product'}
+                {showAddProduct ? 'Cancel' : 'Add Product'}
               </button>
             </div>
 
@@ -3127,7 +3150,7 @@ function AdminPanel({ onBack }) {
                   <div>
                     <label style={{ fontSize:10, fontWeight:700, letterSpacing:'.1em', color:'#888', textTransform:'uppercase', display:'block', marginBottom:4 }}>Emoji Icon</label>
                     <select className="input-field" value={newProduct.emoji} onChange={e=>setNewProduct({...newProduct,emoji:e.target.value})} style={{ padding:'8px 12px', fontSize:13 }}>
-                      {[['👕','T-Shirt'],['🧥','Hoodie'],['👔','Polo'],['👖','Joggers/Pants']].map(([e,l])=><option key={e} value={e}>{e} {l}</option>)}
+                      {[['T-Shirt','T-Shirt'],['Hoodie','Hoodie'],['Polo','Polo'],['Joggers','Joggers']].map(([e,l])=><option key={e} value={e}>{l}</option>)}
                     </select>
                   </div>
                   <div>
@@ -3143,14 +3166,14 @@ function AdminPanel({ onBack }) {
                       <input type="checkbox" checked={newProduct.studio_only} onChange={e=>setNewProduct({...newProduct,studio_only:e.target.checked})}
                         style={{ width:18, height:18, accentColor:'#c8102e', cursor:'pointer', flexShrink:0 }} />
                       <div>
-                        <div style={{ fontSize:13, fontWeight:700, color: newProduct.studio_only ? '#c8102e' : '#0a0a0a' }}>🎨 Studio Only</div>
+                        <div style={{ fontSize:13, fontWeight:700, color: newProduct.studio_only ? '#c8102e' : '#0a0a0a' }}>Studio Only</div>
                         <div style={{ fontSize:11, color:'#888', marginTop:2 }}>Hide from Products page - visible only in Design Studio</div>
                       </div>
                     </label>
                   </div>
                 </div>
                 <button className="btn-primary" style={{ padding:'10px 24px', fontSize:13, opacity:addingProduct?.6:1 }} onClick={addProduct} disabled={addingProduct}>
-                  {addingProduct ? 'Adding…' : '+ Add Product'}
+                  {addingProduct ? 'Adding…' : 'Add Product'}
                 </button>
               </div>
             )}
@@ -3189,9 +3212,39 @@ function AdminPanel({ onBack }) {
         )}
 
         {/* SAMPLES TAB */}
+        {tab==='uploads' && (
+          <div>
+            <h2 style={{ fontSize:18, fontWeight:700, marginBottom:16 }}>Customer Design Uploads</h2>
+            {loading ? (
+              <div style={{ textAlign:'center', padding:40, color:'#888' }}>Loading…</div>
+            ) : (
+              <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(180px,1fr))', gap:14 }}>
+                {orders.filter(o=>o.design_file && o.design_file.startsWith('http')).length === 0 && (
+                  <div style={{ gridColumn:'1/-1', textAlign:'center', padding:60, color:'#888', background:'#fff', borderRadius:12, fontSize:13 }}>
+                    No design uploads yet. They appear here once customers place custom print orders.
+                  </div>
+                )}
+                {orders.filter(o=>o.design_file && o.design_file.startsWith('http')).map(o=>(
+                  <div key={o.id} style={{ background:'#fff', borderRadius:10, overflow:'hidden', border:'1px solid #e8e8e8' }}>
+                    <div style={{ height:160, background:'#f8f8f8', display:'flex', alignItems:'center', justifyContent:'center', overflow:'hidden' }}>
+                      <img src={o.design_file} alt="Design" style={{ width:'100%', height:'100%', objectFit:'contain' }} onError={e=>e.target.style.display='none'} />
+                    </div>
+                    <div style={{ padding:'10px 12px' }}>
+                      <div style={{ fontSize:12, fontWeight:700, marginBottom:2 }}>{o.name}</div>
+                      <div style={{ fontSize:10, color:'#888', marginBottom:2 }}>{o.garment} · {o.size} · Qty {o.qty}</div>
+                      <div style={{ fontSize:10, color:'#aaa' }}>{new Date(o.placed_at||o.created_at).toLocaleDateString('en-IN')}</div>
+                      <a href={o.design_file} target="_blank" rel="noreferrer" style={{ display:'block', marginTop:8, fontSize:11, color:'#0a1f5d', fontWeight:600, textDecoration:'underline' }}>View Full Size</a>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
         {tab==='samples' && (
           <div>
-            <h2 style={{ fontSize:18, fontWeight:700, marginBottom:16 }}>🎨 Sample Designs</h2>
+            <h2 style={{ fontSize:18, fontWeight:700, marginBottom:16 }}>Sample Designs</h2>
 
             {/* Upload new sample */}
             <div style={{ background:'#fff', borderRadius:12, padding:'20px', border:'1px solid #e8e8e8', marginBottom:20 }}>
@@ -3223,7 +3276,7 @@ function AdminPanel({ onBack }) {
               {sampleUploadPct > 0 && sampleUploadPct < 100 && (
                 <div style={{ marginBottom:12 }}>
                   <div style={{ display:'flex', justifyContent:'space-between', fontSize:11, color:'#555', marginBottom:4 }}>
-                    <span>Uploading to Cloudinary…</span><span>{sampleUploadPct}%</span>
+                    <span>Uploading…</span><span>{sampleUploadPct}%</span>
                   </div>
                   <div style={{ height:4, background:'#f0f0f0', borderRadius:2 }}>
                     <div style={{ height:'100%', width:`${sampleUploadPct}%`, background:'#c8102e', borderRadius:2, transition:'width .3s' }} />
@@ -3231,7 +3284,7 @@ function AdminPanel({ onBack }) {
                 </div>
               )}
               <button className="btn-primary" style={{ padding:'10px 24px', fontSize:13, opacity:sampleSaving?.6:1 }} onClick={saveSample} disabled={sampleSaving}>
-                {sampleSaving ? 'Saving…' : '+ Add Sample Design'}
+                {sampleSaving ? 'Saving…' : 'Add Sample Design'}
               </button>
             </div>
 
@@ -3248,7 +3301,7 @@ function AdminPanel({ onBack }) {
                     <div style={{ padding:'10px 12px' }}>
                       <div style={{ fontSize:13, fontWeight:700, marginBottom:2 }}>{s.name}</div>
                       {s.category && <div style={{ fontSize:11, color:'#888', marginBottom:8 }}>{s.category}</div>}
-                      <button onClick={()=>deleteSample(s.id)} style={{ fontSize:11, color:'#c8102e', background:'none', border:'1px solid #fdd', borderRadius:4, padding:'4px 10px', cursor:'pointer', width:'100%' }}>✕ Delete</button>
+                      <button onClick={()=>deleteSample(s.id)} style={{ fontSize:11, color:'#c8102e', background:'none', border:'1px solid #fdd', borderRadius:4, padding:'4px 10px', cursor:'pointer', width:'100%' }}>Delete</button>
                     </div>
                   </div>
                 ))}
@@ -3318,7 +3371,7 @@ function ProductEditRow({ product, onSave, onCancel }) {
             <input id={`imgUpload_${product.id}`} type="file" accept=".png,.jpg,.jpeg,.webp" style={{ display:'none' }}
               onChange={e=>{ const f=e.target.files[0]; if(f) setImgFile(f) }} />
             <div style={{ fontSize:11, color: imgFile ? '#00a86b' : '#888', fontWeight:600 }}>
-              {imgFile ? `✓ ${imgFile.name}` : '📷 Upload new image'}
+              {imgFile ? `✓ ${imgFile.name}` : 'Upload new image'}
             </div>
             <div style={{ fontSize:10, color:'#bbb', marginTop:2 }}>PNG, JPG · replaces current</div>
           </div>
@@ -3338,7 +3391,7 @@ function ProductEditRow({ product, onSave, onCancel }) {
         <input type="checkbox" checked={!!p.studio_only} onChange={e=>setP({...p,studio_only:e.target.checked})}
           style={{ width:18, height:18, accentColor:'#c8102e', cursor:'pointer', flexShrink:0 }} />
         <div>
-          <div style={{ fontSize:13, fontWeight:700, color: p.studio_only ? '#c8102e' : '#0a0a0a' }}>🎨 Studio Only</div>
+          <div style={{ fontSize:13, fontWeight:700, color: p.studio_only ? '#c8102e' : '#0a0a0a' }}>Studio Only</div>
           <div style={{ fontSize:11, color:'#888', marginTop:1 }}>Hide from Products page - show only in Design Studio</div>
         </div>
       </label>
@@ -3365,12 +3418,12 @@ function OrderTrackingPage({ onNav }) {
 
   const STATUSES = ['Received','Approved','Printing','Packed','Shipped','Delivered']
   const STATUS_INFO = {
-    Received:  { icon:'📥', desc:'We received your order and are reviewing it.' },
-    Approved:  { icon:'✅', desc:'Design approved! Moving to print queue.' },
-    Printing:  { icon:'🖨️', desc:'Your design is being printed right now.' },
-    Packed:    { icon:'📦', desc:'Printed and packed, ready to ship.' },
-    Shipped:   { icon:'🚚', desc:'On its way! Track your courier via WhatsApp.' },
-    Delivered: { icon:'🎉', desc:'Delivered! We hope you love it.' },
+    Received:  { icon:'↓', desc:'We received your order and are reviewing it.' },
+    Approved:  { icon:'✓', desc:'Design approved! Moving to print queue.' },
+    Printing:  { icon:'⊡', desc:'Your design is being printed right now.' },
+    Packed:    { icon:'▣', desc:'Printed and packed, ready to ship.' },
+    Shipped:   { icon:'→', desc:'On its way! Track your courier via WhatsApp.' },
+    Delivered: { icon:'★', desc:'Delivered! We hope you love it.' },
   }
 
   const track = async () => {
@@ -3416,7 +3469,7 @@ function OrderTrackingPage({ onNav }) {
             </div>
             {error && <p style={{ fontSize:13, color:'#c8102e', background:'rgba(200,16,46,.06)', border:'1px solid rgba(200,16,46,.2)', borderRadius:6, padding:'10px 14px', margin:0 }}>{error}</p>}
             <button className="btn-primary" style={{ padding:14, fontSize:13, opacity:loading?.6:1 }} onClick={track} disabled={loading}>
-              {loading ? 'Searching…' : '🔍 Track Order'}
+              {loading ? 'Searching…' : 'Track Order'}
             </button>
           </div>
         </div>
@@ -3452,7 +3505,7 @@ function OrderTrackingPage({ onNav }) {
                         transition:'all .3s',
                         boxShadow: current ? '0 0 0 4px rgba(200,16,46,.12)' : 'none'
                       }}>
-                        {done ? (current ? info.icon : '✓') : <span style={{ color:'#ccc', fontSize:12, fontWeight:700 }}>{i+1}</span>}
+                        {done ? (current ? <span style={{fontSize:12}}>{typeof info.icon==='string'?info.icon:'✓'}</span> : '✓') : <span style={{ color:'#ccc', fontSize:12, fontWeight:700 }}>{i+1}</span>}
                       </div>
                       {i < STATUSES.length-1 && <div style={{ width:2, flex:1, minHeight:28, background:i < currentStep ? '#00a86b' : '#f0f0f0', margin:'4px 0', transition:'background .3s' }} />}
                     </div>
@@ -3467,7 +3520,7 @@ function OrderTrackingPage({ onNav }) {
             </div>
 
             <div style={{ marginTop:8, padding:'12px 16px', background:'#f8f8f8', borderRadius:8, fontSize:12, color:'#888' }}>
-              📞 Questions? WhatsApp us at <strong style={{ color:'#0a0a0a' }}>+91 99447 61306</strong>
+              Questions? WhatsApp us at <strong style={{ color:'#0a0a0a' }}>+91 99447 61306</strong>
             </div>
           </div>
         )}
@@ -3502,7 +3555,7 @@ function GroupOrderPage({ user, onNav }) {
       <div style={{ maxWidth:700, margin:'0 auto', padding:'32px 20px' }}>
         {/* Tabs */}
         <div style={{ display:'flex', gap:0, marginBottom:28, border:'1px solid #e0e0e0', borderRadius:8, overflow:'hidden' }}>
-          {[['create','🆕 Create Group Order'],['join','🔗 Join a Group Order']].map(([t,l])=>(
+          {[['create','Create Group Order'],['join','Join a Group Order']].map(([t,l])=>(
             <button key={t} onClick={()=>setTab(t)}
               style={{ flex:1, padding:'13px', border:'none', cursor:'pointer', fontSize:13, fontWeight:700, background:tab===t?'#c8102e':'#fff', color:tab===t?'#fff':'#888', transition:'all .15s' }}>{l}</button>
           ))}
@@ -3551,7 +3604,7 @@ function CreateGroupOrder({ user }) {
   if (created) return (
     <div className="fade-in">
       <div style={{ background:'rgba(0,168,107,.08)', border:'1px solid rgba(0,168,107,.25)', borderRadius:12, padding:'24px', marginBottom:24, textAlign:'center' }}>
-        <div style={{ fontSize:48, marginBottom:12 }}>🎉</div>
+        <div style={{ marginBottom:12, color:'#00a86b' }}><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="9 12 11 14 15 10"/></svg></div>
         <h2 style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:28, marginBottom:8 }}>GROUP ORDER CREATED!</h2>
         <p style={{ fontSize:14, color:'#555', marginBottom:16 }}>Share this code or link with your team. They can join and select their size independently.</p>
         <div style={{ background:'#fff', border:'2px solid #00a86b', borderRadius:8, padding:'16px 20px', marginBottom:16, display:'inline-block', minWidth:200 }}>
@@ -3559,10 +3612,10 @@ function CreateGroupOrder({ user }) {
           <div style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:44, letterSpacing:'.12em', color:'#0a0a0a' }}>{created.group_code}</div>
         </div>
         <div style={{ display:'flex', gap:10, justifyContent:'center', flexWrap:'wrap' }}>
-          <button className="btn-primary" style={{ padding:'12px 24px' }} onClick={copyLink}>📋 Copy Join Link</button>
+          <button className="btn-primary" style={{ padding:'12px 24px' }} onClick={copyLink}>Copy Join Link</button>
           <a href={`https://wa.me/?text=Join%20our%20group%20T-shirt%20order%20on%20DRYNN!%20Code:%20${created.group_code}%20Link:%20${encodeURIComponent(shareUrl)}`}
             target="_blank" rel="noreferrer" style={{ display:'inline-flex', alignItems:'center', gap:8, padding:'12px 24px', background:'#25D366', color:'#fff', borderRadius:4, fontSize:13, fontWeight:700, textDecoration:'none' }}>
-            📲 Share on WhatsApp
+            Share on WhatsApp
           </a>
         </div>
         {created.error && <p style={{ fontSize:11, color:'#f5a623', marginTop:12 }}>Note: DB save failed ({created.error}). Set up drynn_group_orders table in Supabase.</p>}
@@ -3609,7 +3662,7 @@ function CreateGroupOrder({ user }) {
             </div>
           </div>
           <button className="btn-primary" style={{ padding:14, fontSize:13, opacity:saving?.6:1 }} onClick={create} disabled={saving}>
-            {saving ? 'Creating…' : '🚀 Create Group Order'}
+            {saving ? 'Creating…' : 'Create Group Order'}
           </button>
         </div>
       </div>
@@ -3663,7 +3716,7 @@ function JoinGroupOrder({ user }) {
 
   if (joined) return (
     <div className="fade-in" style={{ textAlign:'center', padding:'40px 0' }}>
-      <div style={{ fontSize:56, marginBottom:16 }}>✅</div>
+      <div style={{ marginBottom:16, color:'#00a86b' }}><svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="9 12 11 14 15 10"/></svg></div>
       <h2 style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:32, marginBottom:8 }}>YOU'RE IN!</h2>
       <p style={{ fontSize:14, color:'#555', lineHeight:1.8 }}>Joined <strong>{group.title}</strong>. The organizer will coordinate payment and delivery. You'll receive updates on WhatsApp.</p>
     </div>
@@ -3710,7 +3763,7 @@ function JoinGroupOrder({ user }) {
               <textarea className="input-field" rows={2} placeholder="Full address with pincode" style={{ resize:'vertical' }} value={form.address} onChange={e=>setForm({...form,address:e.target.value})} />
             </div>
             <button className="btn-primary" style={{ padding:14, fontSize:13, opacity:saving?.6:1 }} onClick={joinGroup} disabled={saving}>
-              {saving?'Joining…':'✅ Confirm My Order'}
+              {saving?'Joining…':'Confirm My Order'}
             </button>
           </div>
         </div>
@@ -3784,7 +3837,7 @@ function MainSite({ user }) {
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#555" strokeWidth="2" strokeLinecap="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 001.98 1.61h9.72a2 2 0 001.98-1.61L23 6H6"/></svg>
               {cart.length>0 && <div className="cart-badge">{cart.length}</div>}
             </button>
-            <button onClick={()=>setPage('admin')} style={{ background:'none', border:'1px solid #e0e0e0', padding:'5px 10px', fontSize:10, fontWeight:700, letterSpacing:'.08em', textTransform:'uppercase', cursor:'pointer', color:'#888', borderRadius:4 }}>Admin</button>
+            {isAdmin && <button onClick={()=>setPage('admin')} style={{ background:'none', border:'1px solid rgba(200,16,46,.3)', padding:'5px 10px', fontSize:10, fontWeight:700, letterSpacing:'.08em', textTransform:'uppercase', cursor:'pointer', color:'#c8102e', borderRadius:4 }}>Admin</button>}
             <button onClick={handleLogout} style={{ background:'none', border:'1px solid #e0e0e0', padding:'5px 10px', fontSize:10, fontWeight:700, letterSpacing:'.08em', textTransform:'uppercase', cursor:'pointer', color:'#888', borderRadius:4 }}>Logout</button>
           </div>
           {/* Mobile cart icon */}

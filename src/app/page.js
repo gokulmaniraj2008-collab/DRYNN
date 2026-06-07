@@ -20,6 +20,18 @@ const PRODUCTS = [
   { id: 8, name: 'Track Pants',            price: 899,  mrp: 1199, tag: 'New',         tagColor: '#0a0a0a', category: 'Joggers',   emoji: '👖', rating: 4.3, reviews: 43  },
 ]
 const SWATCHES = ['#ffffff','#0a0a0a','#c8102e','#0a1f5d','#00a86b','#f5a623','#9b59b6','#888888']
+
+// Shared hook to load products from Supabase, fallback to hardcoded PRODUCTS
+function useProducts() {
+  const [products, setProducts] = React.useState(PRODUCTS)
+  React.useEffect(() => {
+    supabase.from('drynn_products').select('*').order('id')
+      .then(({ data, error }) => {
+        if (!error && data && data.length > 0) setProducts(data)
+      })
+  }, [])
+  return products
+}
 const SIZES = ['S','M','L','XL','XXL']
 const GARMENTS = ['T-Shirt','Hoodie','Polo','Joggers']
 const STEPS = [
@@ -739,6 +751,7 @@ function MockupStudio() {
 
 
 function HomePage({ user, onNav, cart, onAddToCart }) {
+  const products = useProducts()
   return (
     <div>
       {/* Hero Banner */}
@@ -790,7 +803,7 @@ function HomePage({ user, onNav, cart, onAddToCart }) {
             <button className="btn-secondary" style={{ padding:'9px 18px', fontSize:12 }} onClick={()=>onNav('products')}>View All →</button>
           </div>
           <div className="products-grid" style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:16 }}>
-            {PRODUCTS.slice(0,4).map(p => (
+            {products.slice(0,4).map(p => (
               <div key={p.id} className="product-card" onClick={()=>onNav('products')}>
                 <div style={{ background:'#f8f8f8', height:200, display:'flex', alignItems:'center', justifyContent:'center', fontSize:80, position:'relative' }}>
                   {p.emoji}
@@ -868,11 +881,12 @@ function HomePage({ user, onNav, cart, onAddToCart }) {
 }
 
 function ProductsPage({ onAddToCart }) {
+  const products  = useProducts()
   const [activeTab, setActiveTab] = useState('All')
   const [sort, setSort]           = useState('popular')
   const [wishlist, setWishlist]   = useState([])
   const categories = ['All','T-Shirts','Hoodies','Polos','Joggers']
-  const filtered = PRODUCTS.filter(p => activeTab === 'All' || p.category === activeTab)
+  const filtered = products.filter(p => activeTab === 'All' || p.category === activeTab)
   const sorted = [...filtered].sort((a,b) => sort==='price-asc'?a.price-b.price : sort==='price-desc'?b.price-a.price : b.reviews-a.reviews)
 
   return (

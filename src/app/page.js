@@ -420,8 +420,13 @@ function Css3DView({ garmentImgSrc, designImgSrc, color, posX, posY, scale, rota
 
   React.useEffect(() => {
     if (!spinning) { cancelAnimationFrame(animRef.current); return }
-    let r = rotY
-    const tick = () => { r += 0.4; setRotY(r); animRef.current = requestAnimationFrame(tick) }
+    let t = 0
+    const tick = () => {
+      t += 0.012
+      // Gentle sway between -35° and +35° — never goes edge-on
+      setRotY(Math.sin(t) * 35)
+      animRef.current = requestAnimationFrame(tick)
+    }
     animRef.current = requestAnimationFrame(tick)
     return () => cancelAnimationFrame(animRef.current)
   }, [spinning])

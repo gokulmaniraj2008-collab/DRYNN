@@ -406,6 +406,66 @@ function LoginPage({ onBack }) {
   )
 }
 
+
+// ══════════════════════════════════════════════════════════════
+// CSS 3D VIEW — rotates the real flat mockup in perspective
+// ══════════════════════════════════════════════════════════════
+function Css3DView({ garmentImgSrc, designImgSrc, color, posX, posY, scale, rotation,
+  textOn, textVal, textFont, textSize, textColor, colorToFilter }) {
+  const [rotY, setRotY] = React.useState(15)
+  const [rotX, setRotX] = React.useState(-5)
+  const [spinning, setSpinning] = React.useState(true)
+  const animRef = React.useRef(null)
+  const dragRef = React.useRef({ dragging:false, startX:0, startY:0, startRotY:0, startRotX:0 })
+
+  React.useEffect(() => {
+    if (!spinning) { cancelAnimationFrame(animRef.current); return }
+    let r = rotY
+    const tick = () => { r += 0.4; setRotY(r); animRef.current = requestAnimationFrame(tick) }
+    animRef.current = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(animRef.current)
+  }, [spinning])
+
+  const getXY = e => ({ x: e.clientX ?? e.touches?.[0]?.clientX ?? 0, y: e.clientY ?? e.touches?.[0]?.clientY ?? 0 })
+  const onDown = e => { setSpinning(false); const {x,y}=getXY(e); dragRef.current={dragging:true,startX:x,startY:y,startRotY:rotY,startRotX:rotX} }
+  const onMove = e => { if(!dragRef.current.dragging) return; const {x,y}=getXY(e); setRotY(dragRef.current.startRotY+(x-dragRef.current.startX)*0.5); setRotX(Math.max(-30,Math.min(30,dragRef.current.startRotX-(y-dragRef.current.startY)*0.3))) }
+  const onUp   = () => { dragRef.current.dragging=false; setSpinning(true) }
+
+  return (
+    <div style={{ maxWidth:420, margin:'0 auto', userSelect:'none' }}>
+      <div onMouseDown={onDown} onMouseMove={onMove} onMouseUp={onUp} onMouseLeave={onUp}
+        onTouchStart={onDown} onTouchMove={onMove} onTouchEnd={onUp}
+        style={{ perspective:900, perspectiveOrigin:'50% 45%', width:'100%', height:400, display:'flex', alignItems:'center', justifyContent:'center', cursor:'grab', background:'linear-gradient(135deg,#0d1b3e,#1a2744,#0d1b3e)', borderRadius:16, boxShadow:'0 8px 40px rgba(0,0,0,.5)', overflow:'hidden', position:'relative' }}>
+        <div style={{ transform:`rotateY(${rotY}deg) rotateX(${rotX}deg)`, transformStyle:'preserve-3d', width:230, height:280, position:'relative' }}>
+          {/* Front */}
+          <div style={{ position:'absolute', inset:0, backfaceVisibility:'hidden', background:'#fff', borderRadius:12, boxShadow:'0 20px 60px rgba(0,0,0,.5)', overflow:'hidden' }}>
+            <img src={garmentImgSrc} alt="garment" style={{ width:'100%', height:'100%', objectFit:'contain', filter:colorToFilter(color), display:'block' }} onError={e=>{e.target.style.opacity='0.05'}} />
+            {designImgSrc && <img src={designImgSrc} alt="design" style={{ position:'absolute', top:`${posY}%`, left:`${posX}%`, transform:`translate(-50%,-50%) rotate(${rotation}deg)`, width:`${scale}%`, objectFit:'contain' }} />}
+            {textOn && textVal && <div style={{ position:'absolute', top:'65%', left:'50%', transform:'translateX(-50%)', fontFamily:textFont, fontSize:textSize, color:textColor, fontWeight:700, whiteSpace:'nowrap' }}>{textVal}</div>}
+          </div>
+          {/* Back */}
+          <div style={{ position:'absolute', inset:0, backfaceVisibility:'hidden', transform:'rotateY(180deg)', background:'#ececec', borderRadius:12, boxShadow:'0 20px 60px rgba(0,0,0,.4)', overflow:'hidden' }}>
+            <img src={garmentImgSrc} alt="back" style={{ width:'100%', height:'100%', objectFit:'contain', filter:colorToFilter(color), opacity:0.6 }} onError={e=>{e.target.style.opacity='0'}} />
+            <div style={{ position:'absolute', inset:0, display:'flex', alignItems:'center', justifyContent:'center', fontSize:12, fontWeight:700, color:'#aaa', letterSpacing:'.1em', textTransform:'uppercase' }}>Back</div>
+          </div>
+          {/* Left edge depth */}
+          <div style={{ position:'absolute', top:12, bottom:12, left:-8, width:16, transform:'rotateY(-90deg) translateZ(8px)', transformOrigin:'right center', background:'linear-gradient(to right,rgba(0,0,0,.18),transparent)', borderRadius:'4px 0 0 4px' }} />
+          {/* Right edge depth */}
+          <div style={{ position:'absolute', top:12, bottom:12, right:-8, width:16, transform:'rotateY(90deg) translateZ(8px)', transformOrigin:'left center', background:'linear-gradient(to left,rgba(0,0,0,.18),transparent)', borderRadius:'0 4px 4px 0' }} />
+        </div>
+        {/* Floor shadow */}
+        <div style={{ position:'absolute', bottom:16, left:'50%', transform:'translateX(-50%)', width:160, height:20, background:'rgba(0,0,0,.3)', borderRadius:'50%', filter:'blur(8px)' }} />
+      </div>
+      <div style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:16, marginTop:10 }}>
+        <span style={{ fontSize:11, color:'rgba(255,255,255,.35)' }}>Drag to rotate</span>
+        <button onClick={()=>setSpinning(s=>!s)} style={{ fontSize:11, fontWeight:700, color:spinning?'#c8102e':'rgba(255,255,255,.4)', background:'none', border:'none', cursor:'pointer' }}>
+          {spinning ? '⏸ Pause' : '▶ Spin'}
+        </button>
+      </div>
+    </div>
+  )
+}
+
 // ══════════════════════════════════════════════════════════════
 // ══════════════════════════════════════════════════════════════
 // LIVE T-SHIRT PREVIEW  -  canvas-based, design on fabric
@@ -477,141 +537,7 @@ function StudioPage({ user, onNav }) {
   const [custTab,    setCustTab]     = useState('position')
 
   // ── Step 5 (Preview): 3D ─────────────────────────────────
-  const [viewMode,  setViewMode]  = useState('flat')
-  const mountRef   = useRef(null)
-  const threeRef   = useRef({})
-  const animRef    = useRef(null)
-  const [threeReady, setThreeReady] = useState(false)
-  const [threeErr,   setThreeErr]   = useState('')
-
-  // Preload Three.js at step 4 so it's ready by step 5
-  useEffect(() => {
-    if (step < 4 || window.THREE) return
-    const s = document.createElement('script')
-    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js'
-    s.async = true
-    document.head.appendChild(s)
-  }, [step])
-
-  useEffect(() => {
-    if (step !== 5 || viewMode !== '3d') {
-      // cleanup when leaving 3D view
-      cancelAnimationFrame(animRef.current)
-      if (threeRef.current.renderer) {
-        threeRef.current.renderer.dispose()
-        try { mountRef.current?.removeChild(threeRef.current.renderer.domElement) } catch(_) {}
-        threeRef.current = {}
-      }
-      setThreeReady(false)
-      setThreeErr('')
-      return
-    }
-
-    let cancelled = false
-
-    const boot = () => {
-      if (cancelled || !window.THREE || !mountRef.current) return
-      // Clean any previous canvas
-      cancelAnimationFrame(animRef.current)
-      if (threeRef.current.renderer) {
-        threeRef.current.renderer.dispose()
-        try { mountRef.current.removeChild(threeRef.current.renderer.domElement) } catch(_) {}
-        threeRef.current = {}
-      }
-
-      const THREE = window.THREE
-      const isMobile = window.innerWidth < 768
-      const W = mountRef.current.clientWidth || 340, H = 380
-      const scene = new THREE.Scene()
-      scene.background = new THREE.Color(0x1a2744)
-      const camera = new THREE.PerspectiveCamera(45, W / H, 0.01, 100)
-      camera.position.set(0, 0, 3.5)
-      const renderer = new THREE.WebGLRenderer({ antialias: !isMobile, powerPreference: 'high-performance' })
-      renderer.setSize(W, H)
-      renderer.setPixelRatio(isMobile ? 1 : Math.min(window.devicePixelRatio, 1.5))
-      mountRef.current.appendChild(renderer.domElement)
-
-      scene.add(new THREE.AmbientLight(0xffffff, 0.7))
-      const dir = new THREE.DirectionalLight(0xffffff, 1.2)
-      dir.position.set(3, 4, 3); scene.add(dir)
-
-      const seg = isMobile ? 12 : 24
-      const c   = new THREE.Color(color)
-      const mat = new THREE.MeshStandardMaterial({ color: c, roughness: 0.78, metalness: 0.02 })
-      const grp = new THREE.Group()
-
-      const body = new THREE.Mesh(new THREE.CylinderGeometry(0.38, 0.42, 1.4, seg, 4, true), mat)
-      body.position.set(0, -0.1, 0); grp.add(body)
-
-      const shoulder = new THREE.Mesh(new THREE.SphereGeometry(0.42, seg, 12, 0, Math.PI*2, 0, Math.PI*0.45), mat)
-      shoulder.position.set(0, 0.68, 0); grp.add(shoulder)
-
-      const sleeveL = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.15, 0.52, 10, 2, true), mat)
-      sleeveL.position.set(-0.54, 0.55, 0); sleeveL.rotation.z = 0.55; grp.add(sleeveL)
-
-      const sleeveR = sleeveL.clone()
-      sleeveR.position.set(0.54, 0.55, 0); sleeveR.rotation.z = -0.55; grp.add(sleeveR)
-
-      const collar = new THREE.Mesh(new THREE.TorusGeometry(0.18, 0.04, 8, seg, Math.PI*1.8), mat)
-      collar.position.set(0, 0.72, 0); grp.add(collar)
-
-      scene.add(grp)
-
-      // Add design texture if available — loads async after scene is already spinning
-      if (designImgSrc) {
-        const img = new Image()
-        img.crossOrigin = 'anonymous'
-        img.onload = () => {
-          if (cancelled) return
-          const tex = new THREE.Texture(img); tex.needsUpdate = true
-          const printMesh = new THREE.Mesh(
-            new THREE.PlaneGeometry(0.55, 0.55),
-            new THREE.MeshStandardMaterial({ map: tex, transparent: true, roughness: 0.8 })
-          )
-          printMesh.position.set(0, 0.08, 0.39)
-          grp.add(printMesh)
-        }
-        img.src = designImgSrc
-      }
-
-      let isDrag = false, prevX = 0, rotY = 0
-      const el = renderer.domElement
-      el.addEventListener('mousedown',  e => { isDrag=true; prevX=e.clientX })
-      el.addEventListener('mousemove',  e => { if(isDrag){ rotY+=(e.clientX-prevX)*0.008; prevX=e.clientX }})
-      el.addEventListener('mouseup',    () => isDrag=false)
-      el.addEventListener('mouseleave', () => isDrag=false)
-      el.addEventListener('touchstart', e => { isDrag=true; prevX=e.touches[0].clientX }, {passive:true})
-      el.addEventListener('touchmove',  e => { if(isDrag){ rotY+=(e.touches[0].clientX-prevX)*0.008; prevX=e.touches[0].clientX }}, {passive:true})
-      el.addEventListener('touchend',   () => isDrag=false)
-
-      threeRef.current = { scene, camera, renderer }
-      if (!cancelled) setThreeReady(true)
-
-      const animate = () => {
-        if (cancelled) return
-        animRef.current = requestAnimationFrame(animate)
-        rotY += 0.005
-        grp.rotation.y = rotY
-        renderer.render(scene, camera)
-      }
-      animate()
-    }
-
-    if (window.THREE) {
-      requestAnimationFrame(boot)
-    } else {
-      let attempts = 0
-      const poll = setInterval(() => {
-        attempts++
-        if (window.THREE) { clearInterval(poll); requestAnimationFrame(boot) }
-        else if (attempts > 80) { clearInterval(poll); setThreeErr('3D engine failed to load.') }
-      }, 100)
-      return () => { cancelled = true; clearInterval(poll) }
-    }
-
-    return () => { cancelled = true }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [step, viewMode, color, designImgSrc])
+  const [viewMode, setViewMode] = useState('flat')  // flat | 3d
   // ── Step 6: Order ─────────────────────────────────────────
   const [size,       setSize]     = useState('M')
   const [form,       setForm]     = useState({ name:user?.user_metadata?.full_name||'', phone:'', qty:1, address:'' })
@@ -1145,20 +1071,18 @@ function StudioPage({ user, onNav }) {
               </div>
             )}
 
-            {/* 3D view */}
+            {/* 3D view — CSS perspective rotation of real shirt mockup */}
             {viewMode==='3d' && (
-              <div style={{ maxWidth:420, margin:'0 auto' }}>
-                <div ref={mountRef} style={{ width:'100%', minHeight:380, borderRadius:16, overflow:'hidden', background:'#1a2744', boxShadow:'0 8px 40px rgba(0,0,0,.5)', cursor:'grab' }}>
-                  {!threeReady && !threeErr && (
-                    <div style={{ display:'flex', alignItems:'center', justifyContent:'center', flexDirection:'column', gap:12, height:380 }}>
-                      <div style={{ width:32, height:32, border:'3px solid rgba(255,255,255,.15)', borderTopColor:'#c8102e', borderRadius:'50%', animation:'drynn-spin 0.8s linear infinite' }} />
-                      <span style={{ fontSize:12, color:'rgba(255,255,255,.4)' }}>Loading 3D…</span>
-                    </div>
-                  )}
-                  {threeErr && <div style={{ color:'#c8102e', fontSize:13, padding:24, textAlign:'center' }}>{threeErr}</div>}
-                </div>
-                <p style={{ fontSize:11, color:'rgba(255,255,255,.3)', textAlign:'center', marginTop:8 }}>Drag to rotate · Auto-spin active</p>
-              </div>
+              <Css3DView
+                garmentImgSrc={garmentImgSrc}
+                designImgSrc={designImgSrc}
+                color={color}
+                posX={posX} posY={posY} scale={scale} rotation={rotation}
+                textOn={textOn} textVal={textVal} textFont={textFont}
+                textSize={textSize} textColor={textColor}
+                garmentEmoji={GARMENT_EMOJI[garmentType]}
+                colorToFilter={colorToFilter}
+              />
             )}
 
             {/* Summary strip */}

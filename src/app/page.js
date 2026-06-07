@@ -474,10 +474,10 @@ function StudioPage({ user, onNav }) {
   const [uploadErr, setUploadErr] = useState('')
 
   const GARMENT_TYPES = [
-    { key:'tshirt', label:'T-Shirt', emoji:'.' },
-    { key:'hoodie', label:'Hoodie',  emoji:'.' },
-    { key:'polo',   label:'Polo',    emoji:'.' },
-    { key:'joggers',label:'Joggers', emoji:'.' },
+    { key:'tshirt', label:'T-Shirt', emoji:'👕' },
+    { key:'hoodie', label:'Hoodie',  emoji:'🧥' },
+    { key:'polo',   label:'Polo',    emoji:'👔' },
+    { key:'joggers',label:'Joggers', emoji:'👖' },
   ]
 
   const canvasFilter = `brightness(${brightness}%) contrast(${contrast}%) saturate(${saturation}%)`
@@ -503,7 +503,7 @@ function StudioPage({ user, onNav }) {
   const hasDesign = !!uploadedFile || !!selectedSample
 
   const handleSubmit = async () => {
-    if (!form.name||!form.phone||!form.address||!hasDesign) { alert('Please fill all fields and choose a design.'); return }
+    if (!form.name||!form.phone||!form.address||!hasDesign) { alert('[Custom Studio] Missing fields.\nArea: Studio order form\nMissing: ' + [!form.name&&'Name',!form.phone&&'Phone',!form.address&&'Address',!hasDesign&&'Design'].filter(Boolean).join(', ')); return }
     setStatus('saving')
     const orderId = crypto.randomUUID(), placedAt = new Date().toISOString()
     try {
@@ -513,7 +513,7 @@ function StudioPage({ user, onNav }) {
         try { designUrl = await uploadToCloudinary(uploadedFile, pct => setUploadPct(pct)) }
         catch(e) {
           setStatus('')
-          alert(`[Design Upload Failed]\nReason: ${e.message || 'Network error'}\n\nCheck your internet and try again.`)
+          alert(`[Studio → Cloudinary] Design upload failed.\nArea: Cloudinary image storage\nReason: ${e.message || 'Network error'}\nFix: Check internet. If repeated, verify Cloudinary preset "drynn_uploads" is set to unsigned.`)
           return
         }
       } else {
@@ -525,15 +525,19 @@ function StudioPage({ user, onNav }) {
         garment, color, size, qty:Number(form.qty), address:form.address,
         design_file: designUrl, status:'pending', placed_at:placedAt
       })
-      if (dbErr) alert(`[Order Save Failed]\nReason: ${dbErr.message}\n\nPlease WhatsApp us at +91 99447 61306.`)
-      if (GOOGLE_SHEET_WEBHOOK) fetch(GOOGLE_SHEET_WEBHOOK,{ method:'POST', mode:'no-cors', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ sheet:'DRYNN_Orders', orderId, userId:user?.id||'', name:form.name, phone:form.phone, garment, color, size, qty:form.qty, address:form.address, designUrl, placedAt }) }).catch(console.error)
+      if (dbErr) {
+        console.error('[Studio → Supabase] drynn_orders insert failed:', dbErr.message)
+        alert(`[Studio → Supabase] Order not saved.\nTable: drynn_orders\nReason: ${dbErr.message}\nAction: Your design uploaded OK but order not recorded. WhatsApp +91 99447 61306 with your name.`)
+      }
+      if (GOOGLE_SHEET_WEBHOOK) fetch(GOOGLE_SHEET_WEBHOOK,{ method:'POST', mode:'no-cors', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ sheet:'DRYNN_Orders', orderId, userId:user?.id||'', name:form.name, phone:form.phone, garment, color, size, qty:form.qty, address:form.address, designUrl, placedAt }) }).catch(e => console.error('[Studio → Google Sheets] Webhook failed:', e.message))
       setStatus('done')
       setTimeout(()=>setStatus(''),5000)
       setForm({ name:user?.user_metadata?.full_name||'', phone:'', qty:1, address:'' })
       setFile(null); setSample(null); setUploadPct(0); setDesignImg(null)
     } catch(e) {
       setStatus('')
-      alert(`[Unexpected Error]\nReason: ${e.message || 'Unknown'}\n\nPlease WhatsApp us at +91 99447 61306.`)
+      console.error('[Studio] Unexpected submission error:', e.message)
+      alert(`[Studio] Unexpected error during order submission.\nArea: Custom Studio\nReason: ${e.message || 'Unknown'}\nAction: Try again or WhatsApp +91 99447 61306.`)
     }
   }
 
@@ -1433,7 +1437,7 @@ function ContactPage({ onNav }) {
   const [form, setForm]       = useState({ name:'', phone:'', email:'', message:'' })
 
   const handle = async () => {
-    if (!form.name || !form.phone) { alert('Please fill your name and phone.'); return }
+    if (!form.name || !form.phone) { alert('[Contact Form] Missing required fields.\nArea: Contact page\nMissing: ' + [!form.name&&'Name',!form.phone&&'WhatsApp number'].filter(Boolean).join(', ')); return }
     setSaving(true); setError('')
     try {
       const submittedAt = new Date().toISOString()
@@ -1531,7 +1535,7 @@ function CartPage({ cart, onRemove, onClear, user, onNav }) {
 
   const placeOrder = async () => {
     if (!form.name || !form.phone || !form.address || !form.pincode) {
-      alert('Please fill all delivery details.'); return
+      alert('[Cart Checkout] Missing delivery details.\nArea: Cart checkout form\nMissing: ' + [!form.name&&'Name',!form.phone&&'Phone',!form.address&&'Address',!form.pincode&&'Pincode'].filter(Boolean).join(', ')); return
     }
     setSaving(true)
     try {
@@ -2164,8 +2168,8 @@ function AdminPanel({ onBack }) {
   }
 
   const saveSample = async () => {
-    if (!sampleFile && !sampleForm.image_url) { alert('Please upload an image or enter an image URL.'); return }
-    if (!sampleForm.name) { alert('Please enter a design name.'); return }
+    if (!sampleFile && !sampleForm.image_url) { alert('[Admin → Samples] Missing image.\nUpload a file or paste an image URL before saving.'); return }
+    if (!sampleForm.name) { alert('[Admin → Samples] Missing name.\nEnter a design name before saving.'); return }
     setSampleSaving(true)
     try {
       let imageUrl = sampleForm.image_url
@@ -2176,7 +2180,7 @@ function AdminPanel({ onBack }) {
         try {
           imageUrl = await uploadToCloudinary(sampleFile, pct => setSamplePct(pct))
         } catch(uploadErr) {
-          alert('Image upload to Cloudinary failed: ' + uploadErr.message)
+          alert(`[Admin → Samples → Cloudinary] Image upload failed.\nReason: ${uploadErr.message}\nFix: Check internet or verify Cloudinary preset "drynn_uploads" is set to unsigned.`)
           return
         }
       }
@@ -2187,7 +2191,7 @@ function AdminPanel({ onBack }) {
       }).select()
 
       if (error) {
-        alert('Supabase error: ' + error.message + ' | Code: ' + error.code)
+        alert(`[Admin → Samples → Supabase] Failed to save sample.\nTable: drynn_samples\nReason: ${error.message}\nCode: ${error.code}`)
         return
       }
 
@@ -2195,8 +2199,8 @@ function AdminPanel({ onBack }) {
       setSampleForm({ name:'', category:'', image_url:'' }); setSampleFile(null); setSamplePct(0)
       loadSamples()
     } catch(e) {
-      console.error(e)
-      alert('Unexpected error: ' + (e.message || JSON.stringify(e)))
+      console.error('[Admin → Samples] Unexpected error:', e.message)
+      alert(`[Admin → Samples] Unexpected error.\nReason: ${e.message || JSON.stringify(e)}\nAction: Check browser console (F12) for full details.`)
     }
     finally { setSampleSaving(false) }
   }
@@ -2233,7 +2237,7 @@ function AdminPanel({ onBack }) {
       studio_only: p.studio_only || false,
     }, { onConflict: 'id' })
     if (error) {
-      alert('Save failed: ' + error.message)
+      alert(`[Admin → Products] Save failed.\nTable: drynn_products\nReason: ${error.message}`)
       return
     }
     setProducts(ps => ps.map(x => x.id===p.id ? p : x))
@@ -2242,7 +2246,7 @@ function AdminPanel({ onBack }) {
   }
 
   const addProduct = async () => {
-    if (!newProduct.name || !newProduct.price || !newProduct.mrp) { alert('Name, Price and MRP are required.'); return }
+    if (!newProduct.name || !newProduct.price || !newProduct.mrp) { alert('[Admin → Products] Missing required fields.\nName, Price, and MRP are all required to add a product.'); return }
     setAddingProduct(true)
     const newId = products.length > 0 ? Math.max(...products.map(p=>Number(p.id))) + 1 : 1
     const product = {
@@ -2259,7 +2263,7 @@ function AdminPanel({ onBack }) {
       studio_only: newProduct.studio_only || false,
     }
     const { error } = await supabase.from('drynn_products').insert(product)
-    if (error) { alert('Failed to add product: ' + error.message); setAddingProduct(false); return }
+    if (error) { alert(`[Admin → Products] Failed to add product.\nTable: drynn_products\nReason: ${error.message}`); setAddingProduct(false); return }
     setProducts(ps => [...ps, product])
     setNewProduct({ name:'', price:'', mrp:'', tag:'', category:'T-Shirts', emoji:'👕', rating:'4.5', reviews:'0', studio_only: false })
     setShowAddProduct(false)
@@ -2271,7 +2275,7 @@ function AdminPanel({ onBack }) {
     if (!confirm('Delete this product?')) return
     const { error } = await supabase.from('drynn_products').delete().eq('id', id)
     if (!error) { setProducts(ps => ps.filter(p => p.id !== id)); showToast('Product deleted') }
-    else alert('Delete failed: ' + error.message)
+    else alert(`[Admin → Products] Delete failed.\nTable: drynn_products\nReason: ${error.message}`)
   }
 
   const ORDER_STATUSES = ['Received','Approved','Printing','Packed','Shipped','Delivered']
@@ -2593,7 +2597,7 @@ function ProductEditRow({ product, onSave, onCancel }) {
       const url = await uploadToCloudinary(imgFile, pct => setImgPct(pct))
       onSave({ ...p, image_url: url })
     } catch(e) {
-      alert('Image upload failed: ' + e.message)
+      alert(`[Admin → Products → Cloudinary] Image upload failed.\nReason: ${e.message}\nFix: Check internet or verify Cloudinary preset "drynn_uploads" is set to unsigned.`)
     } finally { setImgSaving(false) }
   }
 
@@ -2824,7 +2828,7 @@ function CreateGroupOrder({ user }) {
   const GARMENTS_LIST = ['T-Shirt','Hoodie','Polo','Joggers']
 
   const create = async () => {
-    if (!form.title||!form.organizer||!form.phone) { alert('Fill all required fields'); return }
+    if (!form.title||!form.organizer||!form.phone) { alert('[Group Order] Missing required fields.\nArea: Create group order\nMissing: ' + [!form.title&&'Event name',!form.organizer&&'Organizer name',!form.phone&&'WhatsApp number'].filter(Boolean).join(', ')); return }
     setSaving(true)
     const id = crypto.randomUUID()
     const code = Math.random().toString(36).slice(2,8).toUpperCase()
@@ -2949,7 +2953,7 @@ function JoinGroupOrder({ user }) {
   }
 
   const joinGroup = async () => {
-    if (!form.name||!form.phone||!form.address) { alert('Fill all fields'); return }
+    if (!form.name||!form.phone||!form.address) { alert('[Group Order] Missing fields.\nArea: Join group order\nMissing: ' + [!form.name&&'Your name',!form.phone&&'WhatsApp number',!form.address&&'Delivery address'].filter(Boolean).join(', ')); return }
     setSaving(true)
     const { error } = await supabase.from('drynn_group_members').insert({
       id: crypto.randomUUID(),
@@ -3184,7 +3188,7 @@ export default function Home() {
     if (!GOOGLE_SHEET_WEBHOOK) return
     fetch(GOOGLE_SHEET_WEBHOOK, { method:'POST', mode:'no-cors', headers:{'Content-Type':'application/json'},
       body:JSON.stringify({ sheet:'DRYNN_Users', userId:u.id, name:u.user_metadata?.full_name||'', email:u.email, registeredAt:new Date().toISOString() })
-    }).catch(console.error)
+    }).catch(e => console.error('[Root → Google Sheets] User registration webhook failed:', e.message))
   }
 
   useEffect(() => {

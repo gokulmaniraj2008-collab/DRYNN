@@ -1056,6 +1056,24 @@ function StudioPage({ user, onNav }) {
   const [status, setStatus] = useState('')
   const [uploadErr, setUploadErr] = useState('')
 
+  // Garment, colour, tab, filter state
+  const [garment,  setGarment]  = useState('T-Shirt')
+  const [color,    setColor]    = useState('#ffffff')
+  const [tab,      setTab]      = useState('order')
+  const [filter,   setFilter]   = useState('')
+
+  const TEXT_FONTS = ['Bebas Neue','DM Sans','Georgia','Courier New','Impact','Arial Black','Trebuchet MS','Verdana']
+  const FILTERS = [
+    { label:'None',       value:'' },
+    { label:'Vintage',    value:'sepia(0.6) contrast(1.1)' },
+    { label:'B&W',        value:'grayscale(1)' },
+    { label:'Vivid',      value:'saturate(2) contrast(1.1)' },
+    { label:'Cool',       value:'hue-rotate(180deg) saturate(0.8)' },
+    { label:'Warm',       value:'sepia(0.3) saturate(1.4)' },
+    { label:'Faded',      value:'opacity(0.7) saturate(0.6)' },
+    { label:'High Contrast', value:'contrast(1.8) brightness(0.9)' },
+  ]
+
   const GARMENT_TYPES = [
     { key:'tshirt', label:'T-Shirt', icon:<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20.38 3.46L16 2a4 4 0 01-8 0L3.62 3.46a2 2 0 00-1.34 2.23l.58 3.57a1 1 0 00.99.84H6v10c0 1.1.9 2 2 2h8a2 2 0 002-2V10h2.15a1 1 0 00.99-.84l.58-3.57a2 2 0 00-1.34-2.23z"/></svg> },
     { key:'hoodie', label:'Hoodie',  icon:<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20.38 3.46L16 2a4 4 0 01-8 0L3.62 3.46a2 2 0 00-1.34 2.23l.58 3.57a1 1 0 00.99.84H6v10c0 1.1.9 2 2 2h8a2 2 0 002-2V10h2.15a1 1 0 00.99-.84l.58-3.57a2 2 0 00-1.34-2.23z"/><path d="M12 2v4"/></svg> },

@@ -933,27 +933,97 @@ function ProductsPage({ onAddToCart }) {
   )
 }
 
-function StudioPage({ user }) {
-  const [garment, setGarment]     = useState('T-Shirt')
-  const [color, setColor]         = useState('#ffffff')
-  const [size, setSize]           = useState('M')
-  const [uploadedFile, setFile]   = useState(null)
-  const [form, setForm]           = useState({ name: user?.user_metadata?.full_name||'', phone:'', qty:1, address:'' })
-  const [status, setStatus]       = useState('')
+const CLOUDINARY_CLOUD = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || 'dfhdyp4oq'
+const CLOUDINARY_PRESET = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET || 'drynn_uploads'
 
-  const handleFile = e => { const f=e.target.files[0]; if(f) setFile(f.name) }
+async function uploadToCloudinary(file, onProgress) {
+  return new Promise((resolve, reject) => {
+    const formData = new FormData()
+    formData.append('file', file)
+    formData.append('upload_preset', CLOUDINARY_PRESET)
+    formData.append('folder', 'drynn/designs')
+    const xhr = new XMLHttpRequest()
+    xhr.open('POST', `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD}/image/upload`)
+    xhr.upload.onprogress = e => { if (e.lengthComputable) onProgress(Math.round((e.loaded/e.total)*100)) }
+    xhr.onload = () => {
+      if (xhr.status === 200) resolve(JSON.parse(xhr.responseText).secure_url)
+      else reject(new Error('Cloudinary upload failed: ' + xhr.responseText))
+    }
+    xhr.onerror = () => reject(new Error('Network error during upload'))
+    xhr.send(formData)
+  })
+}
+
+function StudioPage({ user }) {
+  const [garment, setGarment]       = useState('T-Shirt')
+  const [color, setColor]           = useState('#ffffff')
+  const [size, setSize]             = useState('M')
+  const [designMode, setDesignMode] = useState('') // '' | 'upload' | 'sample'
+  const [uploadedFile, setFile]     = useState(null)
+  const [uploadPct,  setUploadPct]  = useState(0)
+  const [selectedSample, setSample] = useState(null) // { id, name, image_url, category }
+  const [samples, setSamples]       = useState([])
+  const [samplesLoading, setSamplesLoading] = useState(false)
+  const [sampleCategory, setSampleCat]     = useState('All')
+  const [form, setForm]     = useState({ name: user?.user_metadata?.full_name||'', phone:'', qty:1, address:'' })
+  const [status, setStatus] = useState('')
+  const [uploadErr, setUploadErr] = useState('')
+
+  // Load samples when user picks sample mode
+  const loadSamples = async () => {
+    setSamplesLoading(true)
+    const { data, error } = await supabase.from('drynn_samples').select('*').order('created_at', { ascending: false })
+    if (!error) setSamples(data || [])
+    setSamplesLoading(false)
+  }
+
+  const handleModeSelect = mode => {
+    setDesignMode(mode)
+    setFile(null); setSample(null); setUploadErr('')
+    if (mode === 'sample') loadSamples()
+  }
+
+  const handleFile = e => {
+    const f = e.target.files[0]
+    if (!f) return
+    const allowed = ['image/png','image/jpeg','image/jpg','image/svg+xml']
+    if (!allowed.includes(f.type)) { setUploadErr('Only PNG, JPG, or SVG files allowed.'); return }
+    if (f.size > 20 * 1024 * 1024) { setUploadErr('File too large. Max 20MB.'); return }
+    setUploadErr(''); setFile(f); setUploadPct(0)
+  }
+
+  const hasDesign = designMode==='upload' ? !!uploadedFile : designMode==='sample' ? !!selectedSample : false
 
   const handleSubmit = async () => {
-    if (!form.name||!form.phone||!form.address||!uploadedFile) { alert('Please fill all fields and upload your design.'); return }
+    if (!form.name||!form.phone||!form.address||!hasDesign) { alert('Please fill all fields and choose a design.'); return }
     setStatus('saving')
-    const orderId=crypto.randomUUID(), placedAt=new Date().toISOString()
+    const orderId = crypto.randomUUID(), placedAt = new Date().toISOString()
     try {
-      const { error:dbErr } = await supabase.from('drynn_orders').insert({ id:orderId, user_id:user?.id||null, name:form.name, phone:form.phone, garment, color, size, qty:Number(form.qty), address:form.address, design_file:uploadedFile, placed_at:placedAt })
+      let designUrl = ''
+      if (designMode === 'upload') {
+        setStatus('uploading')
+        try {
+          designUrl = await uploadToCloudinary(uploadedFile, pct => setUploadPct(pct))
+        } catch(e) {
+          console.error('Cloudinary error:', e)
+          setStatus(''); alert('Design upload failed. Check your internet and try again.'); return
+        }
+      } else {
+        // Sample design — use Cloudinary URL directly
+        designUrl = selectedSample.image_url
+      }
+      setStatus('saving')
+      const { error:dbErr } = await supabase.from('drynn_orders').insert({
+        id:orderId, user_id:user?.id||null, name:form.name, phone:form.phone,
+        garment, color, size, qty:Number(form.qty), address:form.address,
+        design_file: designUrl, placed_at:placedAt
+      })
       if (dbErr) console.error(dbErr.message)
-      if (GOOGLE_SHEET_WEBHOOK) fetch(GOOGLE_SHEET_WEBHOOK,{ method:'POST', mode:'no-cors', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ sheet:'DRYNN_Orders', orderId, userId:user?.id||'', name:form.name, phone:form.phone, garment, color, size, qty:form.qty, address:form.address, placedAt }) }).catch(console.error)
+      if (GOOGLE_SHEET_WEBHOOK) fetch(GOOGLE_SHEET_WEBHOOK,{ method:'POST', mode:'no-cors', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ sheet:'DRYNN_Orders', orderId, userId:user?.id||'', name:form.name, phone:form.phone, garment, color, size, qty:form.qty, address:form.address, designUrl, placedAt }) }).catch(console.error)
       setStatus('done')
       setTimeout(()=>setStatus(''),5000)
-      setForm({ name:user?.user_metadata?.full_name||'', phone:'', qty:1, address:'' }); setFile(null)
+      setForm({ name:user?.user_metadata?.full_name||'', phone:'', qty:1, address:'' })
+      setFile(null); setSample(null); setUploadPct(0); setDesignMode('')
     } catch(e) { console.error(e); setStatus(''); alert('Something went wrong. Please try again.') }
   }
 
@@ -1000,19 +1070,129 @@ function StudioPage({ user }) {
           {/* Qty */}
           <div><label style={{ fontSize:11, fontWeight:700, letterSpacing:'.12em', textTransform:'uppercase', color:'#555', display:'block', marginBottom:7 }}>Quantity</label>
             <input className="input-field" type="number" min="1" value={form.qty} onChange={e=>setForm({...form,qty:e.target.value})} style={{ maxWidth:120 }} /></div>
-          {/* Upload */}
-          <div><label style={{ fontSize:11, fontWeight:700, letterSpacing:'.12em', textTransform:'uppercase', color:'#555', display:'block', marginBottom:7 }}>Upload Your Design</label>
-            <div className="upload-zone" onClick={()=>document.getElementById('studioFile').click()}>
-              <input id="studioFile" type="file" accept=".png,.jpg,.jpeg,.svg" style={{ display:'none' }} onChange={handleFile} />
-              {uploadedFile
-                ? <div><p style={{ fontSize:13, fontWeight:600, color:'#00a86b' }}>{uploadedFile}</p><p style={{ fontSize:11, color:'#888', marginTop:4 }}>Click to change</p></div>
-                : <div><p style={{ fontSize:13, fontWeight:600, marginBottom:4 }}>Click to upload design</p><p style={{ fontSize:11, color:'#888' }}>PNG, JPG, SVG  -  Min 300 DPI recommended</p></div>}
-            </div></div>
+          {/* DESIGN CHOICE */}
+          <div>
+            <label style={{ fontSize:11, fontWeight:700, letterSpacing:'.12em', textTransform:'uppercase', color:'#555', display:'block', marginBottom:10 }}>Your Design</label>
+            {/* Mode selector */}
+            {!designMode && (
+              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
+                <button onClick={()=>handleModeSelect('upload')}
+                  style={{ padding:'20px 12px', border:'2px dashed #d0d0d0', borderRadius:12, background:'#fafafa', cursor:'pointer', textAlign:'center', transition:'all .15s' }}
+                  onMouseOver={e=>{e.currentTarget.style.borderColor='#c8102e';e.currentTarget.style.background='rgba(200,16,46,.03)'}}
+                  onMouseOut={e=>{e.currentTarget.style.borderColor='#d0d0d0';e.currentTarget.style.background='#fafafa'}}>
+                  <div style={{ fontSize:28, marginBottom:8 }}>📁</div>
+                  <div style={{ fontSize:13, fontWeight:700, color:'#0a0a0a', marginBottom:4 }}>Upload Your Own</div>
+                  <div style={{ fontSize:11, color:'#888' }}>PNG, JPG, SVG</div>
+                </button>
+                <button onClick={()=>handleModeSelect('sample')}
+                  style={{ padding:'20px 12px', border:'2px dashed #d0d0d0', borderRadius:12, background:'#fafafa', cursor:'pointer', textAlign:'center', transition:'all .15s' }}
+                  onMouseOver={e=>{e.currentTarget.style.borderColor='#c8102e';e.currentTarget.style.background='rgba(200,16,46,.03)'}}
+                  onMouseOut={e=>{e.currentTarget.style.borderColor='#d0d0d0';e.currentTarget.style.background='#fafafa'}}>
+                  <div style={{ fontSize:28, marginBottom:8 }}>🎨</div>
+                  <div style={{ fontSize:13, fontWeight:700, color:'#0a0a0a', marginBottom:4 }}>Choose Our Samples</div>
+                  <div style={{ fontSize:11, color:'#888' }}>Ready-made designs</div>
+                </button>
+              </div>
+            )}
+
+            {/* Upload mode */}
+            {designMode==='upload' && (
+              <div>
+                <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:10 }}>
+                  <button onClick={()=>handleModeSelect('')} style={{ fontSize:11, color:'#888', background:'none', border:'none', cursor:'pointer', textDecoration:'underline' }}>← Change</button>
+                  <span style={{ fontSize:12, fontWeight:600, color:'#c8102e' }}>📁 Upload Your Own Design</span>
+                </div>
+                <div className="upload-zone" onClick={()=>document.getElementById('studioFile').click()}>
+                  <input id="studioFile" type="file" accept=".png,.jpg,.jpeg,.svg" style={{ display:'none' }} onChange={handleFile} />
+                  {uploadedFile
+                    ? <div>
+                        <p style={{ fontSize:13, fontWeight:600, color:'#00a86b', marginBottom:4 }}>✓ {uploadedFile.name}</p>
+                        <p style={{ fontSize:11, color:'#888' }}>{(uploadedFile.size/1024/1024).toFixed(2)} MB · Click to change</p>
+                        {uploadedFile.type.startsWith('image/') && (
+                          <img src={URL.createObjectURL(uploadedFile)} alt="preview" style={{ marginTop:10, maxHeight:120, maxWidth:'100%', borderRadius:6, objectFit:'contain' }} />
+                        )}
+                      </div>
+                    : <div><p style={{ fontSize:13, fontWeight:600, marginBottom:4 }}>Click to upload design</p><p style={{ fontSize:11, color:'#888' }}>PNG, JPG, SVG · Max 20MB · Min 300 DPI recommended</p></div>}
+                </div>
+              </div>
+            )}
+
+            {/* Sample mode */}
+            {designMode==='sample' && (
+              <div>
+                <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:12 }}>
+                  <button onClick={()=>handleModeSelect('')} style={{ fontSize:11, color:'#888', background:'none', border:'none', cursor:'pointer', textDecoration:'underline' }}>← Change</button>
+                  <span style={{ fontSize:12, fontWeight:600, color:'#c8102e' }}>🎨 Choose a Sample Design</span>
+                </div>
+                {/* Category filter */}
+                {samples.length > 0 && (
+                  <div style={{ display:'flex', gap:6, flexWrap:'wrap', marginBottom:12 }}>
+                    {['All', ...new Set(samples.map(s=>s.category).filter(Boolean))].map(cat=>(
+                      <button key={cat} onClick={()=>setSampleCat(cat)}
+                        style={{ padding:'4px 12px', borderRadius:100, fontSize:11, fontWeight:600, border:'1.5px solid', cursor:'pointer', transition:'all .15s',
+                          borderColor: sampleCategory===cat ? '#c8102e' : '#e0e0e0',
+                          background: sampleCategory===cat ? '#c8102e' : '#fff',
+                          color: sampleCategory===cat ? '#fff' : '#555' }}>
+                        {cat}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {samplesLoading ? (
+                  <div style={{ textAlign:'center', padding:32, color:'#888', fontSize:13 }}>Loading designs…</div>
+                ) : samples.length === 0 ? (
+                  <div style={{ textAlign:'center', padding:32, color:'#888', background:'#f8f8f8', borderRadius:10, fontSize:13 }}>
+                    No sample designs yet. Admin will add designs soon!
+                  </div>
+                ) : (
+                  <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:10 }}>
+                    {samples.filter(s => sampleCategory==='All' || s.category===sampleCategory).map(s=>(
+                      <div key={s.id} onClick={()=>setSample(s)}
+                        style={{ borderRadius:10, overflow:'hidden', border:`2px solid ${selectedSample?.id===s.id?'#c8102e':'#e0e0e0'}`, cursor:'pointer', background:'#f8f8f8', transition:'all .15s', position:'relative' }}>
+                        <img src={s.image_url} alt={s.name} style={{ width:'100%', aspectRatio:'1', objectFit:'cover', display:'block' }} />
+                        {selectedSample?.id===s.id && (
+                          <div style={{ position:'absolute', top:6, right:6, width:22, height:22, borderRadius:'50%', background:'#c8102e', display:'flex', alignItems:'center', justifyContent:'center', fontSize:12, color:'#fff', fontWeight:700 }}>✓</div>
+                        )}
+                        <div style={{ padding:'6px 8px' }}>
+                          <div style={{ fontSize:11, fontWeight:600, color:'#0a0a0a', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{s.name}</div>
+                          {s.category && <div style={{ fontSize:10, color:'#888' }}>{s.category}</div>}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {selectedSample && (
+                  <div style={{ marginTop:10, background:'rgba(0,168,107,.06)', border:'1px solid rgba(0,168,107,.2)', borderRadius:8, padding:'10px 14px', display:'flex', alignItems:'center', gap:10 }}>
+                    <img src={selectedSample.image_url} alt="" style={{ width:40, height:40, objectFit:'cover', borderRadius:6 }} />
+                    <div>
+                      <div style={{ fontSize:12, fontWeight:700, color:'#00a86b' }}>✓ Selected: {selectedSample.name}</div>
+                      <div style={{ fontSize:11, color:'#888' }}>This design will be printed on your shirt</div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
           {/* Address */}
           <div><label style={{ fontSize:11, fontWeight:700, letterSpacing:'.12em', textTransform:'uppercase', color:'#555', display:'block', marginBottom:7 }}>Delivery Address</label>
             <textarea className="input-field" rows={3} placeholder="Full address with pincode" style={{ resize:'vertical' }} value={form.address} onChange={e=>setForm({...form,address:e.target.value})} /></div>
-          <button className="btn-primary" style={{ width:'100%', padding:15, fontSize:13, opacity:status==='saving'?.6:1 }} onClick={handleSubmit} disabled={status==='saving'}>
-            {status==='saving'?'Placing Order…':'Place Custom Order'}
+          {uploadErr && (
+            <div style={{ background:'rgba(200,16,46,.06)', border:'1px solid rgba(200,16,46,.2)', borderRadius:8, padding:'10px 14px', fontSize:13, color:'#c8102e' }}>
+              ⚠ {uploadErr}
+            </div>
+          )}
+          {status==='uploading' && (
+            <div>
+              <div style={{ display:'flex', justifyContent:'space-between', fontSize:12, color:'#555', marginBottom:6 }}>
+                <span>Uploading design to Cloudinary…</span><span>{uploadPct}%</span>
+              </div>
+              <div style={{ height:6, background:'#f0f0f0', borderRadius:3, overflow:'hidden' }}>
+                <div style={{ height:'100%', width:`${uploadPct}%`, background:'linear-gradient(90deg,#0a1f5d,#c8102e)', borderRadius:3, transition:'width .3s' }} />
+              </div>
+            </div>
+          )}
+          <button className="btn-primary" style={{ width:'100%', padding:15, fontSize:13, opacity:(status==='saving'||status==='uploading')?.6:1 }} onClick={handleSubmit} disabled={status==='saving'||status==='uploading'}>
+            {status==='uploading'?`Uploading… ${uploadPct}%`:status==='saving'?'Saving Order…':'Place Custom Order'}
           </button>
           <p style={{ fontSize:12, color:'#aaa', textAlign:'center', lineHeight:1.6 }}>Our team will contact you on WhatsApp within 2 hours to confirm pricing and delivery.</p>
         </div>
@@ -1470,6 +1650,13 @@ function AdminPanel({ onBack }) {
   const [editOrder, setEditOrder] = useState(null)
   const [editProd, setEditProd]   = useState(null)
   const [toast, setToast]         = useState('')
+  // Samples state
+  const [samples, setSamples]         = useState([])
+  const [samplesLoading, setSamplesLoading] = useState(false)
+  const [sampleForm, setSampleForm]   = useState({ name:'', category:'', image_url:'' })
+  const [sampleFile, setSampleFile]   = useState(null)
+  const [sampleUploadPct, setSamplePct] = useState(0)
+  const [sampleSaving, setSampleSaving] = useState(false)
 
   const showToast = (m) => { setToast(m); setTimeout(()=>setToast(''),2500) }
 
@@ -1488,6 +1675,45 @@ function AdminPanel({ onBack }) {
     const { data, error } = await supabase.from('drynn_orders').select('*').order('placed_at', { ascending: false }).limit(100)
     if (!error && data) setOrders(data)
     setLoading(false)
+  }
+
+  const loadSamples = async () => {
+    setSamplesLoading(true)
+    const { data, error } = await supabase.from('drynn_samples').select('*').order('created_at', { ascending: false })
+    if (!error) setSamples(data || [])
+    setSamplesLoading(false)
+  }
+
+  const handleSampleFile = e => {
+    const f = e.target.files[0]
+    if (f) setSampleFile(f)
+  }
+
+  const saveSample = async () => {
+    if (!sampleFile && !sampleForm.image_url) { alert('Please upload an image or enter an image URL.'); return }
+    if (!sampleForm.name) { alert('Please enter a design name.'); return }
+    setSampleSaving(true)
+    try {
+      let imageUrl = sampleForm.image_url
+      if (sampleFile) {
+        setSamplePct(0)
+        imageUrl = await uploadToCloudinary(sampleFile, pct => setSamplePct(pct))
+      }
+      const { error } = await supabase.from('drynn_samples').insert({
+        name: sampleForm.name, category: sampleForm.category || null, image_url: imageUrl
+      })
+      if (error) throw error
+      showToast('Sample design added!')
+      setSampleForm({ name:'', category:'', image_url:'' }); setSampleFile(null); setSamplePct(0)
+      loadSamples()
+    } catch(e) { console.error(e); alert('Failed to save sample.') }
+    finally { setSampleSaving(false) }
+  }
+
+  const deleteSample = async (id) => {
+    if (!confirm('Delete this sample design?')) return
+    const { error } = await supabase.from('drynn_samples').delete().eq('id', id)
+    if (!error) { setSamples(s => s.filter(x => x.id !== id)); showToast('Sample deleted') }
   }
 
   const updateOrderStatus = async (id, status) => {
@@ -1542,6 +1768,7 @@ function AdminPanel({ onBack }) {
         <div style={{ display:'flex', gap:8 }}>
           <button onClick={()=>{setTab('orders');loadOrders()}} style={{ padding:'6px 16px', borderRadius:4, border:'none', cursor:'pointer', background:tab==='orders'?'#c8102e':'#222', color:'#fff', fontSize:12, fontWeight:700 }}>Orders</button>
           <button onClick={()=>setTab('products')} style={{ padding:'6px 16px', borderRadius:4, border:'none', cursor:'pointer', background:tab==='products'?'#c8102e':'#222', color:'#fff', fontSize:12, fontWeight:700 }}>Products</button>
+          <button onClick={()=>{setTab('samples');loadSamples()}} style={{ padding:'6px 16px', borderRadius:4, border:'none', cursor:'pointer', background:tab==='samples'?'#c8102e':'#222', color:'#fff', fontSize:12, fontWeight:700 }}>🎨 Samples</button>
           <button onClick={onBack} style={{ padding:'6px 16px', borderRadius:4, border:'1px solid #333', cursor:'pointer', background:'none', color:'#888', fontSize:12 }}>Exit</button>
         </div>
       </div>
@@ -1580,11 +1807,30 @@ function AdminPanel({ onBack }) {
                       <OrderEditRow order={o} onSave={async(status)=>{await updateOrderStatus(o.id,status);setEditOrder(null)}} onCancel={()=>setEditOrder(null)} statuses={ORDER_STATUSES} colors={STATUS_COLORS} />
                     ) : (
                       <div style={{ display:'flex', gap:16, alignItems:'center', flexWrap:'wrap' }}>
-                        <div style={{ flex:1, minWidth:200 }}>
+                        {/* Design thumbnail */}
+                        {o.design_file && o.design_file.startsWith('http') ? (
+                          <a href={o.design_file} target="_blank" rel="noopener noreferrer" title="View full design" style={{ flexShrink:0 }}>
+                            <img src={o.design_file} alt="Customer Design"
+                              style={{ width:64, height:64, objectFit:'contain', borderRadius:8, border:'1.5px solid #e0e0e0', background:'#f8f8f8', cursor:'pointer' }}
+                              onError={e=>{ e.target.style.display='none' }}
+                            />
+                          </a>
+                        ) : (
+                          <div style={{ width:64, height:64, borderRadius:8, border:'1.5px dashed #e0e0e0', background:'#f8f8f8', display:'flex', alignItems:'center', justifyContent:'center', fontSize:10, color:'#bbb', flexShrink:0, textAlign:'center' }}>
+                            {o.design_file==='catalog-order'?'Catalog':'No design'}
+                          </div>
+                        )}
+                        <div style={{ flex:1, minWidth:160 }}>
                           <div style={{ fontSize:13, fontWeight:700, marginBottom:2 }}>{o.name}</div>
                           <div style={{ fontSize:11, color:'#888' }}>{o.phone} · {o.garment} · {o.size} · Qty {o.qty}</div>
                           <div style={{ fontSize:10, color:'#aaa', marginTop:2 }}>{o.address}</div>
                           <div style={{ fontSize:10, color:'#aaa' }}>{new Date(o.placed_at||o.created_at).toLocaleString('en-IN')}</div>
+                          {o.design_file && o.design_file.startsWith('http') && (
+                            <a href={o.design_file} target="_blank" rel="noopener noreferrer"
+                              style={{ fontSize:10, color:'#0a1f5d', textDecoration:'underline', display:'inline-block', marginTop:3 }}>
+                              🔗 View Design File
+                            </a>
+                          )}
                         </div>
                         <div style={{ display:'flex', alignItems:'center', gap:10, flexWrap:'wrap' }}>
                           <span style={{ fontSize:11, fontWeight:700, padding:'4px 10px', borderRadius:50, background:STATUS_COLORS[o.status||'Received']+'22', color:STATUS_COLORS[o.status||'Received'] }}>
@@ -1625,6 +1871,75 @@ function AdminPanel({ onBack }) {
                 </div>
               ))}
             </div>
+          </div>
+        )}
+
+        {/* SAMPLES TAB */}
+        {tab==='samples' && (
+          <div>
+            <h2 style={{ fontSize:18, fontWeight:700, marginBottom:16 }}>🎨 Sample Designs</h2>
+
+            {/* Upload new sample */}
+            <div style={{ background:'#fff', borderRadius:12, padding:'20px', border:'1px solid #e8e8e8', marginBottom:20 }}>
+              <div style={{ fontSize:14, fontWeight:700, marginBottom:14 }}>Add New Sample Design</div>
+              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12, marginBottom:12 }}>
+                <div>
+                  <label style={{ fontSize:10, fontWeight:700, letterSpacing:'.1em', color:'#888', textTransform:'uppercase', display:'block', marginBottom:4 }}>Design Name *</label>
+                  <input className="input-field" placeholder="e.g. Cricket Team" value={sampleForm.name} onChange={e=>setSampleForm({...sampleForm,name:e.target.value})} style={{ padding:'8px 12px', fontSize:13 }} />
+                </div>
+                <div>
+                  <label style={{ fontSize:10, fontWeight:700, letterSpacing:'.1em', color:'#888', textTransform:'uppercase', display:'block', marginBottom:4 }}>Category</label>
+                  <input className="input-field" placeholder="e.g. College, Farewell, Sports" value={sampleForm.category} onChange={e=>setSampleForm({...sampleForm,category:e.target.value})} style={{ padding:'8px 12px', fontSize:13 }} />
+                </div>
+              </div>
+              {/* File upload */}
+              <div style={{ marginBottom:12 }}>
+                <label style={{ fontSize:10, fontWeight:700, letterSpacing:'.1em', color:'#888', textTransform:'uppercase', display:'block', marginBottom:4 }}>Upload Image</label>
+                <div onClick={()=>document.getElementById('sampleFileInput').click()}
+                  style={{ border:'2px dashed #d0d0d0', borderRadius:8, padding:'16px', cursor:'pointer', background:'#fafafa', textAlign:'center' }}>
+                  <input id="sampleFileInput" type="file" accept=".png,.jpg,.jpeg,.svg" style={{ display:'none' }} onChange={handleSampleFile} />
+                  {sampleFile
+                    ? <div>
+                        <img src={URL.createObjectURL(sampleFile)} alt="" style={{ maxHeight:80, maxWidth:'100%', borderRadius:4, marginBottom:6 }} />
+                        <p style={{ fontSize:11, color:'#00a86b', fontWeight:600 }}>✓ {sampleFile.name}</p>
+                      </div>
+                    : <p style={{ fontSize:12, color:'#888' }}>Click to upload design image (PNG, JPG, SVG)</p>}
+                </div>
+              </div>
+              {sampleUploadPct > 0 && sampleUploadPct < 100 && (
+                <div style={{ marginBottom:12 }}>
+                  <div style={{ display:'flex', justifyContent:'space-between', fontSize:11, color:'#555', marginBottom:4 }}>
+                    <span>Uploading to Cloudinary…</span><span>{sampleUploadPct}%</span>
+                  </div>
+                  <div style={{ height:4, background:'#f0f0f0', borderRadius:2 }}>
+                    <div style={{ height:'100%', width:`${sampleUploadPct}%`, background:'#c8102e', borderRadius:2, transition:'width .3s' }} />
+                  </div>
+                </div>
+              )}
+              <button className="btn-primary" style={{ padding:'10px 24px', fontSize:13, opacity:sampleSaving?.6:1 }} onClick={saveSample} disabled={sampleSaving}>
+                {sampleSaving ? 'Saving…' : '+ Add Sample Design'}
+              </button>
+            </div>
+
+            {/* Existing samples grid */}
+            {samplesLoading ? (
+              <div style={{ textAlign:'center', padding:32, color:'#888' }}>Loading…</div>
+            ) : samples.length === 0 ? (
+              <div style={{ textAlign:'center', padding:40, background:'#fff', borderRadius:12, color:'#888', fontSize:13 }}>No sample designs yet. Add your first one above!</div>
+            ) : (
+              <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(160px,1fr))', gap:12 }}>
+                {samples.map(s => (
+                  <div key={s.id} style={{ background:'#fff', borderRadius:10, overflow:'hidden', border:'1px solid #e8e8e8' }}>
+                    <img src={s.image_url} alt={s.name} style={{ width:'100%', aspectRatio:'1', objectFit:'cover', display:'block' }} />
+                    <div style={{ padding:'10px 12px' }}>
+                      <div style={{ fontSize:13, fontWeight:700, marginBottom:2 }}>{s.name}</div>
+                      {s.category && <div style={{ fontSize:11, color:'#888', marginBottom:8 }}>{s.category}</div>}
+                      <button onClick={()=>deleteSample(s.id)} style={{ fontSize:11, color:'#c8102e', background:'none', border:'1px solid #fdd', borderRadius:4, padding:'4px 10px', cursor:'pointer', width:'100%' }}>✕ Delete</button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
       </div>

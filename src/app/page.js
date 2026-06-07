@@ -29,7 +29,7 @@ function useProducts() {
     supabase.from('drynn_products').select('*').order('id')
       .then(({ data, error }) => {
         if (error) {
-          console.error('[Products] Failed to load from Supabase:', error.message, '— using hardcoded fallback.')
+          console.error('[Products] Failed to load from Supabase:', error.message, '- using hardcoded fallback.')
           return
         }
         if (data && data.length > 0) setProducts(data)
@@ -38,12 +38,12 @@ function useProducts() {
   return products
 }
 
-// Only public (non-studio-only) products — used in ProductsPage and HomePage
+// Only public (non-studio-only) products - used in ProductsPage and HomePage
 function usePublicProducts() {
   return useProducts().filter(p => !p.studio_only)
 }
 
-// Only studio-only products — used in StudioPage
+// Only studio-only products - used in StudioPage
 function useStudioProducts() {
   return useProducts().filter(p => p.studio_only)
 }
@@ -408,7 +408,7 @@ function LoginPage({ onBack }) {
 
 // ══════════════════════════════════════════════════════════════
 // ══════════════════════════════════════════════════════════════
-// LIVE T-SHIRT PREVIEW  —  canvas-based, design on fabric
+// LIVE T-SHIRT PREVIEW  -  canvas-based, design on fabric
 // ══════════════════════════════════════════════════════════════
 function LiveTshirtPreview({ designImg, garmentType, garmentColor }) {
   const canvasRef = useRef(null)
@@ -594,7 +594,7 @@ function LiveTshirtPreview({ designImg, garmentType, garmentColor }) {
 }
 
 // ══════════════════════════════════════════════════════════════
-// 3D IMAGE/SVG VIEWER  —  any image extruded to 3D with Three.js
+// 3D IMAGE/SVG VIEWER  -  any image extruded to 3D with Three.js
 // Animations: None, Spin, Float, Pulse, Wobble, Swing, Spin+Float
 // Settings: Background colour, Material, Texture, Lighting
 // ══════════════════════════════════════════════════════════════
@@ -717,7 +717,7 @@ function ThreeDImageViewer() {
           m.rotation.y += 0.015 * sp
           m.position.y  = Math.sin(f * 0.025 * sp) * 0.18
         } else {
-          // None — still drag
+          // None - still drag
           m.rotation.y += (rotRef.current.y - m.rotation.y) * 0.05
           m.rotation.x += (rotRef.current.x - m.rotation.x) * 0.05
         }
@@ -1250,7 +1250,7 @@ function StudioPage({ user, onNav }) {
 
         <div style={{ padding:'18px 16px 32px' }}>
 
-          {/* ORDER TAB — combined order form */}
+          {/* ORDER TAB - combined order form */}
           {tab==='order' && (
             <div style={{ display:'flex', flexDirection:'column', gap:18 }}>
               {status==='done' && (
@@ -1292,7 +1292,7 @@ function StudioPage({ user, onNav }) {
               <div>
                 <p style={{ ...lblStyle, marginBottom:8 }}>Your Design</p>
                 <p style={{ fontSize:12, color:'rgba(255,255,255,.35)', marginBottom:10, lineHeight:1.6 }}>
-                  Upload your design — it appears on the mockup above instantly. Or pick from Samples tab.
+                  Upload your design - it appears on the mockup above instantly. Or pick from Samples tab.
                 </p>
                 <label style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:8, padding:'20px 16px', border:'1.5px dashed rgba(255,255,255,.18)', borderRadius:10, cursor:'pointer', background:'rgba(255,255,255,.03)' }}>
                   <input type="file" accept=".png,.jpg,.jpeg,.svg" style={{ display:'none' }} onChange={handleFile} />
@@ -1383,7 +1383,7 @@ function StudioPage({ user, onNav }) {
             </div>
           )}
 
-          {/* MOTION TAB — Design Position */}
+          {/* MOTION TAB - Design Position */}
           {tab==='motion' && (
             <div>
               <p style={{ ...lblStyle, marginBottom:14 }}>Adjust Design Position</p>
@@ -1445,7 +1445,7 @@ function StudioPage({ user, onNav }) {
             </div>
           )}
 
-          {/* 360° TAB — Garment angle views */}
+          {/* 360° TAB - Garment angle views */}
           {tab==='camera' && (
             <div>
               <p style={{ ...lblStyle, marginBottom:12 }}>View Angle</p>
@@ -1513,7 +1513,7 @@ function StudioPage({ user, onNav }) {
             </div>
           )}
 
-          {/* STUDIO PICKS TAB — admin-curated products, shown only here */}
+          {/* STUDIO PICKS TAB - admin-curated products, shown only here */}
           {tab==='picks' && (
             <div>
               <p style={{ fontSize:12, color:'rgba(255,255,255,.4)', marginBottom:14, lineHeight:1.65 }}>
@@ -1565,7 +1565,7 @@ function StudioPage({ user, onNav }) {
             <p style={{ fontSize:13, color:'#888', marginTop:6 }}>Upload your design and see it printed on the garment in real-time.</p>
           </div>
           <div style={{ display:'flex', gap:32, flexWrap:'wrap', justifyContent:'center', alignItems:'flex-start' }}>
-            {/* Live canvas preview — reads from StudioPage state */}
+            {/* Live canvas preview - reads from StudioPage state */}
             <LiveTshirtPreview designImg={designImg} garmentType={garment} garmentColor={color} />
             {/* Mini controls */}
             <div style={{ flex:'1 1 220px', maxWidth:280 }}>
@@ -1576,7 +1576,7 @@ function StudioPage({ user, onNav }) {
                 </div>
               ))}
               <div style={{ background:'rgba(200,16,46,.04)', border:'1px solid rgba(200,16,46,.12)', borderRadius:8, padding:'12px 14px', fontSize:12, color:'#888', lineHeight:1.7, marginTop:8 }}>
-                The design is composited directly onto the garment shape using canvas — same technique used by Blinkstore and Qikink for their previews.
+                The design is composited directly onto the garment shape using canvas - same technique used by Blinkstore and Qikink for their previews.
               </div>
             </div>
           </div>
@@ -2062,7 +2062,7 @@ function ContactPage({ onNav }) {
       })
       if (dbErr) {
         console.error('[Contact] Supabase drynn_contacts insert failed:', dbErr.message)
-        // Non-fatal — still send to Google Sheet
+        // Non-fatal - still send to Google Sheet
       }
 
       // Send to Google Sheet webhook
@@ -2451,153 +2451,237 @@ function OrdersPage({ user, onBack, onNav }) {
     )
   }
 
+  // ── Filter logic ──────────────────────────────────────────
+  const ACTIVE_S    = ['Received','Approved','Printing','Packed','Shipped']
+  const COMPLETED_S = ['Delivered']
+
+  const filteredOrders = orders
+    .filter(o => {
+      const s = o.status || 'Received'
+      if (histTab === 'active')    return ACTIVE_S.includes(s)
+      if (histTab === 'completed') return COMPLETED_S.includes(s)
+      return true
+    })
+    .filter(o =>
+      !search ||
+      (o.garment||'').toLowerCase().includes(search.toLowerCase()) ||
+      (o.id||'').toLowerCase().includes(search.toLowerCase())
+    )
+
+  const activeCount    = orders.filter(o => ACTIVE_S.includes(o.status || 'Received')).length
+  const completedCount = orders.filter(o => COMPLETED_S.includes(o.status)).length
+
   return (
     <div>
+      {/* Header */}
       <div style={{ background:'linear-gradient(90deg,#0a1f5d,#1a0a2e)', padding:'28px 20px' }}>
         <div style={{ maxWidth:600, margin:'0 auto' }}>
           <button onClick={onBack} style={{ background:'rgba(255,255,255,.1)', border:'1px solid rgba(255,255,255,.2)', color:'#fff', padding:'6px 14px', borderRadius:50, fontSize:12, cursor:'pointer', fontWeight:600, marginBottom:12 }}>← Account</button>
           <span className="sec-label" style={{ color:'rgba(255,255,255,.6)' }}>My Account</span>
           <h1 className="sec-title" style={{ color:'#fff' }}>MY ORDERS</h1>
+          <p style={{ fontSize:13, color:'rgba(255,255,255,.5)', marginTop:4 }}>
+            {orders.length} order{orders.length !== 1 ? 's' : ''} total
+          </p>
         </div>
       </div>
 
-      <div style={{ maxWidth:600, margin:'0 auto', padding:'20px 20px' }}>
+      {/* History Tabs */}
+      <div style={{ background:'#fff', borderBottom:'1px solid #f0f0f0', position:'sticky', top:56, zIndex:10 }}>
+        <div style={{ maxWidth:600, margin:'0 auto', display:'flex' }}>
+          {[
+            { key:'active',    label:'Active',     count: activeCount    },
+            { key:'completed', label:'History',    count: completedCount },
+            { key:'all',       label:'All Orders', count: orders.length  },
+          ].map(t => (
+            <button key={t.key} onClick={() => setHistTab(t.key)}
+              style={{ flex:1, padding:'13px 8px', background:'none', border:'none', borderBottom: histTab===t.key ? '2px solid #c8102e' : '2px solid transparent', cursor:'pointer', transition:'all .15s', display:'flex', flexDirection:'column', alignItems:'center', gap:2 }}>
+              <span style={{ fontSize:13, fontWeight:700, color: histTab===t.key ? '#c8102e' : '#888' }}>{t.label}</span>
+              <span style={{ fontSize:10, fontWeight:700, background: histTab===t.key ? 'rgba(200,16,46,.1)' : '#f5f5f5', color: histTab===t.key ? '#c8102e' : '#bbb', borderRadius:50, padding:'1px 8px', minWidth:20, textAlign:'center' }}>{t.count}</span>
+            </button>
+          ))}
+        </div>
+      </div>
 
-        {/* ── History Tabs ── */}
-        {!loading && !loadErr && orders.length > 0 && (
-          <div style={{ marginBottom:16 }}>
-            <div style={{ display:'flex', gap:0, border:'1px solid #e8e8e8', borderRadius:8, overflow:'hidden', marginBottom:14 }}>
-              {[
-                { key:'active',  label:'Active',  emoji:'🔄' },
-                { key:'history', label:'History', emoji:'📋' },
-                { key:'all',     label:'All',     emoji:'📦' },
-              ].map(t => (
-                <button key={t.key} onClick={()=>setHistTab(t.key)}
-                  style={{ flex:1, padding:'11px 4px', border:'none', cursor:'pointer', fontSize:12, fontWeight:700,
-                    background: histTab===t.key ? '#0a1f5d' : '#fff',
-                    color:      histTab===t.key ? '#fff'    : '#888',
-                    borderRight: t.key !== 'all' ? '1px solid #e8e8e8' : 'none',
-                    transition:'all .15s',
-                    display:'flex', alignItems:'center', justifyContent:'center', gap:6 }}>
-                  {t.emoji} {t.label}
-                  <span style={{ background: histTab===t.key ? 'rgba(255,255,255,.2)' : '#f0f0f0', color: histTab===t.key ? '#fff' : '#999', borderRadius:50, padding:'1px 7px', fontSize:10, fontWeight:700, minWidth:20, textAlign:'center' }}>
-                    {counts[t.key]}
-                  </span>
-                </button>
-              ))}
-            </div>
+      <div style={{ maxWidth:600, margin:'0 auto', padding:'16px 20px' }}>
 
-            {/* Search */}
-            <div style={{ position:'relative' }}>
-              <svg style={{ position:'absolute', left:12, top:'50%', transform:'translateY(-50%)', pointerEvents:'none' }} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#aaa" strokeWidth="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-              <input
-                value={search} onChange={e=>setSearch(e.target.value)}
-                placeholder="Search by garment, order ID…"
-                style={{ width:'100%', padding:'10px 12px 10px 34px', border:'1.5px solid #e8e8e8', borderRadius:8, fontSize:13, outline:'none', boxSizing:'border-box', color:'#333' }} />
-              {search && <button onClick={()=>setSearch('')} style={{ position:'absolute', right:12, top:'50%', transform:'translateY(-50%)', background:'none', border:'none', cursor:'pointer', color:'#aaa', fontSize:16, lineHeight:1 }}>×</button>}
-            </div>
+        {/* Stats summary */}
+        {!loading && orders.length > 0 && (
+          <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:10, marginBottom:18 }}>
+            {[
+              { label:'Total',     value: orders.length,    color:'#0a1f5d' },
+              { label:'Active',    value: activeCount,      color:'#f5a623' },
+              { label:'Delivered', value: completedCount,   color:'#00a86b' },
+            ].map(s => (
+              <div key={s.label} style={{ background:'#f8f8f8', borderRadius:10, padding:'14px 10px', textAlign:'center' }}>
+                <div style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:30, color:s.color, lineHeight:1, marginBottom:4 }}>{s.value}</div>
+                <div style={{ fontSize:10, color:'#aaa', fontWeight:700, textTransform:'uppercase', letterSpacing:'.08em' }}>{s.label}</div>
+              </div>
+            ))}
           </div>
         )}
 
-        {/* ── States ── */}
-        {loading && (
+        {/* Search */}
+        {!loading && orders.length > 2 && (
+          <div style={{ position:'relative', marginBottom:16 }}>
+            <span style={{ position:'absolute', left:12, top:'50%', transform:'translateY(-50%)', fontSize:14, color:'#aaa' }}>🔍</span>
+            <input className="input-field" placeholder="Search by garment or order ID..."
+              value={search} onChange={e => setSearch(e.target.value)}
+              style={{ paddingLeft:38, borderRadius:50, fontSize:13 }} />
+            {search && (
+              <button onClick={() => setSearch('')}
+                style={{ position:'absolute', right:12, top:'50%', transform:'translateY(-50%)', background:'none', border:'none', fontSize:18, cursor:'pointer', color:'#aaa' }}>×</button>
+            )}
+          </div>
+        )}
+
+        {loading ? (
           <div style={{ textAlign:'center', padding:'56px 0' }}>
             <div style={{ width:36, height:36, border:'3px solid #f0f0f0', borderTopColor:'#c8102e', borderRadius:'50%', animation:'drynn-spin .7s linear infinite', margin:'0 auto 14px' }} />
-            <p style={{ fontSize:13, color:'#aaa' }}>Loading your orders…</p>
+            <p style={{ fontSize:13, color:'#aaa' }}>Loading your orders...</p>
           </div>
-        )}
 
-        {loadErr && (
-          <div style={{ background:'rgba(200,16,46,.04)', border:'1.5px solid rgba(200,16,46,.2)', borderRadius:10, padding:'18px 20px', marginBottom:20 }}>
-            <div style={{ display:'flex', gap:10, alignItems:'flex-start' }}>
-              <span style={{ fontSize:22, flexShrink:0 }}>⚠️</span>
-              <div>
-                <p style={{ fontSize:13, fontWeight:700, color:'#c8102e', marginBottom:4 }}>Could not load orders</p>
-                <p style={{ fontSize:12, color:'#888', lineHeight:1.7 }}>{loadErr}</p>
-                <button onClick={loadOrders} style={{ marginTop:10, padding:'7px 16px', background:'#c8102e', color:'#fff', border:'none', borderRadius:4, fontSize:12, fontWeight:700, cursor:'pointer' }}>↻ Retry</button>
-              </div>
-            </div>
+        ) : loadErr ? (
+          <div style={{ textAlign:'center', padding:'48px 16px' }}>
+            <div style={{ fontSize:48, marginBottom:12 }}>⚠️</div>
+            <p style={{ fontSize:14, color:'#c8102e', fontWeight:600, marginBottom:8 }}>{loadErr}</p>
+            <button className="btn-primary" style={{ padding:'10px 24px', fontSize:13 }} onClick={loadOrders}>Retry</button>
           </div>
-        )}
 
-        {!loading && !loadErr && orders.length === 0 && (
+        ) : orders.length === 0 ? (
           <div style={{ textAlign:'center', padding:'64px 16px' }}>
             <div style={{ fontSize:64, marginBottom:14 }}>📦</div>
             <h2 style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:28, marginBottom:8 }}>NO ORDERS YET</h2>
-            <p style={{ color:'#aaa', fontSize:13, lineHeight:1.7 }}>You haven't placed any orders yet.<br/>Start shopping to see them here!</p>
-          </div>
-        )}
-
-        {!loading && !loadErr && orders.length > 0 && filteredOrders.length === 0 && (
-          <div style={{ textAlign:'center', padding:'48px 16px', color:'#aaa' }}>
-            <div style={{ fontSize:40, marginBottom:10 }}>🔍</div>
-            <p style={{ fontSize:14, fontWeight:600, marginBottom:4 }}>
-              {histTab === 'history' ? 'No delivered orders yet.' : histTab === 'active' ? 'No active orders.' : 'No orders match your search.'}
+            <p style={{ color:'#aaa', fontSize:13, lineHeight:1.7, marginBottom:24 }}>
+              You have not placed any orders yet.<br/>Start shopping to see your order history here!
             </p>
-            {histTab === 'history' && <p style={{ fontSize:12 }}>Completed orders will appear here once delivered.</p>}
-            {search && <button onClick={()=>setSearch('')} style={{ marginTop:10, padding:'7px 16px', background:'none', border:'1px solid #e0e0e0', borderRadius:4, fontSize:12, cursor:'pointer', color:'#888' }}>Clear search</button>}
+            <button className="btn-primary" style={{ padding:'12px 28px', fontSize:13 }}
+              onClick={() => onNav && onNav('products')}>Shop Now →</button>
           </div>
-        )}
 
-        {/* ── Order cards ── */}
-        {!loading && !loadErr && filteredOrders.length > 0 && (
-          <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
+        ) : filteredOrders.length === 0 ? (
+          <div style={{ textAlign:'center', padding:'48px 16px' }}>
+            <div style={{ fontSize:48, marginBottom:12 }}>🔍</div>
+            <p style={{ fontSize:15, fontWeight:600, marginBottom:6 }}>No orders found</p>
+            <p style={{ fontSize:13, color:'#aaa' }}>
+              {search ? `No results for "${search}"` : `No ${histTab} orders`}
+            </p>
+          </div>
 
-            {/* History section header */}
-            {histTab === 'history' && (
-              <div style={{ background:'linear-gradient(90deg,rgba(0,168,107,.08),rgba(10,31,93,.06))', border:'1px solid rgba(0,168,107,.2)', borderRadius:10, padding:'12px 16px', display:'flex', alignItems:'center', gap:10, fontSize:13 }}>
-                <span style={{ fontSize:20 }}>📋</span>
-                <div>
-                  <strong>Order History</strong>
-                  <p style={{ fontSize:11, color:'#888', margin:0 }}>{counts.history} delivered order{counts.history !== 1 ? 's' : ''} · Tap to view details or reorder</p>
-                </div>
-              </div>
-            )}
-
-            {filteredOrders.map(order => {
-              const sc = STATUS_COLORS[order.status] || STATUS_COLORS['Received']
-              const isDelivered = order.status === 'Delivered'
+        ) : (
+          <div style={{ display:'flex', flexDirection:'column', gap:0 }}>
+            {filteredOrders.map((order, idx) => {
+              const sc          = STATUS_COLORS[order.status] || STATUS_COLORS['Received']
               const isConfirmed = ['Packed','Shipped','Delivered'].includes(order.status)
-              return (
-                <div key={order.id} onClick={()=>setSelected(order)}
-                  style={{ border:`1.5px solid ${isDelivered ? 'rgba(0,168,107,.2)' : '#f0f0f0'}`, borderRadius:12, padding:'16px', cursor:'pointer', transition:'box-shadow .2s, transform .15s', position:'relative', overflow:'hidden', background: isDelivered ? 'rgba(0,168,107,.02)' : '#fff' }}
-                  onMouseEnter={e=>{ e.currentTarget.style.boxShadow='0 6px 24px rgba(0,0,0,.10)'; e.currentTarget.style.transform='translateY(-1px)' }}
-                  onMouseLeave={e=>{ e.currentTarget.style.boxShadow='none'; e.currentTarget.style.transform='none' }}>
+              const isDelivered = order.status === 'Delivered'
+              const placedDate  = order.placed_at ? new Date(order.placed_at) : null
+              const daysSince   = placedDate ? Math.floor((Date.now() - placedDate.getTime()) / 86400000) : null
+              const stepIdx     = STATUS_STEPS.indexOf(order.status || 'Received')
 
-                  {isConfirmed && (
-                    <div style={{ position:'absolute', top:0, right:0, background: isDelivered ? '#00a86b' : '#0a7abf', color:'#fff', fontSize:9, fontWeight:700, letterSpacing:'.1em', padding:'4px 12px', borderBottomLeftRadius:8 }}>
-                      {isDelivered ? '✓ DELIVERED' : '✓ CONFIRMED'}
+              // Month separator for history grouping
+              const showSeparator = idx === 0 || (
+                placedDate &&
+                filteredOrders[idx-1].placed_at &&
+                new Date(filteredOrders[idx-1].placed_at).getMonth() !== placedDate.getMonth()
+              )
+
+              return (
+                <div key={order.id}>
+                  {/* Month/year separator */}
+                  {showSeparator && placedDate && (
+                    <div style={{ display:'flex', alignItems:'center', gap:10, margin: idx===0 ? '0 0 14px' : '20px 0 14px' }}>
+                      <div style={{ flex:1, height:1, background:'#f0f0f0' }} />
+                      <span style={{ fontSize:10, fontWeight:700, color:'#bbb', letterSpacing:'.14em', textTransform:'uppercase', whiteSpace:'nowrap' }}>
+                        {placedDate.toLocaleDateString('en-IN',{ month:'long', year:'numeric' })}
+                      </span>
+                      <div style={{ flex:1, height:1, background:'#f0f0f0' }} />
                     </div>
                   )}
 
-                  <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:10 }}>
-                    <div>
-                      <p style={{ fontSize:13, fontWeight:700, marginBottom:3, maxWidth:180, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
-                        {order.garment?.length > 35 ? order.garment.slice(0,35)+'…' : order.garment || 'Custom Order'}
-                      </p>
-                      <p style={{ fontSize:11, color:'#aaa' }}>
-                        {order.placed_at ? new Date(order.placed_at).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'}) : '-'}
-                      </p>
+                  {/* Order card */}
+                  <div onClick={() => setSelected(order)}
+                    style={{ border:`1.5px solid ${isDelivered ? 'rgba(0,168,107,.2)' : '#f0f0f0'}`, borderRadius:12, padding:'16px', cursor:'pointer', transition:'box-shadow .2s, transform .15s', position:'relative', overflow:'hidden', background: isDelivered ? 'rgba(0,168,107,.02)' : '#fff', marginBottom:14 }}
+                    onMouseEnter={e=>{ e.currentTarget.style.boxShadow='0 6px 24px rgba(0,0,0,.10)'; e.currentTarget.style.transform='translateY(-1px)' }}
+                    onMouseLeave={e=>{ e.currentTarget.style.boxShadow='none'; e.currentTarget.style.transform='none' }}>
+
+                    {/* Status ribbon */}
+                    {isConfirmed && (
+                      <div style={{ position:'absolute', top:0, right:0, background: isDelivered ? '#00a86b' : '#0a7abf', color:'#fff', fontSize:9, fontWeight:700, letterSpacing:'.1em', padding:'4px 12px', borderBottomLeftRadius:8 }}>
+                        {isDelivered ? '✓ DELIVERED' : '✓ CONFIRMED'}
+                      </div>
+                    )}
+
+                    {/* Top row */}
+                    <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:10, paddingRight: isConfirmed ? 90 : 0 }}>
+                      <div style={{ flex:1, minWidth:0 }}>
+                        <p style={{ fontSize:13, fontWeight:700, marginBottom:3, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+                          {(order.garment||'Custom Order').length > 32 ? (order.garment||'Custom Order').slice(0,32)+'...' : (order.garment||'Custom Order')}
+                        </p>
+                        <p style={{ fontSize:11, color:'#aaa' }}>
+                          {placedDate ? placedDate.toLocaleDateString('en-IN',{ day:'numeric', month:'short', year:'numeric' }) : '-'}
+                          {daysSince !== null && (
+                            <span style={{ marginLeft:8, color:'#ccc' }}>
+                              {daysSince === 0 ? 'Today' : daysSince === 1 ? 'Yesterday' : `${daysSince} days ago`}
+                            </span>
+                          )}
+                        </p>
+                      </div>
+                      <span style={{ fontSize:11, fontWeight:700, padding:'4px 12px', borderRadius:20, background:sc.bg, color:sc.color, border:`1px solid ${sc.border}`, whiteSpace:'nowrap', flexShrink:0 }}>
+                        {order.status || 'Received'}
+                      </span>
                     </div>
-                    <span style={{ fontSize:11, fontWeight:700, padding:'4px 12px', borderRadius:20, background:sc.bg, color:sc.color, border:`1px solid ${sc.border}`, whiteSpace:'nowrap' }}>
-                      {order.status || 'Received'}
-                    </span>
-                  </div>
-                  <div style={{ display:'flex', gap:16, fontSize:12, color:'#888', marginBottom:10 }}>
-                    <span>Qty: <strong style={{ color:'#0a0a0a' }}>{order.qty || '-'}</strong></span>
-                    <span>Size: <strong style={{ color:'#0a0a0a' }}>{order.size || '-'}</strong></span>
-                  </div>
-                  <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-                    <span style={{ fontSize:11, color: isDelivered ? '#00a86b' : '#c8102e', fontWeight:600 }}>
-                      {isDelivered ? '📋 View History →' : 'View Details →'}
-                    </span>
-                    <span style={{ fontSize:11, color:'#aaa' }}>#{order.id?.slice(0,8).toUpperCase()}</span>
+
+                    {/* Mini progress bar */}
+                    <div style={{ marginBottom:12 }}>
+                      <div style={{ display:'flex', gap:3 }}>
+                        {STATUS_STEPS.map((step, si) => (
+                          <div key={step}
+                            title={step}
+                            style={{ flex:1, height:4, borderRadius:2, transition:'background .3s',
+                              background: si < stepIdx ? '#00a86b' : si === stepIdx ? '#c8102e' : '#f0f0f0'
+                            }} />
+                        ))}
+                      </div>
+                      <div style={{ display:'flex', justifyContent:'space-between', marginTop:4 }}>
+                        <span style={{ fontSize:9, color:'#ccc' }}>Ordered</span>
+                        <span style={{ fontSize:9, color: isDelivered ? '#00a86b' : '#ccc', fontWeight: isDelivered ? 700 : 400 }}>Delivered</span>
+                      </div>
+                    </div>
+
+                    {/* Details row */}
+                    <div style={{ display:'flex', gap:14, fontSize:12, color:'#888', marginBottom:10, flexWrap:'wrap' }}>
+                      <span>Qty: <strong style={{ color:'#0a0a0a' }}>{order.qty || '-'}</strong></span>
+                      <span>Size: <strong style={{ color:'#0a0a0a' }}>{order.size || '-'}</strong></span>
+                      <span style={{ color:'#ddd' }}>#{(order.id||'').slice(0,8).toUpperCase()}</span>
+                    </div>
+
+                    {/* Footer row */}
+                    <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', paddingTop:10, borderTop:'1px solid #f8f8f8' }}>
+                      <span style={{ fontSize:11, color: isDelivered ? '#00a86b' : '#c8102e', fontWeight:600 }}>
+                        {isDelivered ? '📋 View History →' : 'View Details →'}
+                      </span>
+                      {isDelivered && (
+                        <button
+                          onClick={e => { e.stopPropagation(); onNav && onNav('studio') }}
+                          style={{ fontSize:11, fontWeight:700, color:'#0a1f5d', background:'#f0f4ff', border:'1px solid #c5d3f6', borderRadius:50, padding:'5px 14px', cursor:'pointer' }}>
+                          🔄 Reorder
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </div>
               )
             })}
           </div>
         )}
+
+        {/* Refresh */}
+        {!loading && orders.length > 0 && (
+          <button onClick={loadOrders}
+            style={{ display:'block', margin:'8px auto 32px', background:'none', border:'1px solid #e0e0e0', borderRadius:50, padding:'9px 22px', fontSize:12, color:'#888', cursor:'pointer', fontWeight:600 }}>
+            ↻ Refresh Orders
+          </button>
+        )}
+
       </div>
     </div>
   )
@@ -3060,7 +3144,7 @@ function AdminPanel({ onBack }) {
                         style={{ width:18, height:18, accentColor:'#c8102e', cursor:'pointer', flexShrink:0 }} />
                       <div>
                         <div style={{ fontSize:13, fontWeight:700, color: newProduct.studio_only ? '#c8102e' : '#0a0a0a' }}>🎨 Studio Only</div>
-                        <div style={{ fontSize:11, color:'#888', marginTop:2 }}>Hide from Products page — visible only in Design Studio</div>
+                        <div style={{ fontSize:11, color:'#888', marginTop:2 }}>Hide from Products page - visible only in Design Studio</div>
                       </div>
                     </label>
                   </div>
@@ -3255,7 +3339,7 @@ function ProductEditRow({ product, onSave, onCancel }) {
           style={{ width:18, height:18, accentColor:'#c8102e', cursor:'pointer', flexShrink:0 }} />
         <div>
           <div style={{ fontSize:13, fontWeight:700, color: p.studio_only ? '#c8102e' : '#0a0a0a' }}>🎨 Studio Only</div>
-          <div style={{ fontSize:11, color:'#888', marginTop:1 }}>Hide from Products page — show only in Design Studio</div>
+          <div style={{ fontSize:11, color:'#888', marginTop:1 }}>Hide from Products page - show only in Design Studio</div>
         </div>
       </label>
 

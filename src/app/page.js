@@ -1030,7 +1030,7 @@ function StudioPage({ user }) {
       const { error:dbErr } = await supabase.from('drynn_orders').insert({
         id:orderId, user_id:user?.id||null, name:form.name, phone:form.phone,
         garment, color, size, qty:Number(form.qty), address:form.address,
-        design_file: designUrl, placed_at:placedAt
+        design_file: designUrl, placed_at:placedAt, status:'Received'
       })
       if (dbErr) console.error(dbErr.message)
       if (GOOGLE_SHEET_WEBHOOK) fetch(GOOGLE_SHEET_WEBHOOK,{ method:'POST', mode:'no-cors', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ sheet:'DRYNN_Orders', orderId, userId:user?.id||'', name:form.name, phone:form.phone, garment, color, size, qty:form.qty, address:form.address, designUrl, placedAt }) }).catch(console.error)
@@ -1396,7 +1396,7 @@ function CartPage({ cart, onRemove, onClear, user }) {
         id: orderId, user_id: user?.id || null, name: form.name, phone: form.phone,
         address: `${form.address}, ${form.pincode}`, garment: itemsSummary,
         color: 'Various', size: 'Various', qty: cart.reduce((s,i) => s + i.qty, 0),
-        design_file: 'catalog-order', placed_at: placedAt,
+        design_file: 'catalog-order', placed_at: placedAt, status: 'Received',
       })
       if (dbErr) console.error('Order error:', dbErr.message)
       if (GOOGLE_SHEET_WEBHOOK) fetch(GOOGLE_SHEET_WEBHOOK, {
@@ -1569,7 +1569,7 @@ function OrdersPage({ user, onBack }) {
   if (selected) {
     const sc = STATUS_COLORS[selected.status] || STATUS_COLORS['Received']
     const stepIdx = STATUS_STEPS.indexOf(selected.status)
-    const isConfirmed = ['Packed','Shipped','Delivered'].includes(selected.status)
+    const isConfirmed = true  // any saved order is a confirmed order
     return (
       <div>
         <div style={{ background:'linear-gradient(90deg,#0a1f5d,#1a0a2e)', padding:'24px 16px' }}>
@@ -1675,7 +1675,7 @@ function OrdersPage({ user, onBack }) {
           <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
             {orders.map(order => {
               const sc = STATUS_COLORS[order.status] || STATUS_COLORS['Received']
-              const isConfirmed = ['Packed','Shipped','Delivered'].includes(order.status)
+              const isConfirmed = true  // every placed order is confirmed
               return (
                 <div key={order.id} onClick={()=>setSelected(order)}
                   style={{ border:'1px solid #f0f0f0', borderRadius:12, padding:'16px', cursor:'pointer', transition:'box-shadow .2s, transform .15s', position:'relative', overflow:'hidden' }}

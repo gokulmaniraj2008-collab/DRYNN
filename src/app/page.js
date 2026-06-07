@@ -27,7 +27,11 @@ function useProducts() {
   React.useEffect(() => {
     supabase.from('drynn_products').select('*').order('id')
       .then(({ data, error }) => {
-        if (!error && data && data.length > 0) setProducts(data)
+        if (error) {
+          console.error('[Products] Failed to load from Supabase:', error.message, '— using hardcoded fallback.')
+          return
+        }
+        if (data && data.length > 0) setProducts(data)
       })
   }, [])
   return products
@@ -70,8 +74,8 @@ const disc = (price, mrp) => Math.round((1 - price / mrp) * 100)
 // ── Global CSS ────────────────────────────────────────────────
 const GLOBAL_CSS = `
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-  html { -webkit-tap-highlight-color: transparent; }
-  body { font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif; background: #fff; color: #0a0a0a; }
+  html { -webkit-tap-highlight-color: transparent; overflow-x:hidden; max-width:100vw; }
+  body { font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif; background: #fff; color: #0a0a0a; overflow-x:hidden; }
   input, textarea, button, select { font-family: inherit; }
   a { text-decoration: none; color: inherit; }
   img { max-width: 100%; display: block; }
@@ -125,7 +129,7 @@ const GLOBAL_CSS = `
 
   /* Section headings */
   .sec-label { font-size:10px; font-weight:700; letter-spacing:.2em; text-transform:uppercase; color:#c8102e; display:block; margin-bottom:8px; }
-  .sec-title { font-family:'Bebas Neue',sans-serif; font-size:clamp(28px,5vw,48px); letter-spacing:.03em; line-height:1.05; }
+  .sec-title { font-family:'Bebas Neue',sans-serif; font-size:clamp(24px,5vw,48px); letter-spacing:.03em; line-height:1.05; }
 
   /* Upload zone */
   .upload-zone {
@@ -165,11 +169,13 @@ const GLOBAL_CSS = `
   /* Responsive */
   @media(max-width:768px){
     .hide-mobile { display:none !important; }
+    .feature-bar { grid-template-columns:repeat(2,1fr) !important; }
     .products-grid { grid-template-columns:repeat(2,1fr) !important; gap:12px !important; }
     .footer-cols { grid-template-columns:1fr 1fr !important; gap:28px !important; }
     .steps-grid { grid-template-columns:1fr 1fr !important; }
     .reviews-grid { grid-template-columns:1fr !important; }
     .hero-cta { flex-direction:column !important; }
+    .hero-cta button, .hero-cta a { width:100% !important; text-align:center; }
     .intro-split { flex-direction:column !important; gap:32px !important; }
     .intro-login-card { width:100% !important; }
   }
@@ -304,16 +310,16 @@ function LoginPage({ onBack }) {
           redirectTo: window.location.origin,
         },
       })
-      if (err) setError(err.message)
+      if (err) setError(err.message || 'Google login failed. Check your internet connection and try again.')
     } catch (e) {
-      setError('Login failed. Please try again.')
+      setError(`[Login] Unexpected error: ${e.message || 'Unknown error'}. Please refresh and try again.`)
     } finally {
       setLoading(false)
     }
   }
 
   return (
-    <div style={{ minHeight:'100vh', background:'#f8f8f8', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', padding:'24px 16px' }}>
+    <div style={{ minHeight:'100vh', background:'#f8f8f8', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', padding:'20px 20px' }}>
       {/* Top stripe */}
       <div style={{ position:'fixed', top:0, left:0, right:0, height:4, display:'flex', zIndex:10 }}>
         <div style={{ flex:1, background:'#c8102e' }} /><div style={{ flex:1, background:'#0a1f5d' }} /><div style={{ flex:1, background:'#c8102e' }} />
@@ -432,7 +438,7 @@ function MockupStudio() {
     const container = mountRef.current
     if (!container) return
 
-    // Load Three.js as a classic script tag — NOT import()
+    // Load Three.js as a classic script tag - NOT import()
     const script = document.createElement('script')
     script.type = 'text/javascript'
     script.src = 'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js'
@@ -588,7 +594,7 @@ function MockupStudio() {
         try{if(container.contains(renderer.domElement))container.removeChild(renderer.domElement)}catch(_){}
       }
     }
-    script.onerror=()=>console.error('Failed to load Three.js')
+    script.onerror=()=>console.error('[3D Studio] Failed to load Three.js from CDN. Check your network connection.')
     document.head.appendChild(script)
 
     return ()=>{destroyed=true;if(sceneRef.current.cleanup)sceneRef.current.cleanup()}
@@ -755,14 +761,14 @@ function HomePage({ user, onNav, cart, onAddToCart }) {
   return (
     <div>
       {/* Hero Banner */}
-      <div style={{ background:'linear-gradient(135deg,#0a1f5d 0%,#1a0a2e 100%)', padding:'48px 16px 56px', position:'relative', overflow:'hidden' }}>
+      <div style={{ background:'linear-gradient(135deg,#0a1f5d 0%,#1a0a2e 100%)', padding:'48px 20px 56px', position:'relative', overflow:'hidden' }}>
         <div style={{ position:'absolute', inset:0, background:'radial-gradient(ellipse at 70% 50%,rgba(200,16,46,.18) 0%,transparent 55%)', pointerEvents:'none' }} />
-        <div style={{ maxWidth:1100, margin:'0 auto', position:'relative', zIndex:1 }}>
+        <div style={{ maxWidth:1100, margin:'0 auto', position:'relative', zIndex:1, padding:'0 4px' }}>
           <div style={{ display:'inline-flex', alignItems:'center', gap:8, background:'rgba(200,16,46,.18)', border:'1px solid rgba(200,16,46,.35)', borderRadius:100, padding:'5px 14px', marginBottom:16 }}>
             <div style={{ width:5, height:5, borderRadius:'50%', background:'#c8102e' }} />
             <span style={{ fontSize:9, fontWeight:700, letterSpacing:'.22em', textTransform:'uppercase', color:'#c8102e' }}>Tamil Nadu's #1 Custom Print</span>
           </div>
-          <h1 style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:'clamp(38px,8vw,70px)', color:'#fff', letterSpacing:'.02em', lineHeight:1.05, marginBottom:14 }}>
+          <h1 style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:'clamp(30px,8vw,70px)', color:'#fff', letterSpacing:'.02em', lineHeight:1.05, marginBottom:14 }}>
             YOUR DESIGN.<br/><span style={{ color:'#c8102e' }}>YOUR STYLE.</span> YOUR DRYNN.
           </h1>
           <p style={{ fontSize:15, color:'rgba(255,255,255,.65)', maxWidth:440, lineHeight:1.8, marginBottom:24 }}>
@@ -777,7 +783,7 @@ function HomePage({ user, onNav, cart, onAddToCart }) {
 
       {/* Feature bar */}
       <div style={{ background:'#fff', borderBottom:'1px solid #f0f0f0' }}>
-        <div style={{ maxWidth:1100, margin:'0 auto', display:'grid', gridTemplateColumns:'repeat(4,1fr)', padding:'0 16px' }}>
+        <div className="feature-bar" style={{ maxWidth:1100, margin:'0 auto', display:'grid', gridTemplateColumns:'repeat(4,1fr)', padding:'0 16px' }}>
           {[
             { icon:'🚚', label:'Free Delivery', sub:'Above ₹1,500' },
             { icon:'↩️', label:'Easy Returns',  sub:'Manufacturing defects' },
@@ -796,7 +802,7 @@ function HomePage({ user, onNav, cart, onAddToCart }) {
       </div>
 
       {/* Featured Products */}
-      <div style={{ padding:'40px 16px' }}>
+      <div style={{ padding:'32px 20px' }}>
         <div style={{ maxWidth:1100, margin:'0 auto' }}>
           <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:20 }}>
             <div><span className="sec-label">Our Collection</span><h2 className="sec-title">FEATURED PRODUCTS</h2></div>
@@ -830,13 +836,13 @@ function HomePage({ user, onNav, cart, onAddToCart }) {
       </div>
 
       {/* How It Works */}
-      <div style={{ background:'#f8f8f8', padding:'48px 16px' }}>
+      <div style={{ background:'#f8f8f8', padding:'40px 20px' }}>
         <div style={{ maxWidth:1100, margin:'0 auto' }}>
           <span className="sec-label" style={{ textAlign:'center', display:'block' }}>Process</span>
           <h2 className="sec-title" style={{ textAlign:'center', marginBottom:32 }}>HOW IT WORKS</h2>
           <div className="steps-grid" style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:16 }}>
             {STEPS.map((s,i) => (
-              <div key={i} style={{ background:'#fff', borderRadius:10, padding:'24px 16px', borderTop:`3px solid ${s.color}`, textAlign:'center' }}>
+              <div key={i} style={{ background:'#fff', borderRadius:10, padding:'20px 20px', borderTop:`3px solid ${s.color}`, textAlign:'center' }}>
                 <div style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:40, color:s.color, lineHeight:1, marginBottom:8 }}>{s.num}</div>
                 <div style={{ fontWeight:700, fontSize:14, marginBottom:6 }}>{s.title}</div>
                 <div style={{ fontSize:12, color:'#888', lineHeight:1.65 }}>{s.desc}</div>
@@ -847,7 +853,7 @@ function HomePage({ user, onNav, cart, onAddToCart }) {
       </div>
 
       {/* Reviews */}
-      <div style={{ padding:'48px 16px' }}>
+      <div style={{ padding:'40px 20px' }}>
         <div style={{ maxWidth:1100, margin:'0 auto' }}>
           <span className="sec-label" style={{ textAlign:'center', display:'block' }}>Customer Reviews</span>
           <h2 className="sec-title" style={{ textAlign:'center', marginBottom:32 }}>WHAT THEY SAY</h2>
@@ -880,26 +886,172 @@ function HomePage({ user, onNav, cart, onAddToCart }) {
   )
 }
 
+// ── Product Detail Page ──────────────────────────────────────
+function ProductDetailPage({ product, onBack, onAddToCart }) {
+  const [size,     setSize]     = useState('M')
+  const [color,    setColor]    = useState(product.color || '#ffffff')
+  const [qty,      setQty]      = useState(1)
+  const [added,    setAdded]    = useState(false)
+
+  const handleAdd = () => {
+    onAddToCart({ ...product, size, color, qty })
+    setAdded(true)
+    setTimeout(() => setAdded(false), 2000)
+  }
+
+  return (
+    <div style={{ paddingBottom:80 }}>
+      {/* Back bar */}
+      <div style={{ background:'#fff', borderBottom:'1px solid #f0f0f0', padding:'12px 20px', display:'flex', alignItems:'center', gap:10, position:'sticky', top:56, zIndex:10 }}>
+        <button onClick={onBack} style={{ background:'none', border:'none', fontSize:20, cursor:'pointer', color:'#555' }}>←</button>
+        <span style={{ fontSize:13, fontWeight:600, color:'#555' }}>Products</span>
+        <span style={{ color:'#ccc' }}>›</span>
+        <span style={{ fontSize:13, fontWeight:600, color:'#0a0a0a', flex:1, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{product.name}</span>
+      </div>
+
+      <div style={{ maxWidth:900, margin:'0 auto', padding:'24px 20px' }}>
+        <div style={{ display:'flex', gap:32, flexWrap:'wrap' }}>
+          {/* Image */}
+          <div style={{ flex:'0 0 auto', width:'100%', maxWidth:340 }}>
+            <div style={{ background:'#f8f8f8', borderRadius:12, height:320, display:'flex', alignItems:'center', justifyContent:'center', fontSize:140, position:'relative' }}>
+              {product.emoji}
+              <div style={{ position:'absolute', top:14, left:14, background:product.tagColor, color:'#fff', fontSize:9, fontWeight:700, letterSpacing:'.1em', textTransform:'uppercase', padding:'4px 10px', borderRadius:3 }}>{product.tag}</div>
+            </div>
+          </div>
+
+          {/* Info */}
+          <div style={{ flex:1, minWidth:260 }}>
+            <p style={{ fontSize:11, color:'#aaa', fontWeight:600, letterSpacing:'.1em', textTransform:'uppercase', marginBottom:6 }}>{product.category}</p>
+            <h1 style={{ fontSize:22, fontWeight:700, marginBottom:10, lineHeight:1.2 }}>{product.name}</h1>
+            <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:14 }}>
+              <StarRating rating={product.rating} />
+              <span style={{ fontSize:12, color:'#aaa' }}>({product.reviews} reviews)</span>
+            </div>
+            <div style={{ display:'flex', alignItems:'baseline', gap:10, marginBottom:6 }}>
+              <span style={{ fontSize:28, fontWeight:700, color:'#0a0a0a' }}>₹{product.price.toLocaleString()}</span>
+              <span style={{ fontSize:15, color:'#aaa', textDecoration:'line-through' }}>₹{product.mrp.toLocaleString()}</span>
+              <span style={{ fontSize:13, fontWeight:700, color:'#00a86b' }}>{disc(product.price,product.mrp)}% off</span>
+            </div>
+            <div style={{ fontSize:12, color:'#00a86b', fontWeight:600, marginBottom:20 }}>In stock · Free delivery above ₹1,500</div>
+
+            {/* Size */}
+            <div style={{ marginBottom:18 }}>
+              <p style={{ fontSize:11, fontWeight:700, letterSpacing:'.12em', textTransform:'uppercase', color:'#555', marginBottom:10 }}>Size</p>
+              <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
+                {SIZES.map(s => (
+                  <button key={s} className={`size-btn${size===s?' active':''}`} onClick={()=>setSize(s)}>{s}</button>
+                ))}
+              </div>
+            </div>
+
+            {/* Colour */}
+            <div style={{ marginBottom:18 }}>
+              <p style={{ fontSize:11, fontWeight:700, letterSpacing:'.12em', textTransform:'uppercase', color:'#555', marginBottom:10 }}>Colour</p>
+              <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
+                {SWATCHES.map(c => (
+                  <div key={c} className={`swatch${c===color?' active':''}${c==='#ffffff'?' white':''}`} onClick={()=>setColor(c)} style={{ background:c }} />
+                ))}
+              </div>
+            </div>
+
+            {/* Qty */}
+            <div style={{ marginBottom:24 }}>
+              <p style={{ fontSize:11, fontWeight:700, letterSpacing:'.12em', textTransform:'uppercase', color:'#555', marginBottom:10 }}>Quantity</p>
+              <div style={{ display:'flex', alignItems:'center', gap:12 }}>
+                <button onClick={()=>setQty(q=>Math.max(1,q-1))} style={{ width:34, height:34, borderRadius:'50%', border:'1.5px solid #e0e0e0', background:'#fff', fontSize:18, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}>-</button>
+                <span style={{ fontSize:16, fontWeight:700, minWidth:24, textAlign:'center' }}>{qty}</span>
+                <button onClick={()=>setQty(q=>q+1)} style={{ width:34, height:34, borderRadius:'50%', border:'1.5px solid #e0e0e0', background:'#fff', fontSize:18, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}>+</button>
+              </div>
+            </div>
+
+            <button className="btn-primary" style={{ width:'100%', padding:15, fontSize:14, marginBottom:10 }} onClick={handleAdd}>
+              {added ? '✓ Added to Cart!' : 'Add to Cart'}
+            </button>
+          </div>
+        </div>
+
+        {/* Details */}
+        <div style={{ marginTop:36, padding:'24px', background:'#f8f8f8', borderRadius:12 }}>
+          <h3 style={{ fontSize:16, fontWeight:700, marginBottom:16 }}>Product Details</h3>
+          <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(180px,1fr))', gap:12 }}>
+            {[
+              ['Material',  '100% Pre-shrunk Cotton'],
+              ['Print',     'Heat Press Technology'],
+              ['Delivery',  '5-7 Working Days'],
+              ['Payment',   'UPI & Razorpay'],
+              ['Returns',   'Manufacturing defects only'],
+              ['Support',   'WhatsApp: +91 99447 61306'],
+            ].map(([k,v]) => (
+              <div key={k} style={{ background:'#fff', borderRadius:8, padding:'12px 14px' }}>
+                <div style={{ fontSize:10, color:'#aaa', fontWeight:700, letterSpacing:'.1em', textTransform:'uppercase', marginBottom:4 }}>{k}</div>
+                <div style={{ fontSize:13, fontWeight:600 }}>{v}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ── Products Listing Page ─────────────────────────────────────
 function ProductsPage({ onAddToCart }) {
   const products  = useProducts()
-  const [activeTab, setActiveTab] = useState('All')
-  const [sort, setSort]           = useState('popular')
-  const [wishlist, setWishlist]   = useState([])
+  const [activeTab,    setActiveTab]    = useState('All')
+  const [sort,         setSort]         = useState('popular')
+  const [wishlist,     setWishlist]     = useState([])
+  const [search,       setSearch]       = useState('')
+  const [selectedProduct, setSelectedProduct] = useState(null)
+
   const categories = ['All','T-Shirts','Hoodies','Polos','Joggers']
-  const filtered = products.filter(p => activeTab === 'All' || p.category === activeTab)
-  const sorted = [...filtered].sort((a,b) => sort==='price-asc'?a.price-b.price : sort==='price-desc'?b.price-a.price : b.reviews-a.reviews)
+
+  const filtered = products
+    .filter(p => activeTab === 'All' || p.category === activeTab)
+    .filter(p => !search || p.name.toLowerCase().includes(search.toLowerCase()) || p.category.toLowerCase().includes(search.toLowerCase()))
+
+  const sorted = [...filtered].sort((a,b) =>
+    sort==='price-asc' ? a.price-b.price :
+    sort==='price-desc' ? b.price-a.price :
+    b.reviews-a.reviews
+  )
+
+  if (selectedProduct) return (
+    <ProductDetailPage
+      product={selectedProduct}
+      onBack={()=>setSelectedProduct(null)}
+      onAddToCart={(p)=>{ onAddToCart(p); setSelectedProduct(null) }}
+    />
+  )
 
   return (
     <div style={{ padding:'0 0 40px' }}>
       {/* Header */}
-      <div style={{ background:'linear-gradient(90deg,#0a1f5d,#1a0a2e)', padding:'32px 16px' }}>
+      <div style={{ background:'linear-gradient(90deg,#0a1f5d,#1a0a2e)', padding:'28px 20px' }}>
         <div style={{ maxWidth:1100, margin:'0 auto' }}>
           <span className="sec-label" style={{ color:'rgba(255,255,255,.6)' }}>Our Collection</span>
           <h1 className="sec-title" style={{ color:'#fff' }}>ALL PRODUCTS</h1>
         </div>
       </div>
-      {/* Tabs + sort */}
+
+      {/* Search + Tabs + Sort */}
       <div style={{ background:'#fff', borderBottom:'1px solid #f0f0f0', position:'sticky', top:56, zIndex:10 }}>
+        {/* Search bar */}
+        <div style={{ maxWidth:1100, margin:'0 auto', padding:'10px 20px 0' }}>
+          <div style={{ position:'relative' }}>
+            <span style={{ position:'absolute', left:12, top:'50%', transform:'translateY(-50%)', fontSize:16, color:'#aaa' }}>🔍</span>
+            <input
+              className="input-field"
+              placeholder="Search products..."
+              value={search}
+              onChange={e=>setSearch(e.target.value)}
+              style={{ paddingLeft:38, borderRadius:50, fontSize:13 }}
+            />
+            {search && (
+              <button onClick={()=>setSearch('')} style={{ position:'absolute', right:12, top:'50%', transform:'translateY(-50%)', background:'none', border:'none', fontSize:18, cursor:'pointer', color:'#aaa' }}>×</button>
+            )}
+          </div>
+        </div>
+        {/* Tabs + sort */}
         <div style={{ maxWidth:1100, margin:'0 auto', display:'flex', alignItems:'center', justifyContent:'space-between', padding:'0 16px', flexWrap:'wrap', gap:8 }}>
           <div className="tab-scroll" style={{ display:'flex' }}>
             {categories.map(t => <button key={t} className={`tab-btn${activeTab===t?' active':''}`} onClick={()=>setActiveTab(t)}>{t}</button>)}
@@ -912,36 +1064,45 @@ function ProductsPage({ onAddToCart }) {
           </select>
         </div>
       </div>
+
       {/* Grid */}
-      <div style={{ maxWidth:1100, margin:'0 auto', padding:'24px 16px' }}>
-        <p style={{ fontSize:12, color:'#aaa', marginBottom:16 }}>{sorted.length} product{sorted.length!==1?'s':''}</p>
-        <div className="products-grid" style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:16 }}>
-          {sorted.map(p => (
-            <div key={p.id} className="product-card">
-              <div style={{ background:'#f8f8f8', height:200, display:'flex', alignItems:'center', justifyContent:'center', fontSize:80, position:'relative' }}>
-                {p.emoji}
-                <div style={{ position:'absolute', top:10, left:10, background:p.tagColor, color:'#fff', fontSize:9, fontWeight:700, letterSpacing:'.1em', textTransform:'uppercase', padding:'3px 8px', borderRadius:2 }}>{p.tag}</div>
-                <button onClick={e=>{ e.stopPropagation(); setWishlist(w=>w.includes(p.id)?w.filter(x=>x!==p.id):[...w,p.id]) }}
-                  style={{ position:'absolute', top:8, right:8, background:'#fff', border:'none', borderRadius:'50%', width:30, height:30, display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', fontSize:16, boxShadow:'0 2px 8px rgba(0,0,0,.1)' }}>
-                  {wishlist.includes(p.id)?'❤️':'🤍'}
-                </button>
-              </div>
-              <div style={{ padding:'12px 14px' }}>
-                <p style={{ fontSize:13, fontWeight:600, marginBottom:4 }}>{p.name}</p>
-                <div style={{ display:'flex', alignItems:'center', gap:6, marginBottom:6 }}>
-                  <StarRating rating={p.rating} />
-                  <span style={{ fontSize:11, color:'#aaa' }}>({p.reviews})</span>
+      <div style={{ maxWidth:1100, margin:'0 auto', padding:'20px 20px' }}>
+        <p style={{ fontSize:12, color:'#aaa', marginBottom:16 }}>{sorted.length} product{sorted.length!==1?'s':''}{search?` for "${search}":''}</p>
+        {sorted.length === 0 ? (
+          <div style={{ textAlign:'center', padding:'60px 20px' }}>
+            <div style={{ fontSize:48, marginBottom:12 }}>🔍</div>
+            <p style={{ fontSize:16, fontWeight:600, marginBottom:6 }}>No products found</p>
+            <p style={{ fontSize:13, color:'#aaa' }}>Try a different search or category</p>
+          </div>
+        ) : (
+          <div className="products-grid" style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:16 }}>
+            {sorted.map(p => (
+              <div key={p.id} className="product-card" onClick={()=>setSelectedProduct(p)}>
+                <div style={{ background:'#f8f8f8', height:200, display:'flex', alignItems:'center', justifyContent:'center', fontSize:80, position:'relative' }}>
+                  {p.emoji}
+                  <div style={{ position:'absolute', top:10, left:10, background:p.tagColor, color:'#fff', fontSize:9, fontWeight:700, letterSpacing:'.1em', textTransform:'uppercase', padding:'3px 8px', borderRadius:2 }}>{p.tag}</div>
+                  <button onClick={e=>{ e.stopPropagation(); setWishlist(w=>w.includes(p.id)?w.filter(x=>x!==p.id):[...w,p.id]) }}
+                    style={{ position:'absolute', top:8, right:8, background:'#fff', border:'none', borderRadius:'50%', width:30, height:30, display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', fontSize:16, boxShadow:'0 2px 8px rgba(0,0,0,.1)' }}>
+                    {wishlist.includes(p.id)?'❤️':'🤍'}
+                  </button>
                 </div>
-                <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:4 }}>
-                  <span style={{ fontSize:16, fontWeight:700 }}>₹{p.price.toLocaleString()}</span>
-                  <span style={{ fontSize:12, color:'#aaa', textDecoration:'line-through' }}>₹{p.mrp.toLocaleString()}</span>
+                <div style={{ padding:'12px 14px' }}>
+                  <p style={{ fontSize:13, fontWeight:600, marginBottom:4 }}>{p.name}</p>
+                  <div style={{ display:'flex', alignItems:'center', gap:6, marginBottom:6 }}>
+                    <StarRating rating={p.rating} />
+                    <span style={{ fontSize:11, color:'#aaa' }}>({p.reviews})</span>
+                  </div>
+                  <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:4 }}>
+                    <span style={{ fontSize:16, fontWeight:700 }}>₹{p.price.toLocaleString()}</span>
+                    <span style={{ fontSize:12, color:'#aaa', textDecoration:'line-through' }}>₹{p.mrp.toLocaleString()}</span>
+                  </div>
+                  <div style={{ fontSize:11, color:'#00a86b', fontWeight:600, marginBottom:10 }}>{disc(p.price,p.mrp)}% off</div>
+                  <button className="btn-primary" style={{ width:'100%', padding:'9px', fontSize:12 }} onClick={e=>{ e.stopPropagation(); onAddToCart(p) }}>Add to Cart</button>
                 </div>
-                <div style={{ fontSize:11, color:'#00a86b', fontWeight:600, marginBottom:10 }}>{disc(p.price,p.mrp)}% off</div>
-                <button className="btn-primary" style={{ width:'100%', padding:'9px', fontSize:12 }} onClick={()=>onAddToCart(p)}>Add to Cart</button>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   )
@@ -1019,35 +1180,41 @@ function StudioPage({ user }) {
         try {
           designUrl = await uploadToCloudinary(uploadedFile, pct => setUploadPct(pct))
         } catch(e) {
-          console.error('Cloudinary error:', e)
-          setStatus(''); alert('Design upload failed. Check your internet and try again.'); return
+          console.error('[Studio → Cloudinary] Design upload failed:', e.message)
+          setStatus('')
+          alert(`[Design Upload Failed]\n\nArea: Cloudinary image upload\nReason: ${e.message || 'Network error'}\n\nFix: Check your internet, then try again. If this repeats, your Cloudinary preset may not be configured.`)
+          return
         }
       } else {
-        // Sample design — use Cloudinary URL directly
+        // Sample design - use Cloudinary URL directly
         designUrl = selectedSample.image_url
       }
       setStatus('saving')
-      // Get live auth user ID — user prop can sometimes be stale
-      const { data: { user: authUser } } = await supabase.auth.getUser()
-      const uid = authUser?.id || user?.id || null
       const { error:dbErr } = await supabase.from('drynn_orders').insert({
-        id:orderId, user_id:uid, name:form.name, phone:form.phone,
+        id:orderId, user_id:user?.id||null, name:form.name, phone:form.phone,
         garment, color, size, qty:Number(form.qty), address:form.address,
-        design_file: designUrl, placed_at:placedAt, status:'Received'
+        design_file: designUrl, status:'pending', placed_at:placedAt
       })
-      if (dbErr) console.error(dbErr.message)
-      if (GOOGLE_SHEET_WEBHOOK) fetch(GOOGLE_SHEET_WEBHOOK,{ method:'POST', mode:'no-cors', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ sheet:'DRYNN_Orders', orderId, userId:user?.id||'', name:form.name, phone:form.phone, garment, color, size, qty:form.qty, address:form.address, designUrl, placedAt }) }).catch(console.error)
+      if (dbErr) {
+        console.error('[Studio → Supabase] Order save failed:', dbErr.message)
+        alert(`[Order Save Failed]\n\nArea: Supabase drynn_orders table\nReason: ${dbErr.message}\n\nYour design was uploaded but the order was not saved. Please WhatsApp us at +91 99447 61306 with your name and design details.`)
+      }
+      if (GOOGLE_SHEET_WEBHOOK) fetch(GOOGLE_SHEET_WEBHOOK,{ method:'POST', mode:'no-cors', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ sheet:'DRYNN_Orders', orderId, userId:user?.id||'', name:form.name, phone:form.phone, garment, color, size, qty:form.qty, address:form.address, designUrl, placedAt }) }).catch(e => console.error('[Studio → Google Sheets] Webhook failed:', e.message))
       setStatus('done')
       setTimeout(()=>setStatus(''),5000)
       setForm({ name:user?.user_metadata?.full_name||'', phone:'', qty:1, address:'' })
       setFile(null); setSample(null); setUploadPct(0); setDesignMode('')
-    } catch(e) { console.error(e); setStatus(''); alert('Something went wrong. Please try again.') }
+    } catch(e) {
+      console.error('[Studio] Unexpected error during order submission:', e.message)
+      setStatus('')
+      alert(`[Unexpected Error]\n\nArea: Studio order submission\nReason: ${e.message || 'Unknown error'}\n\nPlease try again or WhatsApp us at +91 99447 61306.`)
+    }
   }
 
   return (
     <div>
       {/* Header */}
-      <div style={{ background:'linear-gradient(90deg,#0a1f5d,#1a0a2e)', padding:'32px 16px' }}>
+      <div style={{ background:'linear-gradient(90deg,#0a1f5d,#1a0a2e)', padding:'28px 20px' }}>
         <div style={{ maxWidth:1100, margin:'0 auto' }}>
           <span className="sec-label" style={{ color:'rgba(255,255,255,.6)' }}>Design Studio</span>
           <h1 className="sec-title" style={{ color:'#fff' }}>CUSTOM PRINT ORDER</h1>
@@ -1056,7 +1223,7 @@ function StudioPage({ user }) {
       </div>
 
       {/* Order form */}
-      <div style={{ maxWidth:680, margin:'0 auto', padding:'32px 16px' }}>
+      <div style={{ maxWidth:680, margin:'0 auto', padding:'28px 20px' }}>
         {status==='done' && (
           <div style={{ background:'rgba(0,168,107,.08)', border:'1px solid rgba(0,168,107,.25)', borderRadius:8, padding:'14px 18px', marginBottom:24, fontSize:13, color:'#00a86b', fontWeight:600 }}>
             ✓ Order placed! We'll contact you on WhatsApp within 2 hours.
@@ -1242,7 +1409,7 @@ function AboutPage() {
       </div>
 
       {/* Story */}
-      <div style={{ maxWidth:720, margin:'0 auto', padding:'48px 16px' }}>
+      <div style={{ maxWidth:720, margin:'0 auto', padding:'40px 20px' }}>
         <div style={{ display:'grid', gap:32 }}>
           {[
             { title:'Who We Are', color:'#c8102e', text:'DRYNN is a custom garment printing service based in Tamil Nadu, India. We bring your designs to life on premium quality t-shirts, hoodies, polos, and joggers  -  delivered right to your door.' },
@@ -1263,7 +1430,7 @@ function AboutPage() {
         {/* Stats */}
         <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:16, margin:'48px 0', textAlign:'center' }}>
           {[['500+','Orders Completed'],['5★','Average Rating'],['5-7d','Delivery']].map(([n,l])=>(
-            <div key={l} style={{ background:'#f8f8f8', borderRadius:10, padding:'24px 16px' }}>
+            <div key={l} style={{ background:'#f8f8f8', borderRadius:10, padding:'20px 20px' }}>
               <div style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:40, color:'#c8102e', lineHeight:1, marginBottom:6 }}>{n}</div>
               <div style={{ fontSize:12, color:'#888', fontWeight:600 }}>{l}</div>
             </div>
@@ -1309,7 +1476,10 @@ function ContactPage() {
         message: form.message || null,
         submitted_at: submittedAt,
       })
-      if (dbErr) console.error('Supabase contact error:', dbErr.message)
+      if (dbErr) {
+        console.error('[Contact] Supabase drynn_contacts insert failed:', dbErr.message)
+        // Non-fatal — still send to Google Sheet
+      }
 
       // Send to Google Sheet webhook
       if (GOOGLE_SHEET_WEBHOOK) {
@@ -1317,29 +1487,29 @@ function ContactPage() {
           method: 'POST', mode: 'no-cors',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ sheet: 'DRYNN_Contacts', ...form, submittedAt }),
-        }).catch(console.error)
+        }).catch(e => console.error('[Contact] Google Sheets webhook failed:', e.message))
       }
 
       setSent(true)
       setForm({ name:'', phone:'', email:'', message:'' })
     } catch (e) {
-      console.error(e)
-      setError('Something went wrong. Please WhatsApp us directly.')
+      console.error('[Contact] Unexpected error during form submission:', e.message)
+      setError(`[Contact Form Error] Area: Contact submission · Reason: ${e.message || 'Unknown'}. Please WhatsApp us at +91 99447 61306.`)
     } finally {
       setSaving(false)
     }
   }
   return (
     <div>
-      <div style={{ background:'linear-gradient(90deg,#0a1f5d,#1a0a2e)', padding:'32px 16px' }}>
+      <div style={{ background:'linear-gradient(90deg,#0a1f5d,#1a0a2e)', padding:'28px 20px' }}>
         <div style={{ maxWidth:1100, margin:'0 auto' }}>
           <span className="sec-label" style={{ color:'rgba(255,255,255,.6)' }}>Get In Touch</span>
           <h1 className="sec-title" style={{ color:'#fff' }}>CONTACT US</h1>
         </div>
       </div>
-      <div style={{ maxWidth:680, margin:'0 auto', padding:'40px 16px' }}>
+      <div style={{ maxWidth:680, margin:'0 auto', padding:'32px 20px' }}>
         {sent ? (
-          <div style={{ textAlign:'center', padding:'48px 16px' }}>
+          <div style={{ textAlign:'center', padding:'40px 20px' }}>
             <div style={{ fontSize:60, marginBottom:16 }}>✅</div>
             <h2 style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:36, marginBottom:8 }}>MESSAGE SENT!</h2>
             <p style={{ fontSize:14, color:'#555' }}>We'll WhatsApp you within 2 hours.</p>
@@ -1395,28 +1565,31 @@ function CartPage({ cart, onRemove, onClear, user }) {
       const orderId  = crypto.randomUUID()
       const placedAt = new Date().toISOString()
       const itemsSummary = cart.map(i => `${i.name} x${i.qty}`).join(', ')
-      // Get live auth user ID — user prop can sometimes be stale
-      const { data: { user: authUser } } = await supabase.auth.getUser()
-      const uid = authUser?.id || user?.id || null
       const { error: dbErr } = await supabase.from('drynn_orders').insert({
-        id: orderId, user_id: uid, name: form.name, phone: form.phone,
+        id: orderId, user_id: user?.id || null, name: form.name, phone: form.phone,
         address: `${form.address}, ${form.pincode}`, garment: itemsSummary,
         color: 'Various', size: 'Various', qty: cart.reduce((s,i) => s + i.qty, 0),
-        design_file: 'catalog-order', placed_at: placedAt, status: 'Received',
+        design_file: 'catalog-order', status: 'pending', placed_at: placedAt,
       })
-      if (dbErr) console.error('Order error:', dbErr.message)
+      if (dbErr) {
+        console.error('[Cart → Supabase] Order insert failed:', dbErr.message)
+        alert(`[Order Save Failed]\n\nArea: Supabase drynn_orders (cart checkout)\nReason: ${dbErr.message}\n\nPlease WhatsApp us at +91 99447 61306 with your order details.`)
+      }
       if (GOOGLE_SHEET_WEBHOOK) fetch(GOOGLE_SHEET_WEBHOOK, {
         method:'POST', mode:'no-cors', headers:{'Content-Type':'application/json'},
         body: JSON.stringify({ sheet:'DRYNN_Orders', orderId, name:form.name, phone:form.phone, address:form.address, pincode:form.pincode, items:itemsSummary, total:grandTotal, payment:form.payment, placedAt }),
-      }).catch(console.error)
+      }).catch(e => console.error('[Cart → Google Sheets] Webhook failed:', e.message))
       onClear(); setStep('done')
-    } catch(e) { console.error(e); alert('Something went wrong. Please try again.') }
+    } catch(e) {
+      console.error('[Cart] Unexpected error during checkout:', e.message)
+      alert(`[Checkout Error]\n\nArea: Cart checkout\nReason: ${e.message || 'Unknown error'}\n\nPlease try again or WhatsApp us at +91 99447 61306.`)
+    }
     finally { setSaving(false) }
   }
 
   if (step === 'done') return (
     <div>
-      <div style={{ background:'linear-gradient(90deg,#0a1f5d,#1a0a2e)', padding:'32px 16px' }}>
+      <div style={{ background:'linear-gradient(90deg,#0a1f5d,#1a0a2e)', padding:'28px 20px' }}>
         <div style={{ maxWidth:1100, margin:'0 auto' }}>
           <span className="sec-label" style={{ color:'rgba(255,255,255,.6)' }}>Order Placed</span>
           <h1 className="sec-title" style={{ color:'#fff' }}>THANK YOU!</h1>
@@ -1439,13 +1612,13 @@ function CartPage({ cart, onRemove, onClear, user }) {
 
   if (step === 'checkout') return (
     <div>
-      <div style={{ background:'linear-gradient(90deg,#0a1f5d,#1a0a2e)', padding:'32px 16px' }}>
+      <div style={{ background:'linear-gradient(90deg,#0a1f5d,#1a0a2e)', padding:'28px 20px' }}>
         <div style={{ maxWidth:1100, margin:'0 auto' }}>
           <span className="sec-label" style={{ color:'rgba(255,255,255,.6)' }}>Step 2 of 2</span>
           <h1 className="sec-title" style={{ color:'#fff' }}>DELIVERY DETAILS</h1>
         </div>
       </div>
-      <div style={{ maxWidth:680, margin:'0 auto', padding:'32px 16px' }}>
+      <div style={{ maxWidth:680, margin:'0 auto', padding:'28px 20px' }}>
         <div style={{ background:'#f8f8f8', borderRadius:10, padding:'16px 20px', marginBottom:28 }}>
           <p style={{ fontSize:11, fontWeight:700, letterSpacing:'.12em', textTransform:'uppercase', color:'#888', marginBottom:10 }}>Order Summary</p>
           {cart.map((item,i) => (
@@ -1492,13 +1665,13 @@ function CartPage({ cart, onRemove, onClear, user }) {
 
   return (
     <div>
-      <div style={{ background:'linear-gradient(90deg,#0a1f5d,#1a0a2e)', padding:'32px 16px' }}>
+      <div style={{ background:'linear-gradient(90deg,#0a1f5d,#1a0a2e)', padding:'28px 20px' }}>
         <div style={{ maxWidth:1100, margin:'0 auto' }}>
           <span className="sec-label" style={{ color:'rgba(255,255,255,.6)' }}>My Cart</span>
           <h1 className="sec-title" style={{ color:'#fff' }}>SHOPPING CART</h1>
         </div>
       </div>
-      <div style={{ maxWidth:800, margin:'0 auto', padding:'32px 16px' }}>
+      <div style={{ maxWidth:800, margin:'0 auto', padding:'28px 20px' }}>
         {cart.length===0 ? (
           <div style={{ textAlign:'center', padding:'64px 16px' }}>
             <div style={{ fontSize:64, marginBottom:16 }}>🛒</div>
@@ -1544,30 +1717,54 @@ function CartPage({ cart, onRemove, onClear, user }) {
 // ══════════════════════════════════════════════════════════════
 // MY ORDERS PAGE
 // ══════════════════════════════════════════════════════════════
-function OrdersPage({ user, onBack }) {
-  const [orders,  setOrders]  = useState([])
-  const [loading, setLoading] = useState(true)
-  const [selected,setSelected]= useState(null)  // order to show detail
+function OrdersPage({ user, onBack, onNav }) {
+  const [orders,   setOrders]   = useState([])
+  const [loading,  setLoading]  = useState(true)
+  const [loadErr,  setLoadErr]  = useState('')
+  const [selected, setSelected] = useState(null)
+  const [histTab,  setHistTab]  = useState('active')  // active | history | all
+  const [search,   setSearch]   = useState('')
 
-  useEffect(() => {
-    const fetchOrders = async () => {
-      // Get the live auth user directly — don't rely on prop which may be stale
-      const { data: { user: authUser } } = await supabase.auth.getUser()
-      const uid = authUser?.id || user?.id
-      if (!uid) { setLoading(false); return }
-
-      const { data, error } = await supabase
-        .from('drynn_orders')
-        .select('*')
-        .eq('user_id', uid)
-        .order('placed_at', { ascending: false })
-
-      if (error) console.error('Orders fetch error:', error.message)
-      if (data) setOrders(data)
-      setLoading(false)
+  const loadOrders = async () => {
+    if (!user) { setLoading(false); setLoadErr('You must be logged in to view orders.'); return }
+    setLoading(true); setLoadErr('')
+    const { data, error } = await supabase
+      .from('drynn_orders')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('placed_at', { ascending: false })
+    setLoading(false)
+    if (error) {
+      setLoadErr(`Failed to load orders from database. (Supabase: ${error.message})`)
+      return
     }
-    fetchOrders()
-  }, [user])
+    setOrders(data || [])
+  }
+
+  useEffect(() => { loadOrders() }, [user])
+
+  // History = Delivered. Active = everything else.
+  const HISTORY_STATUSES = ['Delivered']
+  const ACTIVE_STATUSES  = ['Received','Approved','Printing','Packed','Shipped']
+
+  const filteredOrders = orders.filter(o => {
+    const s = o.status || 'Received'
+    const matchTab =
+      histTab === 'all'     ? true :
+      histTab === 'history' ? HISTORY_STATUSES.includes(s) :
+                              ACTIVE_STATUSES.includes(s)   // 'active'
+    const matchSearch = !search.trim() ||
+      o.garment?.toLowerCase().includes(search.toLowerCase()) ||
+      o.id?.toLowerCase().includes(search.toLowerCase()) ||
+      o.name?.toLowerCase().includes(search.toLowerCase())
+    return matchTab && matchSearch
+  })
+
+  const counts = {
+    active:  orders.filter(o => ACTIVE_STATUSES.includes(o.status  || 'Received')).length,
+    history: orders.filter(o => HISTORY_STATUSES.includes(o.status || 'Received')).length,
+    all:     orders.length,
+  }
 
   const STATUS_COLORS = {
     Received: { bg:'#fff8e1', color:'#f5a623', border:'#ffe082' },
@@ -1583,17 +1780,17 @@ function OrdersPage({ user, onBack }) {
   if (selected) {
     const sc = STATUS_COLORS[selected.status] || STATUS_COLORS['Received']
     const stepIdx = STATUS_STEPS.indexOf(selected.status)
-    const isConfirmed = true  // any saved order is a confirmed order
+    const isConfirmed = ['Packed','Shipped','Delivered'].includes(selected.status)
     return (
       <div>
-        <div style={{ background:'linear-gradient(90deg,#0a1f5d,#1a0a2e)', padding:'24px 16px' }}>
+        <div style={{ background:'linear-gradient(90deg,#0a1f5d,#1a0a2e)', padding:'20px 20px' }}>
           <div style={{ maxWidth:600, margin:'0 auto' }}>
             <button onClick={()=>setSelected(null)} style={{ background:'rgba(255,255,255,.1)', border:'1px solid rgba(255,255,255,.2)', color:'#fff', padding:'6px 14px', borderRadius:50, fontSize:12, cursor:'pointer', fontWeight:600, marginBottom:12 }}>← My Orders</button>
             <span className="sec-label" style={{ color:'rgba(255,255,255,.6)' }}>Order Details</span>
             <h1 className="sec-title" style={{ color:'#fff', fontSize:'clamp(22px,5vw,36px)' }}>#{selected.id?.slice(0,8).toUpperCase()}</h1>
           </div>
         </div>
-        <div style={{ maxWidth:600, margin:'0 auto', padding:'24px 16px' }}>
+        <div style={{ maxWidth:600, margin:'0 auto', padding:'20px 20px' }}>
 
           {/* ORDER CONFIRMED banner */}
           {isConfirmed && (
@@ -1608,7 +1805,7 @@ function OrdersPage({ user, onBack }) {
 
           {/* Status badge */}
           <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:20 }}>
-            <span style={{ fontSize:12, color:'#888' }}>{selected.placed_at ? new Date(selected.placed_at).toLocaleDateString('en-IN',{day:'numeric',month:'long',year:'numeric'}) : '—'}</span>
+            <span style={{ fontSize:12, color:'#888' }}>{selected.placed_at ? new Date(selected.placed_at).toLocaleDateString('en-IN',{day:'numeric',month:'long',year:'numeric'}) : '-'}</span>
             <span style={{ fontSize:12, fontWeight:700, padding:'5px 14px', borderRadius:20, background:sc.bg, color:sc.color, border:`1px solid ${sc.border}` }}>{selected.status || 'Received'}</span>
           </div>
 
@@ -1616,9 +1813,9 @@ function OrdersPage({ user, onBack }) {
           <div style={{ border:'1px solid #f0f0f0', borderRadius:12, padding:'18px', marginBottom:24 }}>
             <p style={{ fontSize:11, fontWeight:700, letterSpacing:'.12em', textTransform:'uppercase', color:'#aaa', marginBottom:14 }}>Order Summary</p>
             {[
-              ['Item(s)', selected.garment || '—'],
-              ['Size',    selected.size    || '—'],
-              ['Qty',     selected.qty     || '—'],
+              ['Item(s)', selected.garment || '-'],
+              ['Size',    selected.size    || '-'],
+              ['Qty',     selected.qty     || '-'],
               ['Payment', 'UPI / Razorpay'],
             ].map(([k,v]) => (
               <div key={k} style={{ display:'flex', justifyContent:'space-between', padding:'8px 0', borderBottom:'1px solid #f8f8f8', fontSize:13 }}>
@@ -1666,40 +1863,120 @@ function OrdersPage({ user, onBack }) {
 
   return (
     <div>
-      <div style={{ background:'linear-gradient(90deg,#0a1f5d,#1a0a2e)', padding:'32px 16px' }}>
+      <div style={{ background:'linear-gradient(90deg,#0a1f5d,#1a0a2e)', padding:'28px 20px' }}>
         <div style={{ maxWidth:600, margin:'0 auto' }}>
           <button onClick={onBack} style={{ background:'rgba(255,255,255,.1)', border:'1px solid rgba(255,255,255,.2)', color:'#fff', padding:'6px 14px', borderRadius:50, fontSize:12, cursor:'pointer', fontWeight:600, marginBottom:12 }}>← Account</button>
           <span className="sec-label" style={{ color:'rgba(255,255,255,.6)' }}>My Account</span>
           <h1 className="sec-title" style={{ color:'#fff' }}>MY ORDERS</h1>
         </div>
       </div>
-      <div style={{ maxWidth:600, margin:'0 auto', padding:'24px 16px' }}>
-        {loading ? (
+
+      <div style={{ maxWidth:600, margin:'0 auto', padding:'20px 20px' }}>
+
+        {/* ── History Tabs ── */}
+        {!loading && !loadErr && orders.length > 0 && (
+          <div style={{ marginBottom:16 }}>
+            <div style={{ display:'flex', gap:0, border:'1px solid #e8e8e8', borderRadius:8, overflow:'hidden', marginBottom:14 }}>
+              {[
+                { key:'active',  label:'Active',  emoji:'🔄' },
+                { key:'history', label:'History', emoji:'📋' },
+                { key:'all',     label:'All',     emoji:'📦' },
+              ].map(t => (
+                <button key={t.key} onClick={()=>setHistTab(t.key)}
+                  style={{ flex:1, padding:'11px 4px', border:'none', cursor:'pointer', fontSize:12, fontWeight:700,
+                    background: histTab===t.key ? '#0a1f5d' : '#fff',
+                    color:      histTab===t.key ? '#fff'    : '#888',
+                    borderRight: t.key !== 'all' ? '1px solid #e8e8e8' : 'none',
+                    transition:'all .15s',
+                    display:'flex', alignItems:'center', justifyContent:'center', gap:6 }}>
+                  {t.emoji} {t.label}
+                  <span style={{ background: histTab===t.key ? 'rgba(255,255,255,.2)' : '#f0f0f0', color: histTab===t.key ? '#fff' : '#999', borderRadius:50, padding:'1px 7px', fontSize:10, fontWeight:700, minWidth:20, textAlign:'center' }}>
+                    {counts[t.key]}
+                  </span>
+                </button>
+              ))}
+            </div>
+
+            {/* Search */}
+            <div style={{ position:'relative' }}>
+              <svg style={{ position:'absolute', left:12, top:'50%', transform:'translateY(-50%)', pointerEvents:'none' }} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#aaa" strokeWidth="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+              <input
+                value={search} onChange={e=>setSearch(e.target.value)}
+                placeholder="Search by garment, order ID…"
+                style={{ width:'100%', padding:'10px 12px 10px 34px', border:'1.5px solid #e8e8e8', borderRadius:8, fontSize:13, outline:'none', boxSizing:'border-box', color:'#333' }} />
+              {search && <button onClick={()=>setSearch('')} style={{ position:'absolute', right:12, top:'50%', transform:'translateY(-50%)', background:'none', border:'none', cursor:'pointer', color:'#aaa', fontSize:16, lineHeight:1 }}>×</button>}
+            </div>
+          </div>
+        )}
+
+        {/* ── States ── */}
+        {loading && (
           <div style={{ textAlign:'center', padding:'56px 0' }}>
             <div style={{ width:36, height:36, border:'3px solid #f0f0f0', borderTopColor:'#c8102e', borderRadius:'50%', animation:'drynn-spin .7s linear infinite', margin:'0 auto 14px' }} />
             <p style={{ fontSize:13, color:'#aaa' }}>Loading your orders…</p>
           </div>
-        ) : orders.length === 0 ? (
+        )}
+
+        {loadErr && (
+          <div style={{ background:'rgba(200,16,46,.04)', border:'1.5px solid rgba(200,16,46,.2)', borderRadius:10, padding:'18px 20px', marginBottom:20 }}>
+            <div style={{ display:'flex', gap:10, alignItems:'flex-start' }}>
+              <span style={{ fontSize:22, flexShrink:0 }}>⚠️</span>
+              <div>
+                <p style={{ fontSize:13, fontWeight:700, color:'#c8102e', marginBottom:4 }}>Could not load orders</p>
+                <p style={{ fontSize:12, color:'#888', lineHeight:1.7 }}>{loadErr}</p>
+                <button onClick={loadOrders} style={{ marginTop:10, padding:'7px 16px', background:'#c8102e', color:'#fff', border:'none', borderRadius:4, fontSize:12, fontWeight:700, cursor:'pointer' }}>↻ Retry</button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {!loading && !loadErr && orders.length === 0 && (
           <div style={{ textAlign:'center', padding:'64px 16px' }}>
             <div style={{ fontSize:64, marginBottom:14 }}>📦</div>
             <h2 style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:28, marginBottom:8 }}>NO ORDERS YET</h2>
             <p style={{ color:'#aaa', fontSize:13, lineHeight:1.7 }}>You haven't placed any orders yet.<br/>Start shopping to see them here!</p>
           </div>
-        ) : (
+        )}
+
+        {!loading && !loadErr && orders.length > 0 && filteredOrders.length === 0 && (
+          <div style={{ textAlign:'center', padding:'48px 16px', color:'#aaa' }}>
+            <div style={{ fontSize:40, marginBottom:10 }}>🔍</div>
+            <p style={{ fontSize:14, fontWeight:600, marginBottom:4 }}>
+              {histTab === 'history' ? 'No delivered orders yet.' : histTab === 'active' ? 'No active orders.' : 'No orders match your search.'}
+            </p>
+            {histTab === 'history' && <p style={{ fontSize:12 }}>Completed orders will appear here once delivered.</p>}
+            {search && <button onClick={()=>setSearch('')} style={{ marginTop:10, padding:'7px 16px', background:'none', border:'1px solid #e0e0e0', borderRadius:4, fontSize:12, cursor:'pointer', color:'#888' }}>Clear search</button>}
+          </div>
+        )}
+
+        {/* ── Order cards ── */}
+        {!loading && !loadErr && filteredOrders.length > 0 && (
           <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
-            {orders.map(order => {
+
+            {/* History section header */}
+            {histTab === 'history' && (
+              <div style={{ background:'linear-gradient(90deg,rgba(0,168,107,.08),rgba(10,31,93,.06))', border:'1px solid rgba(0,168,107,.2)', borderRadius:10, padding:'12px 16px', display:'flex', alignItems:'center', gap:10, fontSize:13 }}>
+                <span style={{ fontSize:20 }}>📋</span>
+                <div>
+                  <strong>Order History</strong>
+                  <p style={{ fontSize:11, color:'#888', margin:0 }}>{counts.history} delivered order{counts.history !== 1 ? 's' : ''} · Tap to view details or reorder</p>
+                </div>
+              </div>
+            )}
+
+            {filteredOrders.map(order => {
               const sc = STATUS_COLORS[order.status] || STATUS_COLORS['Received']
-              const isConfirmed = true  // every placed order is confirmed
+              const isDelivered = order.status === 'Delivered'
+              const isConfirmed = ['Packed','Shipped','Delivered'].includes(order.status)
               return (
                 <div key={order.id} onClick={()=>setSelected(order)}
-                  style={{ border:'1px solid #f0f0f0', borderRadius:12, padding:'16px', cursor:'pointer', transition:'box-shadow .2s, transform .15s', position:'relative', overflow:'hidden' }}
+                  style={{ border:`1.5px solid ${isDelivered ? 'rgba(0,168,107,.2)' : '#f0f0f0'}`, borderRadius:12, padding:'16px', cursor:'pointer', transition:'box-shadow .2s, transform .15s', position:'relative', overflow:'hidden', background: isDelivered ? 'rgba(0,168,107,.02)' : '#fff' }}
                   onMouseEnter={e=>{ e.currentTarget.style.boxShadow='0 6px 24px rgba(0,0,0,.10)'; e.currentTarget.style.transform='translateY(-1px)' }}
                   onMouseLeave={e=>{ e.currentTarget.style.boxShadow='none'; e.currentTarget.style.transform='none' }}>
 
-                  {/* ORDER CONFIRMED ribbon */}
                   {isConfirmed && (
-                    <div style={{ position:'absolute', top:0, right:0, background:'#00a86b', color:'#fff', fontSize:9, fontWeight:700, letterSpacing:'.1em', padding:'4px 12px', borderBottomLeftRadius:8 }}>
-                      ✓ ORDER CONFIRMED
+                    <div style={{ position:'absolute', top:0, right:0, background: isDelivered ? '#00a86b' : '#0a7abf', color:'#fff', fontSize:9, fontWeight:700, letterSpacing:'.1em', padding:'4px 12px', borderBottomLeftRadius:8 }}>
+                      {isDelivered ? '✓ DELIVERED' : '✓ CONFIRMED'}
                     </div>
                   )}
 
@@ -1709,7 +1986,7 @@ function OrdersPage({ user, onBack }) {
                         {order.garment?.length > 35 ? order.garment.slice(0,35)+'…' : order.garment || 'Custom Order'}
                       </p>
                       <p style={{ fontSize:11, color:'#aaa' }}>
-                        {order.placed_at ? new Date(order.placed_at).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'}) : '—'}
+                        {order.placed_at ? new Date(order.placed_at).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'}) : '-'}
                       </p>
                     </div>
                     <span style={{ fontSize:11, fontWeight:700, padding:'4px 12px', borderRadius:20, background:sc.bg, color:sc.color, border:`1px solid ${sc.border}`, whiteSpace:'nowrap' }}>
@@ -1717,11 +1994,13 @@ function OrdersPage({ user, onBack }) {
                     </span>
                   </div>
                   <div style={{ display:'flex', gap:16, fontSize:12, color:'#888', marginBottom:10 }}>
-                    <span>Qty: <strong style={{ color:'#0a0a0a' }}>{order.qty || '—'}</strong></span>
-                    <span>Size: <strong style={{ color:'#0a0a0a' }}>{order.size || '—'}</strong></span>
+                    <span>Qty: <strong style={{ color:'#0a0a0a' }}>{order.qty || '-'}</strong></span>
+                    <span>Size: <strong style={{ color:'#0a0a0a' }}>{order.size || '-'}</strong></span>
                   </div>
                   <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-                    <span style={{ fontSize:11, color:'#c8102e', fontWeight:600 }}>View Details →</span>
+                    <span style={{ fontSize:11, color: isDelivered ? '#00a86b' : '#c8102e', fontWeight:600 }}>
+                      {isDelivered ? '📋 View History →' : 'View Details →'}
+                    </span>
                     <span style={{ fontSize:11, color:'#aaa' }}>#{order.id?.slice(0,8).toUpperCase()}</span>
                   </div>
                 </div>
@@ -1738,7 +2017,7 @@ function AccountPage({ user, onLogout, onNav }) {
   const isAdmin = user?.email === 'gokulmaniraj2008@gmail.com'
   return (
     <div>
-      <div style={{ background:'linear-gradient(135deg,#0a1f5d,#1a0a2e)', padding:'48px 16px', textAlign:'center' }}>
+      <div style={{ background:'linear-gradient(135deg,#0a1f5d,#1a0a2e)', padding:'40px 20px', textAlign:'center' }}>
         <div style={{ width:80, height:80, borderRadius:'50%', overflow:'hidden', margin:'0 auto 16px', border:'3px solid rgba(255,255,255,.2)', background:'rgba(255,255,255,.1)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:36 }}>
           {user?.user_metadata?.avatar_url ? <img src={user.user_metadata.avatar_url} style={{ width:'100%', height:'100%', objectFit:'cover' }} alt="" /> : '👤'}
         </div>
@@ -1751,7 +2030,7 @@ function AccountPage({ user, onLogout, onNav }) {
           </div>
         )}
       </div>
-      <div style={{ maxWidth:500, margin:'0 auto', padding:'32px 16px' }}>
+      <div style={{ maxWidth:500, margin:'0 auto', padding:'28px 20px' }}>
         {[
           { icon:'📦', label:'My Orders',     sub:'Track and manage your orders',  page:'orders'  },
           { icon:'💳', label:'Payments',      sub:'UPI, Razorpay',            page:null       },
@@ -2357,16 +2636,16 @@ function OrderTrackingPage() {
 
   return (
     <div>
-      <div style={{ background:'linear-gradient(135deg,#0a1f5d,#1a0a2e)', padding:'48px 16px 56px', position:'relative', overflow:'hidden' }}>
+      <div style={{ background:'linear-gradient(135deg,#0a1f5d,#1a0a2e)', padding:'48px 20px 56px', position:'relative', overflow:'hidden' }}>
         <div style={{ position:'absolute', inset:0, background:'radial-gradient(ellipse at 60% 40%,rgba(200,16,46,.18) 0%,transparent 55%)', pointerEvents:'none' }} />
-        <div style={{ maxWidth:1100, margin:'0 auto', position:'relative', zIndex:1 }}>
+        <div style={{ maxWidth:1100, margin:'0 auto', position:'relative', zIndex:1, padding:'0 4px' }}>
           <span className="sec-label" style={{ color:'rgba(255,255,255,.6)' }}>Real-Time Tracking</span>
           <h1 className="sec-title" style={{ color:'#fff' }}>TRACK YOUR ORDER</h1>
           <p style={{ fontSize:14, color:'rgba(255,255,255,.6)', marginTop:6 }}>Enter your Order ID or WhatsApp number to see your order status.</p>
         </div>
       </div>
 
-      <div style={{ maxWidth:600, margin:'0 auto', padding:'40px 16px' }}>
+      <div style={{ maxWidth:600, margin:'0 auto', padding:'32px 20px' }}>
         {/* Search */}
         <div style={{ background:'#fff', border:'1px solid #e8e8e8', borderRadius:12, padding:'24px', marginBottom:28, boxShadow:'0 4px 20px rgba(0,0,0,.06)' }}>
           <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
@@ -2450,9 +2729,9 @@ function GroupOrderPage({ user }) {
 
   return (
     <div>
-      <div style={{ background:'linear-gradient(135deg,#00a86b,#0a1f5d)', padding:'48px 16px 56px', position:'relative', overflow:'hidden' }}>
+      <div style={{ background:'linear-gradient(135deg,#00a86b,#0a1f5d)', padding:'48px 20px 56px', position:'relative', overflow:'hidden' }}>
         <div style={{ position:'absolute', inset:0, background:'radial-gradient(ellipse at 30% 60%,rgba(200,16,46,.12) 0%,transparent 55%)', pointerEvents:'none' }} />
-        <div style={{ maxWidth:1100, margin:'0 auto', position:'relative', zIndex:1 }}>
+        <div style={{ maxWidth:1100, margin:'0 auto', position:'relative', zIndex:1, padding:'0 4px' }}>
           <span className="sec-label" style={{ color:'rgba(255,255,255,.6)' }}>For Teams & Events</span>
           <h1 className="sec-title" style={{ color:'#fff' }}>GROUP ORDERS</h1>
           <p style={{ fontSize:14, color:'rgba(255,255,255,.65)', marginTop:6, maxWidth:480, lineHeight:1.7 }}>
@@ -2461,7 +2740,7 @@ function GroupOrderPage({ user }) {
         </div>
       </div>
 
-      <div style={{ maxWidth:700, margin:'0 auto', padding:'40px 16px' }}>
+      <div style={{ maxWidth:700, margin:'0 auto', padding:'32px 20px' }}>
         {/* Tabs */}
         <div style={{ display:'flex', gap:0, marginBottom:28, border:'1px solid #e0e0e0', borderRadius:8, overflow:'hidden' }}>
           {[['create','🆕 Create Group Order'],['join','🔗 Join a Group Order']].map(([t,l])=>(
@@ -2779,7 +3058,7 @@ function MainSite({ user }) {
       {page==='group'    && <GroupOrderPage user={user} />}
 
       {/* ── FOOTER (only on main pages) ── */}
-      {['home','about','contact','track','group'].includes(page) && (
+      {['home','about','contact','track','group'].includes(page) && page !== 'products' && (
         <footer style={{ background:'#0a0a0a', color:'#fff', padding:'48px 16px 80px' }}>
           <div style={{ maxWidth:1100, margin:'0 auto' }}>
             <div className="footer-cols" style={{ display:'grid', gridTemplateColumns:'2fr 1fr 1fr 1fr', gap:40, marginBottom:40 }}>

@@ -410,33 +410,43 @@ function LoginPage({ onBack }) {
 // ══════════════════════════════════════════════════════════════
 // LIVE T-SHIRT PREVIEW  -  canvas-based, design on fabric
 // ══════════════════════════════════════════════════════════════
-// ══════════════════════════════════════════════════════════════
-// DRYNN UNIFIED STUDIO  — 6-step flow
-// ══════════════════════════════════════════════════════════════
 function StudioPage({ user, onNav }) {
-  // ── All admin products ────────────────────────────────────
-  const allProducts = useProducts()
+  // ── Products from Supabase ──────────────────────────────────
+  const products    = usePublicProducts()
 
-  // ── Step tracking ─────────────────────────────────────────
-  const STEPS_LIST = ['Product','Colour','Design','Customise','Preview','Order']
-  const [step, setStep] = useState(1)
+  // ── Garment state ───────────────────────────────────────────
+  const [garment,     setGarment]     = useState('T-Shirt')
+  const [color,       setColor]       = useState('#ffffff')
+  const [size,        setSize]        = useState('M')
 
-  // ── Step 1: Product ───────────────────────────────────────
-  const [selectedProduct, setSelectedProduct] = useState(null)
-  const [productSearch,   setProductSearch]   = useState('')
+  // ── Design overlay ──────────────────────────────────────────
+  const [designImg,   setDesignImg]   = useState(null)
+  const [designPosY,  setDesignPosY]  = useState(38)
+  const [designPosX,  setDesignPosX]  = useState(50)
+  const [designScale, setDesignScale] = useState(38)
+  const [designRot,   setDesignRot]   = useState(0)
 
-  // ── Step 2: Colour ────────────────────────────────────────
-  const [color, setColor] = useState('#ffffff')
+  // ── Text overlay ────────────────────────────────────────────
+  const [textOn,      setTextOn]      = useState(false)
+  const [textVal,     setTextVal]     = useState('YOUR TEXT')
+  const [textFont,    setTextFont]    = useState('Bebas Neue')
+  const [textColor,   setTextColor]   = useState('#000000')
+  const [textSize,    setTextSize]    = useState(24)
 
-  // ── Step 3: Design ────────────────────────────────────────
-  const [uploadedFile,   setUploadedFile]   = useState(null)
-  const [selectedSample, setSelectedSample] = useState(null)
-  const [designImgSrc,   setDesignImgSrc]   = useState(null)
-  const [uploadErr,      setUploadErr]      = useState('')
-  const [samples,        setSamples]        = useState([])
-  const [samplesLoading, setSamplesLoading] = useState(false)
-  const [sampleCat,      setSampleCat]      = useState('All')
-  const [designTab,      setDesignTab]      = useState('upload')
+  // ── Effects ─────────────────────────────────────────────────
+  const [brightness,  setBrightness]  = useState(100)
+  const [contrast,    setContrast]    = useState(100)
+  const [saturation,  setSaturation]  = useState(100)
+  const [filter,      setFilter]      = useState('')
+
+  // ── Studio tabs ─────────────────────────────────────────────
+  const [studioTab,   setStudioTab]   = useState('mockup') // mockup | 3d
+  const [toolTab,     setToolTab]     = useState('design')  // design | colour | text | position | effects | samples | upload
+
+  // ── Samples ─────────────────────────────────────────────────
+  const [samples,         setSamples]         = useState([])
+  const [samplesLoading,  setSamplesLoading]  = useState(false)
+  const [sampleCat,       setSampleCat]       = useState('All')
 
   const loadSamples = async () => {
     if (samples.length > 0) return
@@ -446,52 +456,20 @@ function StudioPage({ user, onNav }) {
     setSamplesLoading(false)
   }
 
-  const handleFile = e => {
-    const f = e.target.files[0]; if (!f) return
-    const allowed = ['image/png','image/jpeg','image/jpg','image/svg+xml']
-    if (!allowed.includes(f.type)) { setUploadErr('Only PNG, JPG, SVG allowed.'); return }
-    if (f.size > 20*1024*1024) { setUploadErr('Max 20MB.'); return }
-    setUploadErr(''); setUploadedFile(f); setSelectedSample(null)
-    setDesignImgSrc(URL.createObjectURL(f))
-  }
-
-  const pickSample = s => {
-    setSelectedSample(s); setUploadedFile(null)
-    setDesignImgSrc(s.image_url)
-  }
-
-  // ── Step 4: Customise ─────────────────────────────────────
-  const [posY,       setPosY]       = useState(38)
-  const [posX,       setPosX]       = useState(50)
-  const [scale,      setScale]      = useState(38)
-  const [rotation,   setRotation]   = useState(0)
-  const [textOn,     setTextOn]     = useState(false)
-  const [textVal,    setTextVal]    = useState('YOUR TEXT')
-  const [textFont,   setTextFont]   = useState('Bebas Neue')
-  const [textColor,  setTextColor]  = useState('#ffffff')
-  const [textSize,   setTextSize]   = useState(24)
-  const [brightness, setBrightness] = useState(100)
-  const [contrast,   setContrast]   = useState(100)
-  const [saturation, setSaturation] = useState(100)
-  const [filterFx,   setFilterFx]   = useState('')
-  const [custTab,    setCustTab]     = useState('position')
-
-  // ── Step 5 (Preview): 3D ─────────────────────────────────
-  const [viewMode,  setViewMode]  = useState('flat')  // flat | 3d
-  const mountRef   = useRef(null)
-  const threeRef   = useRef({})
-  const animRef    = useRef(null)
-  const [threeReady, setThreeReady] = useState(false)
-  const [threeErr,   setThreeErr]   = useState('')
+  // ── 3D viewer ───────────────────────────────────────────────
+  const mountRef  = useRef(null)
+  const threeRef  = useRef({})
+  const animRef   = useRef(null)
+  const [threeReady,  setThreeReady]  = useState(false)
+  const [threeErr,    setThreeErr]    = useState('')
 
   useEffect(() => {
-    if (step !== 5 || viewMode !== '3d') return
+    if (studioTab !== '3d') return
     let cancelled = false
-    const boot = () => { if (!cancelled) init3D() }
-    if (window.THREE) { boot(); return }
+    if (window.THREE) { init3D(); return }
     const s = document.createElement('script')
     s.src = 'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js'
-    s.onload = boot
+    s.onload = () => { if (!cancelled) init3D() }
     s.onerror = () => setThreeErr('Failed to load 3D engine.')
     document.head.appendChild(s)
     return () => {
@@ -500,589 +478,251 @@ function StudioPage({ user, onNav }) {
       if (threeRef.current.renderer) {
         threeRef.current.renderer.dispose()
         try { mountRef.current?.removeChild(threeRef.current.renderer.domElement) } catch(_) {}
-        threeRef.current = {}
       }
     }
-  }, [step, viewMode])
+  }, [studioTab])
 
   const init3D = () => {
     const THREE = window.THREE
     if (!mountRef.current || threeRef.current.renderer) return
-    const W = mountRef.current.clientWidth || 340, H = 380
-    const scene = new THREE.Scene(); scene.background = new THREE.Color(0x1a2744)
-    const camera = new THREE.PerspectiveCamera(45, W/H, 0.01, 100); camera.position.set(0,0,3.5)
-    const renderer = new THREE.WebGLRenderer({ antialias:true })
-    renderer.setSize(W,H); renderer.setPixelRatio(Math.min(window.devicePixelRatio,2))
+    const W = mountRef.current.clientWidth || 360, H = 380
+    const scene    = new THREE.Scene()
+    scene.background = new THREE.Color(0x1a2744)
+    const camera   = new THREE.PerspectiveCamera(45, W/H, 0.01, 100)
+    camera.position.set(0, 0, 3.5)
+    const renderer = new THREE.WebGLRenderer({ antialias:true, preserveDrawingBuffer:true })
+    renderer.setSize(W, H); renderer.setPixelRatio(Math.min(window.devicePixelRatio,2))
     mountRef.current.appendChild(renderer.domElement)
-    scene.add(new THREE.AmbientLight(0xffffff,0.7))
-    const dir = new THREE.DirectionalLight(0xffffff,1.2); dir.position.set(3,4,3); scene.add(dir)
-    const c = new THREE.Color(color)
+    scene.add(new THREE.AmbientLight(0xffffff, 0.6))
+    const dir = new THREE.DirectionalLight(0xffffff, 1.2); dir.position.set(3,4,3); scene.add(dir)
+    scene.add(new THREE.DirectionalLight(0x8888ff, 0.3).position.set(-3,2,-2) && new THREE.DirectionalLight(0x8888ff, 0.3))
+
+    // Build shirt shape
+    const c   = new THREE.Color(color)
     const mat = () => new THREE.MeshStandardMaterial({ color:c, roughness:0.78, metalness:0.02 })
-    const grp = new THREE.Group()
-    grp.add(Object.assign(new THREE.Mesh(new THREE.CylinderGeometry(0.38,0.42,1.4,32,4,true),mat()),{position:{x:0,y:-0.1,z:0}}))
-    const sho = new THREE.Mesh(new THREE.SphereGeometry(0.42,32,16,0,Math.PI*2,0,Math.PI*0.45),mat()); sho.position.y=0.68; grp.add(sho)
-    const ls = new THREE.Mesh(new THREE.CylinderGeometry(0.13,0.15,0.52,16,2,true),mat()); ls.position.set(-0.54,0.55,0); ls.rotation.z=0.55; grp.add(ls)
-    const rs = ls.clone(); rs.position.set(0.54,0.55,0); rs.rotation.z=-0.55; grp.add(rs)
-    const col = new THREE.Mesh(new THREE.TorusGeometry(0.18,0.04,12,32,Math.PI*1.8),mat()); col.position.y=0.72; grp.add(col)
-    if (designImgSrc) {
-      const img = new Image(); img.crossOrigin='anonymous'; img.src = designImgSrc
+    const grp = new THREE.Group(); grp.name = 'shirt'
+    const body = new THREE.Mesh(new THREE.CylinderGeometry(0.38,0.42,1.4,32,4,true), mat()); body.position.y=-0.1; grp.add(body)
+    const sho  = new THREE.Mesh(new THREE.SphereGeometry(0.42,32,16,0,Math.PI*2,0,Math.PI*0.45), mat()); sho.position.y=0.68; grp.add(sho)
+    const ls   = new THREE.Mesh(new THREE.CylinderGeometry(0.13,0.15,0.52,16,2,true), mat()); ls.position.set(-0.54,0.55,0); ls.rotation.z=0.55; grp.add(ls)
+    const rs   = ls.clone(); rs.position.set(0.54,0.55,0); rs.rotation.z=-0.55; grp.add(rs)
+    const col  = new THREE.Mesh(new THREE.TorusGeometry(0.18,0.04,12,32,Math.PI*1.8), mat()); col.position.y=0.72; grp.add(col)
+
+    // Design texture on shirt
+    if (designImg) {
+      const img = new Image(); img.crossOrigin='anonymous'; img.src = typeof designImg === 'string' ? designImg : designImg.src || ''
       img.onload = () => {
-        const tex = new THREE.Texture(img); tex.needsUpdate=true
-        const pr = new THREE.Mesh(new THREE.PlaneGeometry(0.55,0.55), new THREE.MeshStandardMaterial({ map:tex, transparent:true, roughness:0.8 }))
-        pr.position.set(0,0.08,0.39); grp.add(pr)
+        const tex = new THREE.Texture(img); tex.needsUpdate = true
+        const pr  = new THREE.Mesh(new THREE.PlaneGeometry(0.55,0.55), new THREE.MeshStandardMaterial({ map:tex, transparent:true, roughness:0.8 }))
+        pr.position.set(0, 0.08, 0.39); grp.add(pr)
       }
     }
     scene.add(grp)
+
+    // Drag to rotate
     let isDrag=false, prevX=0, rotY=0
-    const el = renderer.domElement
-    el.addEventListener('mousedown',  e=>{isDrag=true;prevX=e.clientX})
-    el.addEventListener('mousemove',  e=>{if(isDrag){rotY+=(e.clientX-prevX)*0.008;prevX=e.clientX}})
-    el.addEventListener('mouseup',    ()=>isDrag=false)
-    el.addEventListener('touchstart', e=>{isDrag=true;prevX=e.touches[0].clientX},{passive:true})
-    el.addEventListener('touchmove',  e=>{if(isDrag){rotY+=(e.touches[0].clientX-prevX)*0.008;prevX=e.touches[0].clientX}},{passive:true})
-    el.addEventListener('touchend',   ()=>isDrag=false)
-    threeRef.current={scene,camera,renderer}; setThreeReady(true)
-    const animate=()=>{ animRef.current=requestAnimationFrame(animate); rotY+=0.005; grp.rotation.y=rotY; renderer.render(scene,camera) }
+    renderer.domElement.addEventListener('mousedown',  e=>{isDrag=true;prevX=e.clientX})
+    renderer.domElement.addEventListener('mousemove',  e=>{if(isDrag){rotY+=(e.clientX-prevX)*0.008;prevX=e.clientX}})
+    renderer.domElement.addEventListener('mouseup',    ()=>isDrag=false)
+    renderer.domElement.addEventListener('touchstart', e=>{isDrag=true;prevX=e.touches[0].clientX},{passive:true})
+    renderer.domElement.addEventListener('touchmove',  e=>{if(isDrag){rotY+=(e.touches[0].clientX-prevX)*0.008;prevX=e.touches[0].clientX}},{passive:true})
+    renderer.domElement.addEventListener('touchend',   ()=>isDrag=false)
+
+    threeRef.current = { scene, camera, renderer }
+    setThreeReady(true)
+
+    const animate = () => {
+      animRef.current = requestAnimationFrame(animate)
+      rotY += 0.005
+      grp.rotation.y = rotY
+      renderer.render(scene, camera)
+    }
     animate()
   }
 
-  // ── Step 6: Order ─────────────────────────────────────────
-  const [size,       setSize]     = useState('M')
-  const [form,       setForm]     = useState({ name:user?.user_metadata?.full_name||'', phone:'', qty:1, address:'' })
-  const [status,     setStatus]   = useState('')
-  const [uploadPct,  setUploadPct]= useState(0)
+  // ── Order form ──────────────────────────────────────────────
+  const [uploadedFile, setFile]      = useState(null)
+  const [uploadPct,    setUploadPct] = useState(0)
+  const [selectedSample, setSample]  = useState(null)
+  const [form, setForm]  = useState({ name: user?.user_metadata?.full_name||'', phone:'', qty:1, address:'' })
+  const [status, setStatus]   = useState('')
+  const [uploadErr, setUploadErr] = useState('')
+  const hasDesign = !!uploadedFile || !!selectedSample
+
+  const handleFile = e => {
+    const f = e.target.files[0]; if (!f) return
+    const allowed = ['image/png','image/jpeg','image/jpg','image/svg+xml']
+    if (!allowed.includes(f.type)) { setUploadErr('Only PNG, JPG, or SVG files allowed.'); return }
+    if (f.size > 20*1024*1024) { setUploadErr('Max 20MB.'); return }
+    setUploadErr(''); setFile(f); setSample(null); setDesignImg(URL.createObjectURL(f))
+  }
+
+  const handleSamplePick = s => { setSample(s); setFile(null); setDesignImg(s.image_url) }
 
   const handleSubmit = async () => {
-    if (!form.name||!form.phone||!form.address) { alert('Please fill all fields.'); return }
-    if (!designImgSrc) { alert('Please add a design first (Step 3).'); return }
+    if (!form.name||!form.phone||!form.address||!hasDesign) { alert('Please fill all fields and choose a design.'); return }
     setStatus('saving')
-    const orderId=crypto.randomUUID(), placedAt=new Date().toISOString()
+    const orderId = crypto.randomUUID(), placedAt = new Date().toISOString()
     try {
       let designUrl = ''
       if (uploadedFile) {
         setStatus('uploading')
-        try { designUrl = await uploadToCloudinary(uploadedFile, pct=>setUploadPct(pct)) }
-        catch(e) { setStatus(''); alert('Upload failed: '+e.message); return }
-      } else { designUrl = selectedSample.image_url }
+        try { designUrl = await uploadToCloudinary(uploadedFile, pct => setUploadPct(pct)) }
+        catch(e) { setStatus(''); alert('Upload failed: ' + e.message); return }
+      } else {
+        designUrl = selectedSample.image_url
+      }
       setStatus('saving')
-      const { data:{ user:authUser } } = await supabase.auth.getUser()
-      const uid = authUser?.id || user?.id || null
-      const garmentLabel = selectedProduct ? selectedProduct.name : 'Custom Garment'
-      await supabase.from('drynn_orders').insert({
-        id:orderId, user_id:uid, name:form.name, phone:form.phone,
-        garment:garmentLabel, color, size, qty:Number(form.qty), address:form.address,
-        design_file:designUrl, status:'Received', placed_at:placedAt,
-        product_id: selectedProduct?.id || null,
+      const { error:dbErr } = await supabase.from('drynn_orders').insert({
+        id:orderId, user_id:user?.id||null, name:form.name, phone:form.phone,
+        garment, color, size, qty:Number(form.qty), address:form.address,
+        design_file:designUrl, status:'pending', placed_at:placedAt
       })
-      if (GOOGLE_SHEET_WEBHOOK) fetch(GOOGLE_SHEET_WEBHOOK,{ method:'POST', mode:'no-cors', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ sheet:'DRYNN_Orders', orderId, name:form.name, phone:form.phone, garment:garmentLabel, color, size, qty:form.qty, address:form.address, designUrl, placedAt }) }).catch(console.error)
+      if (dbErr) { alert('[Order Save Failed] ' + dbErr.message); setStatus(''); return }
+      if (GOOGLE_SHEET_WEBHOOK) fetch(GOOGLE_SHEET_WEBHOOK,{ method:'POST', mode:'no-cors', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ sheet:'DRYNN_Orders', orderId, name:form.name, phone:form.phone, garment, color, size, qty:form.qty, address:form.address, designUrl, placedAt }) }).catch(console.error)
       setStatus('done')
-    } catch(e) { setStatus(''); alert('Error: '+e.message) }
+      setTimeout(()=>setStatus(''),5000)
+      setForm({ name:user?.user_metadata?.full_name||'', phone:'', qty:1, address:'' })
+      setFile(null); setSample(null); setUploadPct(0); setDesignImg(null)
+    } catch(e) { setStatus(''); alert('Error: ' + e.message) }
   }
 
-  // ── Derived ───────────────────────────────────────────────
-  const SWATCHES = ['#ffffff','#0a0a0a','#c8102e','#0a1f5d','#00a86b','#f5a623','#9b59b6','#888888','#e8d5b7','#2c3e50']
-  const SIZES    = ['XS','S','M','L','XL','XXL','3XL']
+  // ── Constants ───────────────────────────────────────────────
+  const SWATCHES   = ['#ffffff','#0a0a0a','#c8102e','#0a1f5d','#00a86b','#f5a623','#9b59b6','#888888','#e8d5b7','#2c3e50']
+  const SIZES      = ['XS','S','M','L','XL','XXL','3XL']
   const TEXT_FONTS = ['Bebas Neue','DM Sans','Georgia','Courier New','Impact','Arial Black']
-  const FILTERS  = [
-    {label:'None',value:''},{label:'Vintage',value:'sepia(0.6) contrast(1.1)'},
-    {label:'B&W',value:'grayscale(1)'},{label:'Vivid',value:'saturate(2) contrast(1.1)'},
-    {label:'Cool',value:'hue-rotate(180deg) saturate(0.8)'},{label:'Warm',value:'sepia(0.3) saturate(1.4)'},
+  const FILTERS    = [
+    { label:'None',    value:'' },
+    { label:'Vintage', value:'sepia(0.6) contrast(1.1)' },
+    { label:'B&W',     value:'grayscale(1)' },
+    { label:'Vivid',   value:'saturate(2) contrast(1.1)' },
+    { label:'Cool',    value:'hue-rotate(180deg) saturate(0.8)' },
+    { label:'Warm',    value:'sepia(0.3) saturate(1.4)' },
   ]
+  const TOOL_TABS = [
+    { key:'design',   label:'Design',   icon:'🎨' },
+    { key:'colour',   label:'Colour',   icon:'🖌' },
+    { key:'text',     label:'Text',     icon:'T'  },
+    { key:'position', label:'Position', icon:'↔'  },
+    { key:'effects',  label:'Effects',  icon:'✨' },
+    { key:'samples',  label:'Samples',  icon:'🖼' },
+    { key:'upload',   label:'Upload',   icon:'📤' },
+  ]
+
+  const garmentKey = { 'T-Shirt':'tshirt','Hoodie':'hoodie','Polo':'polo','Joggers':'joggers' }
+  const GARMENT_IMGS = {
+    tshirt:  'https://res.cloudinary.com/dfhdyp4oq/image/upload/drynn/products/tshirt_white.png',
+    hoodie:  'https://res.cloudinary.com/dfhdyp4oq/image/upload/drynn/products/hoodie_navy.png',
+    polo:    'https://res.cloudinary.com/dfhdyp4oq/image/upload/drynn/products/polo_white.png',
+    joggers: 'https://res.cloudinary.com/dfhdyp4oq/image/upload/drynn/products/joggers_black.png',
+  }
   const colorToFilter = hex => {
-    const m={'#ffffff':'none','#0a0a0a':'brightness(0)','#000000':'brightness(0)','#c8102e':'sepia(1) saturate(5) hue-rotate(320deg)','#0a1f5d':'sepia(1) saturate(3) hue-rotate(195deg) brightness(0.6)','#00a86b':'sepia(1) saturate(4) hue-rotate(110deg) brightness(0.8)','#f5a623':'sepia(1) saturate(4) hue-rotate(10deg)','#9b59b6':'sepia(1) saturate(3) hue-rotate(260deg)','#888888':'brightness(0.55)','#e8d5b7':'sepia(0.4)','#2c3e50':'brightness(0.3)'}
+    const m = { '#ffffff':'none','#0a0a0a':'brightness(0)','#000000':'brightness(0)','#c8102e':'sepia(1) saturate(5) hue-rotate(320deg)','#0a1f5d':'sepia(1) saturate(3) hue-rotate(195deg) brightness(0.6)','#00a86b':'sepia(1) saturate(4) hue-rotate(110deg) brightness(0.8)','#f5a623':'sepia(1) saturate(4) hue-rotate(10deg)','#9b59b6':'sepia(1) saturate(3) hue-rotate(260deg)','#888888':'brightness(0.55)' }
     return m[hex] || 'none'
   }
-  const canvasFilter = [filterFx, `brightness(${brightness}%) contrast(${contrast}%) saturate(${saturation}%)`].filter(Boolean).join(' ')
+  const canvasFilter = [filter, `brightness(${brightness}%) contrast(${contrast}%) saturate(${saturation}%)`].filter(Boolean).join(' ')
+  const sliderStyle  = { width:'100%', accentColor:'#c8102e' }
+  const rowStyle     = { display:'flex', justifyContent:'space-between', marginBottom:6 }
+  const lblStyle     = { fontSize:10, fontWeight:700, letterSpacing:'.12em', textTransform:'uppercase', color:'rgba(255,255,255,.45)' }
 
-  // Garment image — use admin product image if available, fallback to default
-  const GARMENT_DEFAULTS = {
-    'T-Shirt': 'https://res.cloudinary.com/dfhdyp4oq/image/upload/drynn/products/tshirt_white.png',
-    'Hoodie':  'https://res.cloudinary.com/dfhdyp4oq/image/upload/drynn/products/hoodie_navy.png',
-    'Polo':    'https://res.cloudinary.com/dfhdyp4oq/image/upload/drynn/products/polo_white.png',
-    'Joggers': 'https://res.cloudinary.com/dfhdyp4oq/image/upload/drynn/products/joggers_black.png',
-  }
-  const GARMENT_EMOJI = {'T-Shirt':'👕','Hoodie':'🧥','Polo':'👔','Joggers':'👖'}
-  const garmentType = selectedProduct
-    ? (selectedProduct.category==='Hoodies'?'Hoodie':selectedProduct.category==='Polos'?'Polo':selectedProduct.category==='Joggers'?'Joggers':'T-Shirt')
-    : 'T-Shirt'
-  const garmentImgSrc = selectedProduct?.image_url || GARMENT_DEFAULTS[garmentType]
-
-  const canGoNext = () => {
-    if (step===1) return true  // product optional
-    if (step===2) return !!color
-    if (step===3) return !!designImgSrc
-    if (step===4) return true
-    if (step===5) return true
-    return false
-  }
-
-  const filteredProducts = allProducts.filter(p =>
-    !productSearch.trim() ||
-    p.name.toLowerCase().includes(productSearch.toLowerCase()) ||
-    p.category.toLowerCase().includes(productSearch.toLowerCase())
-  )
-
-  // ── shared styles ─────────────────────────────────────────
-  const lblStyle  = { fontSize:11, fontWeight:700, letterSpacing:'.1em', textTransform:'uppercase', color:'rgba(255,255,255,.5)', display:'block', marginBottom:8 }
-  const inputStyle = { width:'100%', background:'rgba(255,255,255,.08)', border:'1px solid rgba(255,255,255,.15)', color:'#fff', borderRadius:8, padding:'10px 12px', fontSize:13, fontFamily:'DM Sans,sans-serif', outline:'none' }
-  const rowStyle  = { display:'flex', justifyContent:'space-between', marginBottom:6 }
-
-  // ── Live preview panel (shown on steps 3-6) ───────────────
-  const LivePreview = () => (
-    <div style={{ position:'sticky', top:72, flex:'0 0 280px', maxWidth:280, display:'flex', flexDirection:'column', gap:10 }}>
-      <div style={{ fontSize:10, fontWeight:700, letterSpacing:'.14em', textTransform:'uppercase', color:'rgba(255,255,255,.35)', textAlign:'center', marginBottom:4 }}>Live Preview</div>
-      <div style={{ position:'relative', borderRadius:14, overflow:'hidden', background:'#1e2a1e', boxShadow:'0 8px 32px rgba(0,0,0,.5)', filter:canvasFilter }}>
-        {/* Garment base */}
-        <img src={garmentImgSrc} alt={garmentType} style={{ width:'100%', display:'block', filter:colorToFilter(color), minHeight:220, objectFit:'contain' }}
-          onError={e=>{ e.target.style.opacity='0.05' }} />
-        {/* Fallback emoji */}
-        <div style={{ position:'absolute', inset:0, display:'flex', alignItems:'center', justifyContent:'center', fontSize:80, opacity:0.04, pointerEvents:'none' }}>
-          {GARMENT_EMOJI[garmentType]}
-        </div>
-        {/* Design overlay */}
-        {designImgSrc && (
-          <img src={designImgSrc} alt="design"
-            style={{ position:'absolute', top:`${posY}%`, left:`${posX}%`,
-              transform:`translate(-50%,-50%) rotate(${rotation}deg)`,
-              width:`${scale}%`, objectFit:'contain', pointerEvents:'none' }} />
-        )}
-        {/* Text overlay */}
-        {textOn && textVal && (
-          <div style={{ position:'absolute', top:'65%', left:'50%', transform:'translateX(-50%)',
-            fontFamily:textFont, fontSize:textSize, color:textColor, fontWeight:700,
-            textShadow:'0 1px 6px rgba(0,0,0,.6)', pointerEvents:'none', whiteSpace:'nowrap' }}>
-            {textVal}
-          </div>
-        )}
-        {/* No design hint */}
-        {!designImgSrc && (
-          <div style={{ position:'absolute', inset:0, display:'flex', alignItems:'center', justifyContent:'center' }}>
-            <div style={{ background:'rgba(0,0,0,.55)', borderRadius:8, padding:'10px 14px', textAlign:'center' }}>
-              <div style={{ fontSize:22, marginBottom:2 }}>🎨</div>
-              <div style={{ fontSize:10, color:'rgba(255,255,255,.7)', fontWeight:600 }}>Add design in Step 3</div>
-            </div>
-          </div>
-        )}
-      </div>
-      {/* Quick info */}
-      <div style={{ background:'rgba(255,255,255,.05)', borderRadius:8, padding:'10px 12px', fontSize:11, color:'rgba(255,255,255,.5)', lineHeight:1.7 }}>
-        <div><span style={{ color:'rgba(255,255,255,.3)' }}>Garment: </span><strong style={{ color:'#fff' }}>{selectedProduct?.name || garmentType}</strong></div>
-        <div><span style={{ color:'rgba(255,255,255,.3)' }}>Colour: </span><span style={{ display:'inline-block', width:10, height:10, borderRadius:'50%', background:color, border:'1px solid rgba(255,255,255,.3)', verticalAlign:'middle', marginRight:3 }} /><strong style={{ color:'#fff' }}>{color}</strong></div>
-        <div><span style={{ color:'rgba(255,255,255,.3)' }}>Design: </span><strong style={{ color: designImgSrc?'#00a86b':'#c8102e' }}>{designImgSrc ? '✓ Added' : '✗ Not yet'}</strong></div>
-      </div>
-    </div>
-  )
-
-  // ── RENDER ────────────────────────────────────────────────
+  // ── RENDER ──────────────────────────────────────────────────
   return (
     <div style={{ background:'#0d1b3e', minHeight:'100vh' }}>
 
-      {/* ── Header ── */}
-      <div style={{ background:'linear-gradient(135deg,#0a1f5d,#1a0a2e)', padding:'32px 16px 24px', position:'relative', overflow:'hidden' }}>
-        <div style={{ position:'absolute', inset:0, background:'radial-gradient(ellipse at 50% 70%,rgba(200,16,46,.15) 0%,transparent 55%)', pointerEvents:'none' }} />
-        <div style={{ maxWidth:960, margin:'0 auto', position:'relative', zIndex:1 }}>
-          <button onClick={()=>onNav('home')} style={{ display:'inline-flex', alignItems:'center', gap:6, background:'rgba(255,255,255,.1)', border:'1px solid rgba(255,255,255,.2)', color:'rgba(255,255,255,.8)', padding:'6px 14px', borderRadius:50, fontSize:12, cursor:'pointer', fontWeight:600, marginBottom:16 }}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg>Back
-          </button>
-          <div style={{ textAlign:'center' }}>
-            <span className="sec-label" style={{ color:'rgba(255,255,255,.6)' }}>Custom Design Studio</span>
-            <h1 className="sec-title" style={{ color:'#fff' }}>DRYNN STUDIO</h1>
-            <p style={{ fontSize:13, color:'rgba(255,255,255,.45)', marginTop:6 }}>Pick product · Colour · Design · Customise · Preview · Order</p>
-          </div>
+      {/* ── HERO ── */}
+      <div style={{ background:'linear-gradient(135deg,#0a1f5d 0%,#1a0a2e 100%)', padding:'40px 16px 32px', textAlign:'center', position:'relative', overflow:'hidden' }}>
+        <div style={{ position:'absolute', inset:0, background:'radial-gradient(ellipse at 50% 60%,rgba(200,16,46,.15) 0%,transparent 60%)', pointerEvents:'none' }} />
+        <div style={{ position:'relative', zIndex:1 }}>
+          <span className="sec-label" style={{ color:'rgba(255,255,255,.6)' }}>Custom Design Studio</span>
+          <h1 className="sec-title" style={{ color:'#fff', marginBottom:8 }}>DRYNN STUDIO</h1>
+          <p style={{ fontSize:13, color:'rgba(255,255,255,.45)', maxWidth:480, margin:'0 auto' }}>
+            Pick a product · Upload your design or choose a sample · See it live · Order instantly
+          </p>
         </div>
       </div>
 
-      {/* ── Step progress bar ── */}
-      <div style={{ background:'#111827', borderBottom:'1px solid rgba(255,255,255,.07)', padding:'0 16px', overflowX:'auto' }}>
-        <div style={{ display:'flex', maxWidth:960, margin:'0 auto', minWidth:'max-content' }}>
-          {STEPS_LIST.map((label, i) => {
-            const n = i+1
-            const done   = n < step
-            const active = n === step
-            return (
-              <button key={n} onClick={()=>{ if(n<step || (n===step+1 && canGoNext())) setStep(n) }}
-                style={{ flex:'0 0 auto', display:'flex', flexDirection:'column', alignItems:'center', gap:4, padding:'12px 16px', background:'none', border:'none', cursor:'pointer', position:'relative',
-                  borderBottom: active ? '2.5px solid #c8102e' : '2.5px solid transparent' }}>
-                <div style={{ width:24, height:24, borderRadius:'50%', fontSize:11, fontWeight:700, display:'flex', alignItems:'center', justifyContent:'center',
-                  background: done?'#00a86b':active?'#c8102e':'rgba(255,255,255,.1)',
-                  color:'#fff', transition:'background .2s' }}>
-                  {done ? '✓' : n}
-                </div>
-                <span style={{ fontSize:10, fontWeight:700, letterSpacing:'.08em', textTransform:'uppercase', color:active?'#fff':'rgba(255,255,255,.35)', whiteSpace:'nowrap' }}>{label}</span>
-              </button>
-            )
-          })}
+      {/* ── PRODUCT PICKER ── */}
+      <div style={{ background:'#111827', borderBottom:'1px solid rgba(255,255,255,.07)', padding:'16px', overflowX:'auto' }}>
+        <div style={{ display:'flex', gap:10, maxWidth:960, margin:'0 auto', minWidth:'max-content' }}>
+          {['T-Shirt','Hoodie','Polo','Joggers'].map(g => (
+            <button key={g} onClick={()=>setGarment(g)}
+              style={{ padding:'10px 18px', borderRadius:50, fontSize:12, fontWeight:700, cursor:'pointer', transition:'all .15s', whiteSpace:'nowrap',
+                background: garment===g ? '#c8102e' : 'rgba(255,255,255,.07)',
+                color: '#fff',
+                border: garment===g ? '1.5px solid #c8102e' : '1.5px solid rgba(255,255,255,.12)' }}>
+              {garment===g ? '✓ ' : ''}{g}
+            </button>
+          ))}
         </div>
       </div>
 
-      {/* ── Step content ── */}
-      <div style={{ maxWidth:960, margin:'0 auto', padding:'24px 16px 80px' }}>
+      {/* ── MAIN STUDIO AREA ── */}
+      <div style={{ maxWidth:960, margin:'0 auto', padding:'0 16px 40px' }}>
 
-        {/* ══ STEP 1: PICK PRODUCT ══ */}
-        {step === 1 && (
-          <div>
-            <div style={{ marginBottom:20 }}>
-              <h2 style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:28, color:'#fff', letterSpacing:'.06em', marginBottom:6 }}>STEP 1 — CHOOSE YOUR GARMENT</h2>
-              <p style={{ fontSize:13, color:'rgba(255,255,255,.45)' }}>Pick a product from our collection. This becomes the base of your custom design.</p>
-            </div>
+        {/* ── VIEW MODE TOGGLE ── */}
+        <div style={{ display:'flex', gap:8, padding:'16px 0', justifyContent:'center' }}>
+          {[['mockup','🖼 Live Mockup'],['3d','🎲 3D View']].map(([key,label])=>(
+            <button key={key} onClick={()=>setStudioTab(key)}
+              style={{ padding:'10px 22px', borderRadius:50, fontSize:12, fontWeight:700, cursor:'pointer', border:'1.5px solid',
+                borderColor: studioTab===key ? '#c8102e' : 'rgba(255,255,255,.15)',
+                background:  studioTab===key ? '#c8102e' : 'rgba(255,255,255,.05)',
+                color:'#fff', transition:'all .15s' }}>
+              {label}
+            </button>
+          ))}
+        </div>
 
-            {/* Search */}
-            <div style={{ display:'flex', alignItems:'center', gap:10, background:'rgba(255,255,255,.07)', border:'1.5px solid rgba(255,255,255,.12)', borderRadius:10, padding:'10px 14px', marginBottom:16 }}>
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.4)" strokeWidth="2" strokeLinecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-              <input value={productSearch} onChange={e=>setProductSearch(e.target.value)} placeholder="Search garments…"
-                style={{ flex:1, background:'none', border:'none', outline:'none', fontSize:13, color:'#fff', fontFamily:'DM Sans,sans-serif' }} />
-            </div>
+        <div style={{ display:'flex', gap:20, flexWrap:'wrap', alignItems:'flex-start' }}>
 
-            {allProducts.length === 0 ? (
-              <div style={{ textAlign:'center', padding:'48px 20px', background:'rgba(255,255,255,.04)', borderRadius:14 }}>
-                <div style={{ fontSize:52, marginBottom:12 }}>👕</div>
-                <div style={{ fontSize:16, fontWeight:700, color:'rgba(255,255,255,.6)', marginBottom:6 }}>No products yet</div>
-                <p style={{ fontSize:13, color:'rgba(255,255,255,.35)', lineHeight:1.7 }}>Admin hasn't added any products.<br/>You can still continue with a standard garment.</p>
-              </div>
-            ) : (
-              <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(160px,1fr))', gap:12 }}>
-                {filteredProducts.map(p => {
-                  const isSelected = selectedProduct?.id === p.id
-                  return (
-                    <div key={p.id} onClick={()=>setSelectedProduct(isSelected ? null : p)}
-                      style={{ background: isSelected?'rgba(200,16,46,.12)':'rgba(255,255,255,.05)', border:`2px solid ${isSelected?'#c8102e':'rgba(255,255,255,.1)'}`, borderRadius:12, overflow:'hidden', cursor:'pointer', transition:'all .15s', position:'relative' }}
-                      onMouseEnter={e=>{ if(!isSelected) e.currentTarget.style.borderColor='rgba(255,255,255,.3)' }}
-                      onMouseLeave={e=>{ if(!isSelected) e.currentTarget.style.borderColor='rgba(255,255,255,.1)' }}>
-                      {/* Product image */}
-                      <div style={{ height:160, background:'#f8f8f8', display:'flex', alignItems:'center', justifyContent:'center', position:'relative', overflow:'hidden' }}>
-                        {p.image_url
-                          ? <img src={p.image_url} alt={p.name} style={{ width:'100%', height:'100%', objectFit:'contain' }} />
-                          : <span style={{ fontSize:72 }}>{p.emoji||'👕'}</span>}
-                        {/* Tag */}
-                        <div style={{ position:'absolute', top:8, left:8, background:p.tag_color||p.tagColor||'#c8102e', color:'#fff', fontSize:8, fontWeight:700, letterSpacing:'.1em', textTransform:'uppercase', padding:'2px 8px', borderRadius:3 }}>{p.tag||'New'}</div>
-                        {/* Studio exclusive */}
-                        {p.studio_only && <div style={{ position:'absolute', top:8, right:8, background:'#0a1f5d', color:'#fff', fontSize:8, fontWeight:700, padding:'2px 7px', borderRadius:3 }}>Studio</div>}
-                        {/* Selected tick */}
-                        {isSelected && (
-                          <div style={{ position:'absolute', inset:0, background:'rgba(200,16,46,.18)', display:'flex', alignItems:'center', justifyContent:'center' }}>
-                            <div style={{ width:44, height:44, borderRadius:'50%', background:'#c8102e', display:'flex', alignItems:'center', justifyContent:'center', fontSize:22, color:'#fff', fontWeight:700, boxShadow:'0 4px 16px rgba(200,16,46,.5)' }}>✓</div>
-                          </div>
-                        )}
-                      </div>
-                      <div style={{ padding:'10px 12px', background: isSelected?'rgba(200,16,46,.08)':'#1a2744' }}>
-                        <div style={{ fontSize:13, fontWeight:700, color:'#fff', marginBottom:2, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{p.name}</div>
-                        <div style={{ fontSize:11, color:'rgba(255,255,255,.4)' }}>{p.category}</div>
-                        <div style={{ fontSize:13, fontWeight:700, color:'#c8102e', marginTop:4 }}>₹{Number(p.price).toLocaleString()}</div>
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-            )}
+          {/* ── LEFT: PREVIEW CANVAS ── */}
+          <div style={{ flex:'1 1 300px', minWidth:280, maxWidth:440, margin:'0 auto' }}>
 
-            <div style={{ marginTop:20, display:'flex', gap:10, justifyContent:'flex-end', flexWrap:'wrap' }}>
-              {selectedProduct && (
-                <button onClick={()=>setSelectedProduct(null)} style={{ padding:'12px 20px', borderRadius:8, border:'1px solid rgba(255,255,255,.15)', background:'transparent', color:'rgba(255,255,255,.5)', fontSize:13, fontWeight:600, cursor:'pointer' }}>
-                  Deselect
-                </button>
-              )}
-              <button onClick={()=>setStep(2)} className="btn-primary" style={{ padding:'13px 32px', fontSize:14 }}>
-                {selectedProduct ? `Continue with ${selectedProduct.name} →` : 'Continue without product →'}
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* ══ STEP 2: COLOUR ══ */}
-        {step === 2 && (
-          <div style={{ display:'flex', gap:24, flexWrap:'wrap' }}>
-            <div style={{ flex:'1 1 280px' }}>
-              <h2 style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:28, color:'#fff', letterSpacing:'.06em', marginBottom:6 }}>STEP 2 — CHOOSE COLOUR</h2>
-              <p style={{ fontSize:13, color:'rgba(255,255,255,.45)', marginBottom:24 }}>Select the garment colour. The live preview updates instantly.</p>
-
-              <div style={{ marginBottom:20 }}>
-                <span style={lblStyle}>Preset Colours</span>
-                <div style={{ display:'flex', flexWrap:'wrap', gap:12 }}>
-                  {SWATCHES.map(c => (
-                    <div key={c} onClick={()=>setColor(c)} style={{ width:44, height:44, borderRadius:'50%', background:c, cursor:'pointer',
-                      border:c==='#ffffff'?'2px solid rgba(255,255,255,.4)':'2px solid transparent',
-                      boxShadow:color===c?`0 0 0 3px #0d1b3e, 0 0 0 5px #c8102e`:'0 2px 8px rgba(0,0,0,.35)',
-                      transition:'box-shadow .15s', position:'relative' }}>
-                      {color===c && <div style={{ position:'absolute', inset:'50%', transform:'translate(-50%,-50%)', width:12, height:12, borderRadius:'50%', background:c==='#ffffff'?'#333':'#fff', opacity:.7 }} />}
-                    </div>
-                  ))}
+            {/* FLAT MOCKUP VIEW */}
+            {studioTab === 'mockup' && (
+              <div style={{ position:'relative', width:'100%', borderRadius:16, overflow:'hidden', background:'#f8f8f8', filter:canvasFilter, boxShadow:'0 8px 40px rgba(0,0,0,.4)' }}>
+                {/* Garment base image */}
+                <img
+                  src={GARMENT_IMGS[garmentKey[garment]] || GARMENT_IMGS.tshirt}
+                  alt={garment}
+                  style={{ width:'100%', display:'block', filter:colorToFilter(color) }}
+                  onError={e=>{ e.target.style.opacity='0.1' }}
+                />
+                {/* Garment emoji fallback */}
+                <div style={{ position:'absolute', inset:0, display:'flex', alignItems:'center', justifyContent:'center', fontSize:100, opacity:0.05, pointerEvents:'none' }}>
+                  {{'T-Shirt':'👕','Hoodie':'🧥','Polo':'👔','Joggers':'👖'}[garment]}
                 </div>
-              </div>
-
-              <div style={{ marginBottom:24 }}>
-                <span style={lblStyle}>Custom Colour</span>
-                <div style={{ display:'flex', alignItems:'center', gap:12 }}>
-                  <input type="color" value={color} onChange={e=>setColor(e.target.value)} style={{ width:56, height:40, border:'none', borderRadius:8, cursor:'pointer', background:'none' }} />
-                  <span style={{ fontSize:13, color:'rgba(255,255,255,.6)', fontFamily:'monospace' }}>{color.toUpperCase()}</span>
-                </div>
-              </div>
-
-              <div style={{ display:'flex', gap:10 }}>
-                <button onClick={()=>setStep(1)} style={{ padding:'12px 20px', borderRadius:8, border:'1px solid rgba(255,255,255,.15)', background:'transparent', color:'rgba(255,255,255,.5)', fontSize:13, fontWeight:600, cursor:'pointer' }}>← Back</button>
-                <button onClick={()=>setStep(3)} className="btn-primary" style={{ flex:1, padding:'13px', fontSize:14 }}>Continue →</button>
-              </div>
-            </div>
-            <LivePreview />
-          </div>
-        )}
-
-        {/* ══ STEP 3: DESIGN ══ */}
-        {step === 3 && (
-          <div style={{ display:'flex', gap:24, flexWrap:'wrap' }}>
-            <div style={{ flex:'1 1 280px' }}>
-              <h2 style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:28, color:'#fff', letterSpacing:'.06em', marginBottom:6 }}>STEP 3 — ADD YOUR DESIGN</h2>
-              <p style={{ fontSize:13, color:'rgba(255,255,255,.45)', marginBottom:20 }}>Upload your artwork or pick from our ready-made sample designs.</p>
-
-              {/* Design source tabs */}
-              <div style={{ display:'flex', gap:0, background:'rgba(255,255,255,.05)', borderRadius:8, padding:3, marginBottom:20 }}>
-                {[['upload','📁 Upload'],['samples','🖼 Samples']].map(([k,l])=>(
-                  <button key={k} onClick={()=>{ setDesignTab(k); if(k==='samples') loadSamples() }}
-                    style={{ flex:1, padding:'10px', borderRadius:6, border:'none', cursor:'pointer', fontSize:13, fontWeight:700,
-                      background:designTab===k?'#c8102e':'transparent', color:designTab===k?'#fff':'rgba(255,255,255,.5)', transition:'all .15s' }}>
-                    {l}
-                  </button>
-                ))}
-              </div>
-
-              {/* Upload tab */}
-              {designTab==='upload' && (
-                <div>
-                  <div onClick={()=>document.getElementById('studioFile').click()}
-                    style={{ border:`2px dashed ${uploadedFile?'rgba(0,168,107,.5)':'rgba(255,255,255,.18)'}`, borderRadius:12, padding:'28px 16px', textAlign:'center', cursor:'pointer', background:'rgba(255,255,255,.03)', marginBottom:12, transition:'all .2s' }}>
-                    <input id="studioFile" type="file" accept=".png,.jpg,.jpeg,.svg" style={{ display:'none' }} onChange={handleFile} />
-                    {uploadedFile ? (
-                      <div>
-                        <img src={designImgSrc} alt="" style={{ maxHeight:110, maxWidth:'100%', borderRadius:8, marginBottom:8, objectFit:'contain' }} />
-                        <div style={{ fontSize:13, color:'#00a86b', fontWeight:700, marginBottom:3 }}>✓ {uploadedFile.name}</div>
-                        <div style={{ fontSize:11, color:'rgba(255,255,255,.4)' }}>{(uploadedFile.size/1024/1024).toFixed(1)} MB · Tap to change</div>
-                      </div>
-                    ) : (
-                      <div>
-                        <div style={{ fontSize:48, marginBottom:10 }}>📁</div>
-                        <div style={{ fontSize:14, color:'rgba(255,255,255,.8)', fontWeight:700, marginBottom:4 }}>Tap to upload your design</div>
-                        <div style={{ fontSize:11, color:'rgba(255,255,255,.4)' }}>PNG · JPG · SVG · Max 20MB · Min 300 DPI</div>
-                      </div>
-                    )}
-                  </div>
-                  {uploadErr && <div style={{ fontSize:12, color:'#c8102e', padding:'8px 12px', background:'rgba(200,16,46,.08)', borderRadius:6, marginBottom:12 }}>⚠ {uploadErr}</div>}
-                </div>
-              )}
-
-              {/* Samples tab */}
-              {designTab==='samples' && (
-                <div>
-                  {samples.length > 0 && (
-                    <div style={{ display:'flex', gap:6, flexWrap:'wrap', marginBottom:12 }}>
-                      {['All',...new Set(samples.map(s=>s.category).filter(Boolean))].map(cat=>(
-                        <button key={cat} onClick={()=>setSampleCat(cat)}
-                          style={{ padding:'5px 12px', borderRadius:100, fontSize:10, fontWeight:700, cursor:'pointer',
-                            background:sampleCat===cat?'#c8102e':'transparent',
-                            color:sampleCat===cat?'#fff':'rgba(255,255,255,.5)',
-                            border:`1.5px solid ${sampleCat===cat?'#c8102e':'rgba(255,255,255,.15)'}` }}>
-                          {cat}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                  {samplesLoading
-                    ? <div style={{ textAlign:'center', padding:32, color:'rgba(255,255,255,.4)', fontSize:13 }}>Loading samples…</div>
-                    : samples.length===0
-                      ? <div style={{ textAlign:'center', padding:32, background:'rgba(255,255,255,.04)', borderRadius:10, color:'rgba(255,255,255,.35)', fontSize:13 }}>No samples added yet.</div>
-                      : <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:8 }}>
-                          {samples.filter(s=>sampleCat==='All'||s.category===sampleCat).map(s=>(
-                            <div key={s.id} onClick={()=>pickSample(s)}
-                              style={{ borderRadius:8, overflow:'hidden', cursor:'pointer', position:'relative',
-                                border:`2px solid ${selectedSample?.id===s.id?'#c8102e':'rgba(255,255,255,.1)'}`, transition:'all .15s' }}>
-                              <img src={s.image_url} alt={s.name} style={{ width:'100%', aspectRatio:'1', objectFit:'cover', display:'block' }} />
-                              {selectedSample?.id===s.id && (
-                                <div style={{ position:'absolute', top:4, right:4, width:18, height:18, borderRadius:'50%', background:'#c8102e', display:'flex', alignItems:'center', justifyContent:'center', fontSize:10, color:'#fff', fontWeight:700 }}>✓</div>
-                              )}
-                              <div style={{ padding:'4px 6px', background:'rgba(0,0,0,.65)' }}>
-                                <div style={{ fontSize:9, fontWeight:700, color:'rgba(255,255,255,.8)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{s.name}</div>
-                              </div>
-                            </div>
-                          ))}
-                        </div>}
-                </div>
-              )}
-
-              <div style={{ display:'flex', gap:10, marginTop:20 }}>
-                <button onClick={()=>setStep(2)} style={{ padding:'12px 20px', borderRadius:8, border:'1px solid rgba(255,255,255,.15)', background:'transparent', color:'rgba(255,255,255,.5)', fontSize:13, fontWeight:600, cursor:'pointer' }}>← Back</button>
-                <button onClick={()=>{ if(!designImgSrc){alert('Please upload or select a design first.');return} setStep(4) }} className="btn-primary" style={{ flex:1, padding:'13px', fontSize:14 }}>
-                  {designImgSrc ? 'Continue →' : 'Add design to continue'}
-                </button>
-              </div>
-            </div>
-            <LivePreview />
-          </div>
-        )}
-
-        {/* ══ STEP 4: CUSTOMISE ══ */}
-        {step === 4 && (
-          <div style={{ display:'flex', gap:24, flexWrap:'wrap' }}>
-            <div style={{ flex:'1 1 280px' }}>
-              <h2 style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:28, color:'#fff', letterSpacing:'.06em', marginBottom:6 }}>STEP 4 — CUSTOMISE</h2>
-              <p style={{ fontSize:13, color:'rgba(255,255,255,.45)', marginBottom:20 }}>Adjust design position, add text, and apply effects. Watch the preview update live.</p>
-
-              {/* Sub-tabs */}
-              <div style={{ display:'flex', overflowX:'auto', gap:0, background:'rgba(255,255,255,.05)', borderRadius:8, padding:3, marginBottom:20, scrollbarWidth:'none' }}>
-                {[['position','↔ Position'],['text','T Text'],['effects','✨ Effects']].map(([k,l])=>(
-                  <button key={k} onClick={()=>setCustTab(k)}
-                    style={{ flex:'0 0 auto', padding:'9px 16px', borderRadius:6, border:'none', cursor:'pointer', fontSize:12, fontWeight:700, whiteSpace:'nowrap',
-                      background:custTab===k?'#0a1f5d':'transparent', color:custTab===k?'#fff':'rgba(255,255,255,.45)', transition:'all .15s' }}>
-                    {l}
-                  </button>
-                ))}
-              </div>
-
-              {/* Position */}
-              {custTab==='position' && (
-                <div>
-                  {[
-                    ['Up / Down',    posY,      setPosY,      15, 75],
-                    ['Left / Right', posX,      setPosX,      15, 85],
-                    ['Size',         scale,     setScale,     10, 70],
-                    ['Rotation',     rotation,  setRotation, -45, 45],
-                  ].map(([label, val, setter, min, max])=>(
-                    <div key={label} style={{ marginBottom:18 }}>
-                      <div style={{ display:'flex', justifyContent:'space-between', marginBottom:6 }}>
-                        <span style={{ fontSize:11, fontWeight:700, letterSpacing:'.1em', textTransform:'uppercase', color:'rgba(255,255,255,.45)' }}>{label}</span>
-                        <span style={{ fontSize:12, color:'#fff', fontWeight:700 }}>{val}{label==='Rotation'?'°':'%'}</span>
-                      </div>
-                      <input type="range" min={min} max={max} value={val} onChange={e=>setter(Number(e.target.value))} style={{ width:'100%', accentColor:'#c8102e' }} />
-                    </div>
-                  ))}
-                  <button onClick={()=>{setPosY(38);setPosX(50);setScale(38);setRotation(0)}}
-                    style={{ width:'100%', padding:10, background:'rgba(255,255,255,.06)', border:'1px solid rgba(255,255,255,.12)', borderRadius:6, color:'rgba(255,255,255,.5)', fontSize:12, fontWeight:700, cursor:'pointer' }}>
-                    ↺ Reset Position
-                  </button>
-                </div>
-              )}
-
-              {/* Text */}
-              {custTab==='text' && (
-                <div>
-                  <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16 }}>
-                    <span style={{ fontSize:11, fontWeight:700, letterSpacing:'.1em', textTransform:'uppercase', color:'rgba(255,255,255,.45)' }}>Text Overlay</span>
-                    <button onClick={()=>setTextOn(v=>!v)}
-                      style={{ padding:'6px 16px', borderRadius:50, fontSize:11, fontWeight:700, cursor:'pointer', border:'none',
-                        background:textOn?'#c8102e':'rgba(255,255,255,.1)', color:'#fff' }}>
-                      {textOn?'ON ✓':'OFF'}
-                    </button>
-                  </div>
-                  {textOn ? (
-                    <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
-                      <input value={textVal} onChange={e=>setTextVal(e.target.value)} placeholder="Your text here"
-                        style={{ ...inputStyle, fontSize:15, fontWeight:700 }} />
-                      <div>
-                        <span style={lblStyle}>Font</span>
-                        <select value={textFont} onChange={e=>setTextFont(e.target.value)} style={{ ...inputStyle }}>
-                          {TEXT_FONTS.map(f=><option key={f} value={f}>{f}</option>)}
-                        </select>
-                      </div>
-                      <div>
-                        <div style={{ display:'flex', justifyContent:'space-between', marginBottom:6 }}>
-                          <span style={{ fontSize:11, fontWeight:700, letterSpacing:'.1em', textTransform:'uppercase', color:'rgba(255,255,255,.45)' }}>Size</span>
-                          <span style={{ fontSize:12, color:'#fff' }}>{textSize}px</span>
-                        </div>
-                        <input type="range" min={12} max={60} value={textSize} onChange={e=>setTextSize(Number(e.target.value))} style={{ width:'100%', accentColor:'#c8102e' }} />
-                      </div>
-                      <div>
-                        <span style={lblStyle}>Text Colour</span>
-                        <input type="color" value={textColor} onChange={e=>setTextColor(e.target.value)} style={{ width:'100%', height:38, border:'none', borderRadius:8, cursor:'pointer' }} />
-                      </div>
-                    </div>
-                  ) : (
-                    <p style={{ fontSize:12, color:'rgba(255,255,255,.3)', lineHeight:1.7 }}>Toggle ON to add your custom text — brand name, slogan, or anything you want.</p>
-                  )}
-                </div>
-              )}
-
-              {/* Effects */}
-              {custTab==='effects' && (
-                <div>
-                  <span style={lblStyle}>Filter Presets</span>
-                  <div style={{ display:'flex', flexWrap:'wrap', gap:6, marginBottom:18 }}>
-                    {FILTERS.map(f=>(
-                      <button key={f.label} onClick={()=>setFilterFx(f.value)}
-                        style={{ padding:'6px 12px', borderRadius:50, fontSize:11, fontWeight:700, cursor:'pointer',
-                          background:filterFx===f.value?'#c8102e':'rgba(255,255,255,.07)',
-                          color:filterFx===f.value?'#fff':'rgba(255,255,255,.55)',
-                          border:`1px solid ${filterFx===f.value?'#c8102e':'rgba(255,255,255,.1)'}` }}>
-                        {f.label}
-                      </button>
-                    ))}
-                  </div>
-                  {[['Brightness',brightness,setBrightness,50,160],['Contrast',contrast,setContrast,50,200],['Saturation',saturation,setSaturation,0,250]].map(([label,val,setter,min,max])=>(
-                    <div key={label} style={{ marginBottom:14 }}>
-                      <div style={{ display:'flex', justifyContent:'space-between', marginBottom:6 }}>
-                        <span style={{ fontSize:11, fontWeight:700, letterSpacing:'.1em', textTransform:'uppercase', color:'rgba(255,255,255,.45)' }}>{label}</span>
-                        <span style={{ fontSize:12, color:'#fff' }}>{val}%</span>
-                      </div>
-                      <input type="range" min={min} max={max} value={val} onChange={e=>setter(parseInt(e.target.value))} style={{ width:'100%', accentColor:'#c8102e' }} />
-                    </div>
-                  ))}
-                  <button onClick={()=>{setBrightness(100);setContrast(100);setSaturation(100);setFilterFx('')}}
-                    style={{ width:'100%', padding:10, background:'rgba(255,255,255,.06)', border:'1px solid rgba(255,255,255,.12)', borderRadius:6, color:'rgba(255,255,255,.5)', fontSize:12, fontWeight:700, cursor:'pointer' }}>
-                    ↺ Reset Effects
-                  </button>
-                </div>
-              )}
-
-              <div style={{ display:'flex', gap:10, marginTop:24 }}>
-                <button onClick={()=>setStep(3)} style={{ padding:'12px 20px', borderRadius:8, border:'1px solid rgba(255,255,255,.15)', background:'transparent', color:'rgba(255,255,255,.5)', fontSize:13, fontWeight:600, cursor:'pointer' }}>← Back</button>
-                <button onClick={()=>setStep(5)} className="btn-primary" style={{ flex:1, padding:'13px', fontSize:14 }}>Preview →</button>
-              </div>
-            </div>
-            <LivePreview />
-          </div>
-        )}
-
-        {/* ══ STEP 5: PREVIEW ══ */}
-        {step === 5 && (
-          <div>
-            <h2 style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:28, color:'#fff', letterSpacing:'.06em', marginBottom:6 }}>STEP 5 — PREVIEW YOUR DESIGN</h2>
-            <p style={{ fontSize:13, color:'rgba(255,255,255,.45)', marginBottom:20 }}>This is exactly how your design will look when printed. Switch to 3D for a different angle.</p>
-
-            {/* View toggle */}
-            <div style={{ display:'flex', gap:8, justifyContent:'center', marginBottom:20 }}>
-              {[['flat','🖼 Flat Mockup'],['3d','🎲 3D View']].map(([k,l])=>(
-                <button key={k} onClick={()=>setViewMode(k)}
-                  style={{ padding:'10px 22px', borderRadius:50, fontSize:13, fontWeight:700, cursor:'pointer', border:'1.5px solid',
-                    borderColor:viewMode===k?'#c8102e':'rgba(255,255,255,.15)',
-                    background:viewMode===k?'#c8102e':'rgba(255,255,255,.05)', color:'#fff', transition:'all .15s' }}>
-                  {l}
-                </button>
-              ))}
-            </div>
-
-            {/* Flat preview */}
-            {viewMode==='flat' && (
-              <div style={{ maxWidth:420, margin:'0 auto', position:'relative', borderRadius:18, overflow:'hidden', background:'#1e2a1e', boxShadow:'0 12px 48px rgba(0,0,0,.6)', filter:canvasFilter }}>
-                <img src={garmentImgSrc} alt={garmentType} style={{ width:'100%', display:'block', filter:colorToFilter(color) }} onError={e=>{ e.target.style.opacity='0.05' }} />
-                <div style={{ position:'absolute', inset:0, display:'flex', alignItems:'center', justifyContent:'center', fontSize:100, opacity:0.04, pointerEvents:'none' }}>
-                  {GARMENT_EMOJI[garmentType]}
-                </div>
-                {designImgSrc && (
-                  <img src={designImgSrc} alt="design"
-                    style={{ position:'absolute', top:`${posY}%`, left:`${posX}%`,
-                      transform:`translate(-50%,-50%) rotate(${rotation}deg)`,
-                      width:`${scale}%`, objectFit:'contain', pointerEvents:'none' }} />
+                {/* Design overlay */}
+                {designImg && (
+                  <img src={typeof designImg==='string'?designImg:(designImg.src||'')} alt="design"
+                    style={{ position:'absolute', top:`${designPosY}%`, left:`${designPosX}%`,
+                      transform:`translate(-50%,-50%) rotate(${designRot}deg)`,
+                      width:`${designScale}%`, objectFit:'contain', pointerEvents:'none' }}
+                  />
                 )}
+                {/* Text overlay */}
                 {textOn && textVal && (
-                  <div style={{ position:'absolute', top:'65%', left:'50%', transform:'translateX(-50%)',
+                  <div style={{ position:'absolute', top:'62%', left:'50%', transform:'translateX(-50%)',
                     fontFamily:textFont, fontSize:textSize, color:textColor, fontWeight:700,
-                    textShadow:'0 1px 6px rgba(0,0,0,.6)', pointerEvents:'none', whiteSpace:'nowrap' }}>
+                    textShadow:'0 1px 4px rgba(0,0,0,.3)', pointerEvents:'none', whiteSpace:'nowrap' }}>
                     {textVal}
                   </div>
                 )}
+                {/* No design hint */}
+                {!designImg && (
+                  <div style={{ position:'absolute', inset:0, display:'flex', alignItems:'center', justifyContent:'center' }}>
+                    <div style={{ background:'rgba(0,0,0,.45)', borderRadius:10, padding:'12px 18px', textAlign:'center' }}>
+                      <div style={{ fontSize:28, marginBottom:4 }}>🎨</div>
+                      <div style={{ fontSize:12, color:'rgba(255,255,255,.8)', fontWeight:600 }}>Upload or pick a sample</div>
+                      <div style={{ fontSize:10, color:'rgba(255,255,255,.5)', marginTop:2 }}>Use the tools on the right →</div>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
-            {/* 3D view */}
-            {viewMode==='3d' && (
-              <div style={{ maxWidth:420, margin:'0 auto' }}>
-                <div ref={mountRef} style={{ width:'100%', minHeight:380, borderRadius:16, overflow:'hidden', background:'#1a2744', boxShadow:'0 8px 40px rgba(0,0,0,.5)', cursor:'grab' }}>
+            {/* 3D VIEW */}
+            {studioTab === '3d' && (
+              <div>
+                <div ref={mountRef} style={{ width:'100%', minHeight:380, borderRadius:16, overflow:'hidden', background:'#1a2744', boxShadow:'0 8px 40px rgba(0,0,0,.4)', cursor:'grab' }}>
                   {!threeReady && !threeErr && (
                     <div style={{ display:'flex', alignItems:'center', justifyContent:'center', flexDirection:'column', gap:12, height:380 }}>
                       <div style={{ width:32, height:32, border:'3px solid rgba(255,255,255,.15)', borderTopColor:'#c8102e', borderRadius:'50%', animation:'drynn-spin 0.8s linear infinite' }} />
@@ -1095,102 +735,307 @@ function StudioPage({ user, onNav }) {
               </div>
             )}
 
-            {/* Summary strip */}
-            <div style={{ maxWidth:420, margin:'20px auto 0', background:'rgba(255,255,255,.06)', border:'1px solid rgba(255,255,255,.1)', borderRadius:12, padding:'14px 18px', display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
-              {[
-                ['Garment', selectedProduct?.name || garmentType],
-                ['Colour',  color],
-                ['Design',  designImgSrc ? (uploadedFile?.name || selectedSample?.name || '✓ Added') : '—'],
-                ['Text',    textOn ? textVal : 'None'],
-              ].map(([k,v])=>(
-                <div key={k}>
-                  <div style={{ fontSize:9, fontWeight:700, letterSpacing:'.1em', textTransform:'uppercase', color:'rgba(255,255,255,.3)', marginBottom:2 }}>{k}</div>
-                  <div style={{ fontSize:12, fontWeight:700, color:'#fff', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{v}</div>
-                </div>
+            {/* Design status pill */}
+            {designImg && (
+              <div style={{ marginTop:10, background:'rgba(0,168,107,.1)', border:'1px solid rgba(0,168,107,.25)', borderRadius:8, padding:'8px 14px', display:'flex', alignItems:'center', gap:8 }}>
+                <span style={{ fontSize:16 }}>✓</span>
+                <span style={{ fontSize:12, color:'#00a86b', fontWeight:700 }}>
+                  {selectedSample ? `Sample: ${selectedSample.name}` : uploadedFile ? `File: ${uploadedFile.name}` : 'Design loaded'}
+                </span>
+                <button onClick={()=>{setDesignImg(null);setFile(null);setSample(null)}}
+                  style={{ marginLeft:'auto', fontSize:10, color:'rgba(255,255,255,.4)', background:'none', border:'none', cursor:'pointer' }}>✕ Clear</button>
+              </div>
+            )}
+          </div>
+
+          {/* ── RIGHT: TOOL PANEL ── */}
+          <div style={{ flex:'1 1 260px', minWidth:240, background:'rgba(255,255,255,.04)', borderRadius:16, border:'1px solid rgba(255,255,255,.08)', overflow:'hidden' }}>
+
+            {/* Tool tabs */}
+            <div style={{ display:'flex', overflowX:'auto', borderBottom:'1px solid rgba(255,255,255,.08)', scrollbarWidth:'none' }}>
+              {TOOL_TABS.map(t => (
+                <button key={t.key}
+                  onClick={()=>{ setToolTab(t.key); if(t.key==='samples') loadSamples() }}
+                  style={{ flex:'0 0 auto', padding:'12px 14px', border:'none', cursor:'pointer', background:'transparent',
+                    color: toolTab===t.key ? '#c8102e' : 'rgba(255,255,255,.45)',
+                    borderBottom: toolTab===t.key ? '2px solid #c8102e' : '2px solid transparent',
+                    fontSize:10, fontWeight:700, letterSpacing:'.08em', textAlign:'center', transition:'all .15s', whiteSpace:'nowrap' }}>
+                  <div style={{ fontSize:16, marginBottom:2 }}>{t.icon}</div>
+                  {t.label}
+                </button>
               ))}
             </div>
 
-            <div style={{ display:'flex', gap:10, marginTop:24, justifyContent:'center' }}>
-              <button onClick={()=>setStep(4)} style={{ padding:'12px 20px', borderRadius:8, border:'1px solid rgba(255,255,255,.15)', background:'transparent', color:'rgba(255,255,255,.5)', fontSize:13, fontWeight:600, cursor:'pointer' }}>← Edit</button>
-              <button onClick={()=>setStep(6)} className="btn-primary" style={{ padding:'13px 36px', fontSize:14 }}>Place Order →</button>
-            </div>
-          </div>
-        )}
+            {/* Tool content */}
+            <div style={{ padding:'16px' }}>
 
-        {/* ══ STEP 6: ORDER ══ */}
-        {step === 6 && (
-          <div style={{ display:'flex', gap:24, flexWrap:'wrap' }}>
-            <div style={{ flex:'1 1 280px' }}>
-              <h2 style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:28, color:'#fff', letterSpacing:'.06em', marginBottom:6 }}>STEP 6 — PLACE YOUR ORDER</h2>
-              <p style={{ fontSize:13, color:'rgba(255,255,255,.45)', marginBottom:24 }}>Fill your details. We'll WhatsApp you within 2 hours to confirm.</p>
+              {/* DESIGN tab — quick upload */}
+              {toolTab==='design' && (
+                <div>
+                  <p style={{ ...lblStyle, marginBottom:12 }}>Add Your Design</p>
+                  <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
+                    <div onClick={()=>document.getElementById('studioUpload').click()}
+                      style={{ border:'2px dashed rgba(255,255,255,.18)', borderRadius:10, padding:'20px 12px', textAlign:'center', cursor:'pointer', background:'rgba(255,255,255,.03)', transition:'all .15s' }}>
+                      <input id="studioUpload" type="file" accept=".png,.jpg,.jpeg,.svg" style={{ display:'none' }} onChange={handleFile} />
+                      {uploadedFile
+                        ? <div>
+                            <div style={{ fontSize:12, color:'#00a86b', fontWeight:700, marginBottom:4 }}>✓ {uploadedFile.name}</div>
+                            <div style={{ fontSize:10, color:'rgba(255,255,255,.4)' }}>{(uploadedFile.size/1024/1024).toFixed(1)} MB · Click to change</div>
+                          </div>
+                        : <div>
+                            <div style={{ fontSize:24, marginBottom:6 }}>📁</div>
+                            <div style={{ fontSize:12, color:'rgba(255,255,255,.7)', fontWeight:600 }}>Upload your design</div>
+                            <div style={{ fontSize:10, color:'rgba(255,255,255,.4)', marginTop:2 }}>PNG · JPG · SVG · Max 20MB</div>
+                          </div>}
+                    </div>
+                    {uploadErr && <div style={{ fontSize:11, color:'#c8102e', padding:'8px 10px', background:'rgba(200,16,46,.08)', borderRadius:6 }}>{uploadErr}</div>}
+                    <div style={{ textAlign:'center', fontSize:11, color:'rgba(255,255,255,.3)' }}>— or —</div>
+                    <button onClick={()=>{ setToolTab('samples'); loadSamples() }}
+                      style={{ padding:'12px', border:'1.5px solid rgba(255,255,255,.15)', borderRadius:10, background:'rgba(255,255,255,.04)', color:'rgba(255,255,255,.7)', fontSize:12, fontWeight:600, cursor:'pointer' }}>
+                      🖼 Choose from Samples
+                    </button>
+                  </div>
+                </div>
+              )}
 
-              {status==='done' ? (
-                <div style={{ textAlign:'center', padding:'48px 16px', background:'rgba(0,168,107,.07)', border:'1px solid rgba(0,168,107,.2)', borderRadius:16 }}>
-                  <div style={{ fontSize:64, marginBottom:16 }}>🎉</div>
-                  <div style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:32, color:'#fff', letterSpacing:'.06em', marginBottom:8 }}>ORDER CONFIRMED!</div>
-                  <p style={{ fontSize:13, color:'rgba(255,255,255,.55)', lineHeight:1.8, marginBottom:24 }}>We received your order and will WhatsApp you within 2 hours to confirm printing and delivery.</p>
-                  <button onClick={()=>{ setStep(1); setSelectedProduct(null); setDesignImgSrc(null); setUploadedFile(null); setSelectedSample(null); setStatus(''); setForm({ name:user?.user_metadata?.full_name||'', phone:'', qty:1, address:'' }) }}
-                    style={{ padding:'13px 28px', borderRadius:8, border:'1px solid rgba(255,255,255,.2)', background:'rgba(255,255,255,.08)', color:'#fff', fontSize:13, fontWeight:700, cursor:'pointer' }}>
-                    Create Another Design
+              {/* COLOUR tab */}
+              {toolTab==='colour' && (
+                <div>
+                  <p style={{ ...lblStyle, marginBottom:12 }}>Garment Colour</p>
+                  <div style={{ display:'flex', flexWrap:'wrap', gap:10, marginBottom:16 }}>
+                    {SWATCHES.map(s => (
+                      <div key={s} onClick={()=>setColor(s)}
+                        style={{ width:36, height:36, borderRadius:'50%', background:s, cursor:'pointer', border:`3px solid ${color===s?'#c8102e':'rgba(255,255,255,.15)'}`,
+                          boxShadow:color===s?'0 0 0 2px rgba(200,16,46,.4)':'none', transition:'all .15s' }} />
+                    ))}
+                  </div>
+                  <div style={rowStyle}>
+                    <span style={lblStyle}>Custom Colour</span>
+                  </div>
+                  <input type="color" value={color} onChange={e=>setColor(e.target.value)}
+                    style={{ width:'100%', height:40, border:'none', borderRadius:8, cursor:'pointer', background:'none' }} />
+                </div>
+              )}
+
+              {/* TEXT tab */}
+              {toolTab==='text' && (
+                <div>
+                  <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:14 }}>
+                    <p style={lblStyle}>Text Overlay</p>
+                    <button onClick={()=>setTextOn(v=>!v)}
+                      style={{ padding:'5px 14px', borderRadius:50, fontSize:11, fontWeight:700, cursor:'pointer', border:'none',
+                        background:textOn?'#c8102e':'rgba(255,255,255,.1)', color:'#fff' }}>
+                      {textOn?'ON':'OFF'}
+                    </button>
+                  </div>
+                  {textOn && (
+                    <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
+                      <input value={textVal} onChange={e=>setTextVal(e.target.value)}
+                        style={{ padding:'10px 12px', borderRadius:8, border:'1px solid rgba(255,255,255,.15)', background:'rgba(255,255,255,.06)', color:'#fff', fontSize:14, fontWeight:700 }}
+                        placeholder="Your text here" />
+                      <select value={textFont} onChange={e=>setTextFont(e.target.value)}
+                        style={{ padding:'8px 12px', borderRadius:8, border:'1px solid rgba(255,255,255,.15)', background:'#1a2744', color:'#fff', fontSize:13 }}>
+                        {TEXT_FONTS.map(f=><option key={f} value={f}>{f}</option>)}
+                      </select>
+                      <div style={rowStyle}><span style={lblStyle}>Size</span><span style={{ fontSize:11, color:'#fff' }}>{textSize}px</span></div>
+                      <input type="range" min="12" max="60" value={textSize} onChange={e=>setTextSize(Number(e.target.value))} style={sliderStyle} />
+                      <div style={rowStyle}><span style={lblStyle}>Colour</span></div>
+                      <input type="color" value={textColor} onChange={e=>setTextColor(e.target.value)}
+                        style={{ width:'100%', height:36, border:'none', borderRadius:8, cursor:'pointer' }} />
+                    </div>
+                  )}
+                  {!textOn && <p style={{ fontSize:12, color:'rgba(255,255,255,.3)', marginTop:8 }}>Toggle ON to add text to your design.</p>}
+                </div>
+              )}
+
+              {/* POSITION tab */}
+              {toolTab==='position' && (
+                <div>
+                  <p style={{ ...lblStyle, marginBottom:14 }}>Design Position & Size</p>
+                  {[
+                    ['Up / Down',   designPosY,  setDesignPosY,  15, 75],
+                    ['Left / Right',designPosX,  setDesignPosX,  20, 80],
+                    ['Size',        designScale, setDesignScale, 10, 65],
+                    ['Rotation',    designRot,   setDesignRot,  -45, 45],
+                  ].map(([label, val, setter, min, max]) => (
+                    <div key={label} style={{ marginBottom:14 }}>
+                      <div style={rowStyle}><span style={lblStyle}>{label}</span><span style={{ fontSize:11, color:'#fff' }}>{val}{label==='Rotation'?'°':'%'}</span></div>
+                      <input type="range" min={min} max={max} value={val} onChange={e=>setter(Number(e.target.value))} style={sliderStyle} />
+                    </div>
+                  ))}
+                  <button onClick={()=>{setDesignPosY(38);setDesignPosX(50);setDesignScale(38);setDesignRot(0)}}
+                    style={{ width:'100%', padding:'9px', background:'rgba(255,255,255,.06)', border:'1px solid rgba(255,255,255,.12)', borderRadius:6, color:'rgba(255,255,255,.5)', fontSize:11, fontWeight:700, cursor:'pointer' }}>
+                    ↺ Reset
                   </button>
                 </div>
-              ) : (
-                <div style={{ display:'flex', flexDirection:'column', gap:18 }}>
-                  {/* Size */}
-                  <div>
-                    <span style={lblStyle}>Size</span>
-                    <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
-                      {SIZES.map(s=>(
-                        <button key={s} onClick={()=>setSize(s)}
-                          style={{ padding:'9px 16px', borderRadius:6, fontSize:13, fontWeight:700, cursor:'pointer', border:'1.5px solid',
-                            borderColor:size===s?'#c8102e':'rgba(255,255,255,.15)',
-                            background:size===s?'#c8102e':'rgba(255,255,255,.04)', color:'#fff', transition:'all .15s' }}>
-                          {s}
+              )}
+
+              {/* EFFECTS tab */}
+              {toolTab==='effects' && (
+                <div>
+                  <p style={{ ...lblStyle, marginBottom:10 }}>Filter Presets</p>
+                  <div style={{ display:'flex', flexWrap:'wrap', gap:6, marginBottom:16 }}>
+                    {FILTERS.map(f=>(
+                      <button key={f.label} onClick={()=>setFilter(f.value)}
+                        style={{ padding:'5px 10px', borderRadius:50, fontSize:11, fontWeight:600, cursor:'pointer',
+                          background:filter===f.value?'#0a1f5d':'rgba(255,255,255,.06)',
+                          color:filter===f.value?'#fff':'rgba(255,255,255,.55)',
+                          border:filter===f.value?'1px solid #c8102e':'1px solid rgba(255,255,255,.1)' }}>
+                        {f.label}
+                      </button>
+                    ))}
+                  </div>
+                  {[['Brightness',brightness,setBrightness,50,160],['Contrast',contrast,setContrast,50,200],['Saturation',saturation,setSaturation,0,250]].map(([label,val,setter,min,max])=>(
+                    <div key={label} style={{ marginBottom:12 }}>
+                      <div style={rowStyle}><span style={lblStyle}>{label}</span><span style={{ fontSize:11, color:'#fff' }}>{val}%</span></div>
+                      <input type="range" min={min} max={max} value={val} onChange={e=>setter(parseInt(e.target.value))} style={sliderStyle} />
+                    </div>
+                  ))}
+                  <button onClick={()=>{setBrightness(100);setContrast(100);setSaturation(100);setFilter('')}}
+                    style={{ width:'100%', padding:'9px', background:'rgba(255,255,255,.06)', border:'1px solid rgba(255,255,255,.12)', borderRadius:6, color:'rgba(255,255,255,.5)', fontSize:11, fontWeight:700, cursor:'pointer' }}>
+                    ↺ Reset Effects
+                  </button>
+                </div>
+              )}
+
+              {/* SAMPLES tab */}
+              {toolTab==='samples' && (
+                <div>
+                  <p style={{ ...lblStyle, marginBottom:12 }}>Ready-made Designs</p>
+                  {samples.length > 0 && (
+                    <div style={{ display:'flex', gap:6, flexWrap:'wrap', marginBottom:12 }}>
+                      {['All',...new Set(samples.map(s=>s.category).filter(Boolean))].map(cat=>(
+                        <button key={cat} onClick={()=>setSampleCat(cat)}
+                          style={{ padding:'4px 10px', borderRadius:100, fontSize:10, fontWeight:700, cursor:'pointer', border:'1.5px solid',
+                            borderColor:sampleCat===cat?'#c8102e':'rgba(255,255,255,.15)',
+                            background:sampleCat===cat?'#c8102e':'transparent', color:'#fff' }}>
+                          {cat}
                         </button>
                       ))}
                     </div>
-                  </div>
-                  {/* Form fields */}
-                  {[
-                    ['name',    'Full Name *',          'Your full name',         false],
-                    ['phone',   'WhatsApp Number *',    '+91 00000 00000',         false],
-                    ['qty',     'Quantity',             '1',                       false],
-                    ['address', 'Delivery Address *',  'Full address with pincode', true],
-                  ].map(([k,lbl,ph,isArea])=>(
-                    <div key={k}>
-                      <span style={lblStyle}>{lbl}</span>
-                      {isArea
-                        ? <textarea rows={3} placeholder={ph} value={form[k]} onChange={e=>setForm({...form,[k]:e.target.value})} style={{ ...inputStyle, resize:'vertical' }} />
-                        : <input type={k==='qty'?'number':'text'} placeholder={ph} value={form[k]} onChange={e=>setForm({...form,[k]:e.target.value})} style={inputStyle} />}
-                    </div>
-                  ))}
-
-                  {/* Upload progress */}
-                  {status==='uploading' && (
-                    <div>
-                      <div style={{ display:'flex', justifyContent:'space-between', fontSize:11, color:'rgba(255,255,255,.6)', marginBottom:6 }}>
-                        <span>Uploading design…</span><span>{uploadPct}%</span>
-                      </div>
-                      <div style={{ height:5, background:'rgba(255,255,255,.1)', borderRadius:3 }}>
-                        <div style={{ height:'100%', width:`${uploadPct}%`, background:'#c8102e', borderRadius:3, transition:'width .3s' }} />
-                      </div>
-                    </div>
                   )}
-
-                  <div style={{ display:'flex', gap:10 }}>
-                    <button onClick={()=>setStep(5)} style={{ padding:'12px 20px', borderRadius:8, border:'1px solid rgba(255,255,255,.15)', background:'transparent', color:'rgba(255,255,255,.5)', fontSize:13, fontWeight:600, cursor:'pointer' }}>← Preview</button>
-                    <button className="btn-primary" style={{ flex:1, padding:'14px', fontSize:14, letterSpacing:'.04em', opacity:(status==='saving'||status==='uploading')?.6:1 }}
-                      onClick={handleSubmit} disabled={status==='saving'||status==='uploading'}>
-                      {status==='uploading'?`Uploading… ${uploadPct}%`:status==='saving'?'Placing Order…':'🛒 Place Custom Order'}
-                    </button>
-                  </div>
-                  <p style={{ fontSize:11, color:'rgba(255,255,255,.3)', textAlign:'center' }}>Our team will WhatsApp you within 2 hours · Pay via UPI link</p>
+                  {samplesLoading
+                    ? <div style={{ textAlign:'center', padding:24, color:'rgba(255,255,255,.4)', fontSize:12 }}>Loading…</div>
+                    : samples.length===0
+                      ? <div style={{ textAlign:'center', padding:24, background:'rgba(255,255,255,.04)', borderRadius:10, color:'rgba(255,255,255,.35)', fontSize:12 }}>No sample designs yet.</div>
+                      : <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:8 }}>
+                          {samples.filter(s=>sampleCat==='All'||s.category===sampleCat).map(s=>(
+                            <div key={s.id} onClick={()=>handleSamplePick(s)}
+                              style={{ borderRadius:8, overflow:'hidden', cursor:'pointer', position:'relative',
+                                border:`2px solid ${selectedSample?.id===s.id?'#c8102e':'rgba(255,255,255,.1)'}`,
+                                transition:'all .15s' }}>
+                              <img src={s.image_url} alt={s.name} style={{ width:'100%', aspectRatio:'1', objectFit:'cover', display:'block' }} />
+                              {selectedSample?.id===s.id && (
+                                <div style={{ position:'absolute', top:4, right:4, width:18, height:18, borderRadius:'50%', background:'#c8102e', display:'flex', alignItems:'center', justifyContent:'center', fontSize:10, color:'#fff', fontWeight:700 }}>✓</div>
+                              )}
+                              <div style={{ padding:'4px 6px', background:'rgba(0,0,0,.6)' }}>
+                                <div style={{ fontSize:9, fontWeight:700, color:'rgba(255,255,255,.8)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{s.name}</div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>}
                 </div>
               )}
+
+              {/* UPLOAD tab — duplicate entry point */}
+              {toolTab==='upload' && (
+                <div>
+                  <p style={{ ...lblStyle, marginBottom:12 }}>Upload Your Design File</p>
+                  <div onClick={()=>document.getElementById('studioUpload2').click()}
+                    style={{ border:'2px dashed rgba(255,255,255,.18)', borderRadius:10, padding:'28px 12px', textAlign:'center', cursor:'pointer', background:'rgba(255,255,255,.03)' }}>
+                    <input id="studioUpload2" type="file" accept=".png,.jpg,.jpeg,.svg" style={{ display:'none' }} onChange={handleFile} />
+                    {uploadedFile
+                      ? <div>
+                          <img src={URL.createObjectURL(uploadedFile)} alt="" style={{ maxHeight:100, maxWidth:'100%', borderRadius:6, marginBottom:8, objectFit:'contain' }} />
+                          <div style={{ fontSize:12, color:'#00a86b', fontWeight:700 }}>✓ {uploadedFile.name}</div>
+                          <div style={{ fontSize:10, color:'rgba(255,255,255,.4)', marginTop:2 }}>Click to change</div>
+                        </div>
+                      : <div>
+                          <div style={{ fontSize:32, marginBottom:8 }}>📤</div>
+                          <div style={{ fontSize:13, color:'rgba(255,255,255,.7)', fontWeight:600, marginBottom:4 }}>Tap to upload</div>
+                          <div style={{ fontSize:10, color:'rgba(255,255,255,.4)' }}>PNG · JPG · SVG · Max 20MB · Min 300 DPI</div>
+                        </div>}
+                  </div>
+                  {uploadErr && <div style={{ fontSize:11, color:'#c8102e', marginTop:8, padding:'8px 10px', background:'rgba(200,16,46,.08)', borderRadius:6 }}>{uploadErr}</div>}
+                </div>
+              )}
+
             </div>
-            <LivePreview />
           </div>
-        )}
+        </div>
+
+        {/* ── ORDER FORM ── */}
+        <div style={{ marginTop:32, background:'rgba(255,255,255,.04)', border:'1px solid rgba(255,255,255,.08)', borderRadius:16, padding:'24px 20px' }}>
+          <div style={{ fontSize:11, fontWeight:700, letterSpacing:'.15em', textTransform:'uppercase', color:'rgba(255,255,255,.4)', marginBottom:20 }}>Place Your Order</div>
+
+          {status==='done' ? (
+            <div style={{ textAlign:'center', padding:'32px 16px' }}>
+              <div style={{ fontSize:52, marginBottom:12 }}>🎉</div>
+              <div style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:28, color:'#fff', letterSpacing:'.06em', marginBottom:8 }}>ORDER CONFIRMED!</div>
+              <p style={{ fontSize:13, color:'rgba(255,255,255,.55)', lineHeight:1.8 }}>We received your order and will WhatsApp you within 2 hours to confirm printing and delivery.</p>
+            </div>
+          ) : (
+            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:14 }}>
+              {/* Garment summary */}
+              <div style={{ gridColumn:'1/-1', background:'rgba(255,255,255,.05)', borderRadius:10, padding:'12px 16px', display:'flex', gap:12, alignItems:'center', flexWrap:'wrap' }}>
+                <div style={{ fontSize:32 }}>{{ 'T-Shirt':'👕','Hoodie':'🧥','Polo':'👔','Joggers':'👖' }[garment]}</div>
+                <div>
+                  <div style={{ fontSize:14, fontWeight:700, color:'#fff' }}>{garment}</div>
+                  <div style={{ fontSize:12, color:'rgba(255,255,255,.4)' }}>
+                    Colour: <span style={{ display:'inline-block', width:12, height:12, borderRadius:'50%', background:color, border:'1px solid rgba(255,255,255,.3)', verticalAlign:'middle', marginRight:4 }} />{color}
+                    {designImg ? ' · Design: ✓ Added' : ' · Design: ✗ Not added yet'}
+                  </div>
+                </div>
+              </div>
+
+              {/* Size */}
+              <div style={{ gridColumn:'1/-1' }}>
+                <label style={{ fontSize:10, fontWeight:700, letterSpacing:'.12em', textTransform:'uppercase', color:'rgba(255,255,255,.5)', display:'block', marginBottom:8 }}>Size</label>
+                <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
+                  {SIZES.map(s=>(
+                    <button key={s} onClick={()=>setSize(s)}
+                      style={{ padding:'8px 14px', borderRadius:6, fontSize:12, fontWeight:700, cursor:'pointer', border:'1.5px solid',
+                        borderColor:size===s?'#c8102e':'rgba(255,255,255,.15)',
+                        background:size===s?'#c8102e':'rgba(255,255,255,.04)', color:'#fff' }}>
+                      {s}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Form fields */}
+              {[['name','Full Name *','Your name',false],['phone','WhatsApp Number *','+91 00000 00000',false],['qty','Quantity','1',false],['address','Delivery Address *','Your full address',true]].map(([k,lbl,ph,isArea])=>(
+                <div key={k} style={{ gridColumn: k==='address'?'1/-1':'auto' }}>
+                  <label style={{ fontSize:10, fontWeight:700, letterSpacing:'.12em', textTransform:'uppercase', color:'rgba(255,255,255,.5)', display:'block', marginBottom:6 }}>{lbl}</label>
+                  {isArea
+                    ? <textarea rows={2} className="input-field" placeholder={ph} value={form[k]} onChange={e=>setForm({...form,[k]:e.target.value})} style={{ resize:'vertical', background:'rgba(255,255,255,.08)', border:'1px solid rgba(255,255,255,.15)', color:'#fff', borderRadius:8, padding:'10px 12px', width:'100%', fontSize:13 }} />
+                    : <input type={k==='qty'?'number':'text'} className="input-field" placeholder={ph} value={form[k]} onChange={e=>setForm({...form,[k]:e.target.value})} style={{ background:'rgba(255,255,255,.08)', border:'1px solid rgba(255,255,255,.15)', color:'#fff', borderRadius:8, padding:'10px 12px', width:'100%', fontSize:13 }} />}
+                </div>
+              ))}
+
+              {/* Upload progress */}
+              {status==='uploading' && (
+                <div style={{ gridColumn:'1/-1' }}>
+                  <div style={{ display:'flex', justifyContent:'space-between', fontSize:11, color:'rgba(255,255,255,.6)', marginBottom:6 }}>
+                    <span>Uploading design…</span><span>{uploadPct}%</span>
+                  </div>
+                  <div style={{ height:5, background:'rgba(255,255,255,.1)', borderRadius:3 }}>
+                    <div style={{ height:'100%', width:`${uploadPct}%`, background:'#c8102e', borderRadius:3, transition:'width .3s' }} />
+                  </div>
+                </div>
+              )}
+
+              {/* Submit */}
+              <button className="btn-primary" style={{ gridColumn:'1/-1', padding:15, fontSize:14, opacity:(status==='saving'||status==='uploading')?.6:1, letterSpacing:'.06em' }}
+                onClick={handleSubmit} disabled={status==='saving'||status==='uploading'}>
+                {status==='uploading'?`Uploading… ${uploadPct}%`:status==='saving'?'Placing Order…':'🛒 Place Custom Order'}
+              </button>
+              <p style={{ gridColumn:'1/-1', fontSize:11, color:'rgba(255,255,255,.3)', textAlign:'center' }}>
+                Our team will WhatsApp you within 2 hours · No payment online · Pay on delivery or UPI
+              </p>
+            </div>
+          )}
+        </div>
 
       </div>
     </div>
@@ -1565,14 +1410,40 @@ const CLOUDINARY_CLOUD = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || 'dfhdy
 const CLOUDINARY_PRESET = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET || 'drynn_uploads'
 
 async function uploadToCloudinary(file, onProgress) {
-  // Upload to Supabase Storage (drynn-designs bucket)
   onProgress && onProgress(10)
-  const ext = file.name.split('.').pop()
+  const ext  = file.name.split('.').pop().toLowerCase()
   const path = `designs/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
-  const { error } = await supabase.storage.from('drynn-designs').upload(path, file, { cacheControl:'3600', upsert:false })
-  if (error) throw new Error(error.message)
+
+  // Try drynn-designs bucket first
+  let bucket = 'drynn-designs'
+  let { error } = await supabase.storage.from(bucket).upload(path, file, { cacheControl:'3600', upsert:false })
+
+  // If bucket not found, try drynn-uploads bucket
+  if (error && (error.message.includes('Bucket not found') || error.statusCode === 404 || error.message.includes('bucket'))) {
+    bucket = 'drynn-uploads'
+    const res2 = await supabase.storage.from(bucket).upload(path, file, { cacheControl:'3600', upsert:false })
+    error = res2.error
+  }
+
+  // If both fail, try public bucket
+  if (error && (error.message.includes('Bucket not found') || error.statusCode === 404 || error.message.includes('bucket'))) {
+    bucket = 'public'
+    const res3 = await supabase.storage.from(bucket).upload(path, file, { cacheControl:'3600', upsert:false })
+    error = res3.error
+  }
+
+  if (error) {
+    // Final fallback: convert to base64 data URL so upload never fully fails
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader()
+      reader.onload = () => { onProgress && onProgress(100); resolve(reader.result) }
+      reader.onerror = () => reject(new Error(`Storage upload failed: ${error.message}.\n\nFix: Go to Supabase → Storage → Create a bucket named "drynn-designs" and set it to Public.`))
+      reader.readAsDataURL(file)
+    })
+  }
+
   onProgress && onProgress(100)
-  const { data } = supabase.storage.from('drynn-designs').getPublicUrl(path)
+  const { data } = supabase.storage.from(bucket).getPublicUrl(path)
   return data?.publicUrl || path
 }
 
@@ -2452,7 +2323,7 @@ function AdminPanel({ onBack }) {
         try {
           imageUrl = await uploadToCloudinary(sampleFile, pct => setSamplePct(pct))
         } catch(uploadErr) {
-          alert('Image upload to Cloudinary failed: ' + uploadErr.message)
+          alert('Image upload failed: ' + uploadErr.message)
           return
         }
       }

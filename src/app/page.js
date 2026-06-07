@@ -1343,7 +1343,8 @@ function CartPage({ cart, onRemove, onClear, user }) {
   )
 }
 
-function AccountPage({ user, onLogout }) {
+function AccountPage({ user, onLogout, onNav }) {
+  const isAdmin = user?.email === 'gokulmaniraj2008@gmail.com'
   return (
     <div>
       <div style={{ background:'linear-gradient(135deg,#0a1f5d,#1a0a2e)', padding:'48px 16px', textAlign:'center' }}>
@@ -1352,18 +1353,24 @@ function AccountPage({ user, onLogout }) {
         </div>
         <h1 style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:32, color:'#fff', letterSpacing:'.1em', marginBottom:4 }}>{user?.user_metadata?.full_name||'My Account'}</h1>
         <p style={{ fontSize:13, color:'rgba(255,255,255,.6)' }}>{user?.email}</p>
+        {isAdmin && (
+          <div style={{ display:'inline-flex', alignItems:'center', gap:6, marginTop:10, background:'rgba(200,16,46,.25)', border:'1px solid rgba(200,16,46,.5)', borderRadius:50, padding:'4px 14px' }}>
+            <div style={{ width:6, height:6, borderRadius:'50%', background:'#c8102e' }} />
+            <span style={{ fontSize:10, fontWeight:700, letterSpacing:'.14em', color:'#c8102e', textTransform:'uppercase' }}>Admin Account</span>
+          </div>
+        )}
       </div>
       <div style={{ maxWidth:500, margin:'0 auto', padding:'32px 16px' }}>
         {[
-          { icon:'📦', label:'My Orders',    sub:'Track and manage your orders' },
-          { icon:'💳', label:'Payments',     sub:'UPI, Razorpay, COD' },
-          { icon:'📍', label:'Addresses',    sub:'Manage delivery addresses' },
-          { icon:'🔔', label:'Notifications', sub:'Order updates on WhatsApp' },
-          { icon:'🛡️', label:'Privacy',      sub:'Data & privacy settings' },
+          { icon:'📦', label:'My Orders',     sub:'Track and manage your orders',  page:'orders'  },
+          { icon:'💳', label:'Payments',      sub:'UPI, Razorpay, COD',            page:null       },
+          { icon:'📍', label:'Addresses',     sub:'Manage delivery addresses',     page:null       },
+          { icon:'🔔', label:'Notifications', sub:'Order updates on WhatsApp',     page:null       },
+          { icon:'🛡️', label:'Privacy',       sub:'Data & privacy settings',       page:'privacy'  },
         ].map((item,i)=>(
-          <div key={i} style={{ display:'flex', alignItems:'center', gap:16, padding:'16px 0', borderBottom:'1px solid #f5f5f5', cursor:'pointer' }}
-            onMouseEnter={e=>e.currentTarget.style.paddingLeft='8px'} onMouseLeave={e=>e.currentTarget.style.paddingLeft='0'}
-            style={{ display:'flex', alignItems:'center', gap:16, padding:'16px 0', borderBottom:'1px solid #f5f5f5', cursor:'pointer', transition:'padding .15s' }}>
+          <div key={i} onClick={()=>{ if(item.page) onNav(item.page) }}
+            style={{ display:'flex', alignItems:'center', gap:16, padding:'16px 0', borderBottom:'1px solid #f5f5f5', cursor:'pointer', transition:'padding .15s' }}
+            onMouseEnter={e=>e.currentTarget.style.paddingLeft='8px'} onMouseLeave={e=>e.currentTarget.style.paddingLeft='0'}>
             <div style={{ width:44, height:44, background:'#f8f8f8', borderRadius:12, display:'flex', alignItems:'center', justifyContent:'center', fontSize:22, flexShrink:0 }}>{item.icon}</div>
             <div style={{ flex:1 }}>
               <div style={{ fontWeight:600, fontSize:14 }}>{item.label}</div>
@@ -1372,6 +1379,18 @@ function AccountPage({ user, onLogout }) {
             <span style={{ color:'#ccc', fontSize:18 }}>›</span>
           </div>
         ))}
+        {isAdmin && (
+          <div onClick={()=>onNav('admin')}
+            style={{ display:'flex', alignItems:'center', gap:16, padding:'16px 0', borderBottom:'1px solid #f5f5f5', cursor:'pointer', transition:'padding .15s' }}
+            onMouseEnter={e=>e.currentTarget.style.paddingLeft='8px'} onMouseLeave={e=>e.currentTarget.style.paddingLeft='0'}>
+            <div style={{ width:44, height:44, background:'rgba(200,16,46,.08)', borderRadius:12, display:'flex', alignItems:'center', justifyContent:'center', fontSize:22, flexShrink:0 }}>⚙️</div>
+            <div style={{ flex:1 }}>
+              <div style={{ fontWeight:700, fontSize:14, color:'#c8102e' }}>Admin Panel</div>
+              <div style={{ fontSize:12, color:'#aaa', marginTop:2 }}>Manage orders, products & users</div>
+            </div>
+            <span style={{ color:'#c8102e', fontSize:18 }}>›</span>
+          </div>
+        )}
         <button className="btn-secondary" style={{ width:'100%', padding:13, fontSize:13, marginTop:28 }} onClick={onLogout}>Sign Out</button>
         <p style={{ textAlign:'center', fontSize:11, color:'#ccc', marginTop:12 }}>DRYNN · Tamil Nadu, India</p>
       </div>
@@ -2102,7 +2121,7 @@ function MainSite({ user }) {
       {page==='about'    && <AboutPage />}
       {page==='contact'  && <ContactPage />}
       {page==='cart'     && <CartPage cart={cart} onRemove={i=>setCart(c=>c.filter((_,idx)=>idx!==i))} onClear={()=>setCart([])} user={user} />}
-      {page==='account'  && <AccountPage user={user} onLogout={handleLogout} />}
+      {page==='account'  && <AccountPage user={user} onLogout={handleLogout} onNav={setPage} />}
       {page==='track'    && <OrderTrackingPage />}
       {page==='group'    && <GroupOrderPage user={user} />}
 

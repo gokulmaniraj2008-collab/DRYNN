@@ -407,31 +407,25 @@ function LoginPage({ onBack }) {
 }
 
 // ══════════════════════════════════════════════════════════════
-// CSS 3D MOCKUP  -  pure CSS transform + motion buttons
+// STUDIO PAGE  -  Unified Live Mockup + Order Form
 // ══════════════════════════════════════════════════════════════
-// FULL 3D DESIGN STUDIO  -  CapCut motions · 360° · Supabase upload
-function MockupStudio() {
-  // Garment base images — Cloudinary URLs (replace with your own uploads)
+function StudioPage({ user, onNav }) {
   const GARMENT_IMGS = {
     tshirt:  'https://res.cloudinary.com/dfhdyp4oq/image/upload/drynn/products/tshirt_white.png',
     hoodie:  'https://res.cloudinary.com/dfhdyp4oq/image/upload/drynn/products/hoodie_navy.png',
     polo:    'https://res.cloudinary.com/dfhdyp4oq/image/upload/drynn/products/polo_white.png',
     joggers: 'https://res.cloudinary.com/dfhdyp4oq/image/upload/drynn/products/joggers_black.png',
   }
+  const GARMENT_KEY = { 'T-Shirt':'tshirt', 'Hoodie':'hoodie', 'Polo':'polo', 'Joggers':'joggers' }
 
-  // Core
-  const [garmentType, setGarmentType] = useState('tshirt')
-  const [gColor,      setGColor]      = useState('#ffffff')
-  const [tab,         setTab]         = useState('design')
-
-  // Design overlay
-  const [designImg,   setDesignImg]   = useState(null)  // URL string
-  const [designPosY,  setDesignPosY]  = useState(38)    // % from top
-  const [designPosX,  setDesignPosX]  = useState(50)    // % from left
-  const [designScale, setDesignScale] = useState(38)    // % of container width
+  // ── Design overlay (shared: mockup canvas reads these, order form writes designImg) ──
+  const [designImg,   setDesignImg]   = useState(null)  // object URL or sample URL
+  const [designPosY,  setDesignPosY]  = useState(38)
+  const [designPosX,  setDesignPosX]  = useState(50)
+  const [designScale, setDesignScale] = useState(38)
   const [designRot,   setDesignRot]   = useState(0)
 
-  // Text
+  // Text overlay
   const [textOn,      setTextOn]      = useState(false)
   const [textVal,     setTextVal]     = useState('YOUR TEXT')
   const [textFont,    setTextFont]    = useState('Bebas Neue')
@@ -443,7 +437,7 @@ function MockupStudio() {
   const [contrast,    setContrast]    = useState(100)
   const [saturation,  setSaturation]  = useState(100)
 
-  // Samples
+  // Samples (for mockup Samples tab)
   const [studioSamples,     setStudioSamples]     = useState([])
   const [studioSamplesLoad, setStudioSamplesLoad] = useState(false)
   const [studioSampleCat,   setStudioSampleCat]   = useState('All')
@@ -456,9 +450,9 @@ function MockupStudio() {
     setStudioSamplesLoad(false)
   }
 
-  // Studio-only products (admin picks shown only in Studio)
-  const [studioPicks,     setStudioPicks]     = useState([])
-  const [studioPicksLoad, setStudioPicksLoad] = useState(false)
+  // Studio picks (admin-curated)
+  const [studioPicks,       setStudioPicks]       = useState([])
+  const [studioPicksLoad,   setStudioPicksLoad]   = useState(false)
   const [studioPicksLoaded, setStudioPicksLoaded] = useState(false)
 
   const loadStudioPicks = async () => {
@@ -470,14 +464,14 @@ function MockupStudio() {
     setStudioPicksLoaded(true)
   }
 
-  // Customer Upload
-  const [custFile,    setCustFile]    = useState(null)
-  const [custPreview, setCustPreview] = useState(null)
-  const [custName,    setCustName]    = useState('')
-  const [custPhone,   setCustPhone]   = useState('')
-  const [uploading,   setUploading]   = useState(false)
-  const [uploadDone,  setUploadDone]  = useState(false)
-  const [uploadErr,   setUploadErr]   = useState('')
+  // ── Order form state ──
+  const [size,        setSize]        = useState('M')
+  const [uploadedFile,setFile]        = useState(null)
+  const [uploadPct,   setUploadPct]   = useState(0)
+  const [selectedSample, setSample]   = useState(null)
+  const [form, setForm]   = useState({ name: user?.user_metadata?.full_name||'', phone:'', qty:1, address:'' })
+  const [status, setStatus] = useState('')
+  const [uploadErr, setUploadErr] = useState('')
 
   const GARMENT_TYPES = [
     { key:'tshirt', label:'T-Shirt', emoji:'👕' },
@@ -488,45 +482,65 @@ function MockupStudio() {
 
   const canvasFilter = `brightness(${brightness}%) contrast(${contrast}%) saturate(${saturation}%)`
 
-  const handleDesignUpload = e => {
+  // When customer uploads a file → instantly show in mockup
+  const handleFile = e => {
     const f = e.target.files[0]; if (!f) return
-    const url = URL.createObjectURL(f)
-    setDesignImg(url)
+    const allowed = ['image/png','image/jpeg','image/jpg','image/svg+xml']
+    if (!allowed.includes(f.type)) { setUploadErr('Only PNG, JPG, or SVG files allowed.'); return }
+    if (f.size > 20 * 1024 * 1024) { setUploadErr('File too large. Max 20MB.'); return }
+    setUploadErr(''); setFile(f); setUploadPct(0); setSample(null)
+    setDesignImg(URL.createObjectURL(f))  // ← drives the live mockup instantly
   }
 
-  const handleDownload = () => {
-    // Simple: open mockup in new tab for screenshot
-    alert('Tip: Take a screenshot of the mockup above to save your design preview.')
+  // When customer picks a sample → instantly show in mockup
+  const handleSamplePick = s => {
+    setSample(s); setFile(null)
+    setDesignImg(s.image_url)             // ← drives the live mockup instantly
   }
 
-  const handleCustFile = e => {
-    const f = e.target.files[0]; if (!f) return
-    setCustFile(f); const r = new FileReader(); r.onload = ev => setCustPreview(ev.target.result); r.readAsDataURL(f)
-  }
+  const handleDownload = () => alert('Tip: Take a screenshot of the mockup above to save your design preview.')
 
-  const handleCustomerUpload = async () => {
-    if (!custFile||!custName||!custPhone) { alert('Please fill your name, phone, and upload a photo.'); return }
-    setUploading(true); setUploadErr('')
+  const hasDesign = !!uploadedFile || !!selectedSample
+
+  const handleSubmit = async () => {
+    if (!form.name||!form.phone||!form.address||!hasDesign) { alert('Please fill all fields and choose a design.'); return }
+    setStatus('saving')
+    const orderId = crypto.randomUUID(), placedAt = new Date().toISOString()
     try {
-      // Upload to Cloudinary (avoids Supabase bucket dependency)
-      const imageUrl = await uploadToCloudinary(custFile, ()=>{})
-      const { error: dbErr } = await supabase.from('drynn_customer_uploads').insert({
-        name: custName, phone: custPhone, filename: custFile.name,
-        storage_path: imageUrl, garment: garmentType, color: gColor,
+      let designUrl = ''
+      if (uploadedFile) {
+        setStatus('uploading')
+        try { designUrl = await uploadToCloudinary(uploadedFile, pct => setUploadPct(pct)) }
+        catch(e) {
+          setStatus('')
+          alert(`[Design Upload Failed]\nReason: ${e.message || 'Network error'}\n\nCheck your internet and try again.`)
+          return
+        }
+      } else {
+        designUrl = selectedSample.image_url
+      }
+      setStatus('saving')
+      const { error:dbErr } = await supabase.from('drynn_orders').insert({
+        id:orderId, user_id:user?.id||null, name:form.name, phone:form.phone,
+        garment, color, size, qty:Number(form.qty), address:form.address,
+        design_file: designUrl, status:'pending', placed_at:placedAt
       })
-      if (dbErr) throw dbErr
-      setUploadDone(true)
+      if (dbErr) alert(`[Order Save Failed]\nReason: ${dbErr.message}\n\nPlease WhatsApp us at +91 99447 61306.`)
+      if (GOOGLE_SHEET_WEBHOOK) fetch(GOOGLE_SHEET_WEBHOOK,{ method:'POST', mode:'no-cors', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ sheet:'DRYNN_Orders', orderId, userId:user?.id||'', name:form.name, phone:form.phone, garment, color, size, qty:form.qty, address:form.address, designUrl, placedAt }) }).catch(console.error)
+      setStatus('done')
+      setTimeout(()=>setStatus(''),5000)
+      setForm({ name:user?.user_metadata?.full_name||'', phone:'', qty:1, address:'' })
+      setFile(null); setSample(null); setUploadPct(0); setDesignImg(null)
     } catch(e) {
-      console.error('[Customer Upload]', e)
-      setUploadErr('Upload failed: ' + (e.message || 'Please try again.'))
-    } finally { setUploading(false) }
+      setStatus('')
+      alert(`[Unexpected Error]\nReason: ${e.message || 'Unknown'}\n\nPlease WhatsApp us at +91 99447 61306.`)
+    }
   }
 
   const sliderStyle = { width:'100%', accentColor:'#c8102e' }
   const rowStyle    = { display:'flex', justifyContent:'space-between', marginBottom:6 }
   const lblStyle    = { fontSize:10, fontWeight:700, letterSpacing:'.12em', textTransform:'uppercase', color:'rgba(255,255,255,.4)' }
 
-  // Color tint: apply CSS filter to garment image
   const colorToFilter = (hex) => {
     if (hex === '#ffffff') return 'none'
     if (hex === '#0a0a0a' || hex === '#000000') return 'brightness(0)'
@@ -540,19 +554,32 @@ function MockupStudio() {
   }
 
   const TABS = [
-    { key:'design',  icon:'🎨', label:'Design'   },
+    { key:'order',   icon:'📋', label:'Order'    },
     { key:'colour',  icon:'🖌️', label:'Colour'   },
     { key:'text',    icon:'✍️', label:'Text'     },
     { key:'motion',  icon:'↔️', label:'Position' },
     { key:'effects', icon:'✨', label:'Effects'  },
-    { key:'camera',  icon:'📷', label:'360°'     },
     { key:'samples', icon:'🖼️', label:'Samples'  },
     { key:'picks',   icon:'⭐', label:'Picks'    },
-    { key:'upload',  icon:'📤', label:'Upload'   },
   ]
 
   return (
-    <div style={{ background:'#0d1b3e', position:'relative', overflow:'hidden' }}>
+    <div style={{ paddingBottom:80 }}>
+      {/* Header */}
+      <div style={{ background:'linear-gradient(90deg,#0a1f5d,#1a0a2e)', padding:'20px 20px 16px' }}>
+        <div style={{ maxWidth:1100, margin:'0 auto', display:'flex', alignItems:'center', gap:12 }}>
+          <button onClick={()=>onNav('home')} style={{ display:'inline-flex', alignItems:'center', gap:6, background:'rgba(255,255,255,.1)', border:'1px solid rgba(255,255,255,.2)', color:'#fff', padding:'6px 14px', borderRadius:50, fontSize:12, cursor:'pointer', fontWeight:600, flexShrink:0 }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg>Back
+          </button>
+          <div>
+            <span className="sec-label" style={{ color:'rgba(255,255,255,.6)', marginBottom:2 }}>Design Studio</span>
+            <h1 style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:'clamp(22px,5vw,36px)', color:'#fff', letterSpacing:'.05em', lineHeight:1 }}>LIVE MOCKUP + ORDER</h1>
+          </div>
+        </div>
+      </div>
+
+      {/* ── UNIFIED STUDIO BLOCK ── */}
+      <div style={{ background:'#0d1b3e', position:'relative', overflow:'hidden' }}>
       <div style={{ position:'absolute', top:'5%', left:'5%', width:200, height:200, background:'radial-gradient(circle,rgba(200,16,46,.14) 0%,transparent 70%)', pointerEvents:'none' }} />
       <div style={{ position:'absolute', bottom:'10%', right:'5%', width:280, height:280, background:'radial-gradient(circle,rgba(59,130,246,.12) 0%,transparent 70%)', pointerEvents:'none' }} />
 
@@ -564,11 +591,11 @@ function MockupStudio() {
       </div>
 
       {/* Garment switcher */}
-      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'0 16px 12px', maxWidth:900, margin:'0 auto', flexWrap:'wrap', gap:8 }}>
+      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'12px 16px', maxWidth:900, margin:'0 auto', flexWrap:'wrap', gap:8 }}>
         <div style={{ display:'flex', gap:7, flexWrap:'wrap' }}>
           {GARMENT_TYPES.map(g=>(
-            <button key={g.key} onClick={()=>setGarmentType(g.key)}
-              style={{ padding:'8px 13px', borderRadius:50, fontSize:12, fontWeight:600, cursor:'pointer', transition:'all .15s', background:garmentType===g.key?'#c8102e':'rgba(255,255,255,.08)', color:'#fff', border:garmentType===g.key?'1px solid #c8102e':'1px solid rgba(255,255,255,.15)' }}>
+            <button key={g.key} onClick={()=>setGarment(g.label)}
+              style={{ padding:'8px 13px', borderRadius:50, fontSize:12, fontWeight:600, cursor:'pointer', transition:'all .15s', background:GARMENT_KEY[garment]===g.key?'#c8102e':'rgba(255,255,255,.08)', color:'#fff', border:GARMENT_KEY[garment]===g.key?'1px solid #c8102e':'1px solid rgba(255,255,255,.15)' }}>
               {g.emoji} {g.label}
             </button>
           ))}
@@ -579,24 +606,21 @@ function MockupStudio() {
         </button>
       </div>
 
-      {/* FLAT MOCKUP CANVAS */}
-      <div style={{ maxWidth:900, margin:'0 auto', padding:'0 16px' }}>
+      {/* LIVE MOCKUP CANVAS */}
+      <div style={{ maxWidth:900, margin:'0 auto', padding:'0 16px 8px' }}>
         <div style={{ position:'relative', width:'100%', maxWidth:420, margin:'0 auto', borderRadius:16, overflow:'hidden', background:'#f8f8f8', filter:canvasFilter, userSelect:'none' }}>
-          {/* Garment base image */}
           <img
-            src={GARMENT_IMGS[garmentType]}
-            alt={garmentType}
-            style={{ width:'100%', display:'block', filter: colorToFilter(gColor) }}
+            src={GARMENT_IMGS[GARMENT_KEY[garment]]}
+            alt={garment}
+            style={{ width:'100%', display:'block', filter: colorToFilter(color) }}
             onError={e => { e.target.style.display='none' }}
           />
-          {/* Fallback if image fails */}
           <div style={{ position:'absolute', inset:0, display:'flex', alignItems:'center', justifyContent:'center', fontSize:120, opacity:0.08, pointerEvents:'none' }}>
-            {GARMENT_TYPES.find(g=>g.key===garmentType)?.emoji}
+            {GARMENT_TYPES.find(g=>g.key===GARMENT_KEY[garment])?.emoji}
           </div>
-          {/* Design overlay */}
           {designImg && (
             <img
-              src={typeof designImg === 'string' ? designImg : (designImg.src || '')}
+              src={designImg}
               alt="design"
               style={{
                 position:'absolute',
@@ -609,20 +633,21 @@ function MockupStudio() {
               }}
             />
           )}
-          {/* Text overlay */}
           {textOn && textVal && (
             <div style={{
-              position:'absolute',
-              top:'60%', left:'50%',
+              position:'absolute', top:'60%', left:'50%',
               transform:'translateX(-50%)',
               fontFamily:textFont, fontSize:textSize,
               color:textColor, fontWeight:700,
               textShadow:'0 1px 4px rgba(0,0,0,.3)',
               pointerEvents:'none', whiteSpace:'nowrap',
-            }}>
-              {textVal}
-            </div>
+            }}>{textVal}</div>
           )}
+          {/* Live indicator */}
+          <div style={{ position:'absolute', top:10, right:10, display:'flex', alignItems:'center', gap:5, background:'rgba(0,0,0,.5)', borderRadius:50, padding:'4px 10px' }}>
+            <div style={{ width:6, height:6, borderRadius:'50%', background: designImg ? '#00a86b' : '#f5a623', boxShadow: designImg ? '0 0 6px #00a86b' : '0 0 6px #f5a623' }} />
+            <span style={{ fontSize:9, fontWeight:700, color:'#fff', letterSpacing:'.08em' }}>{designImg ? 'LIVE' : 'READY'}</span>
+          </div>
         </div>
       </div>
 
@@ -642,44 +667,88 @@ function MockupStudio() {
 
         <div style={{ padding:'18px 16px 32px' }}>
 
-          {/* DESIGN TAB */}
-          {tab==='design' && (
-            <div>
-              <label style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:8, padding:'24px 16px', border:'1.5px dashed rgba(255,255,255,.18)', borderRadius:10, cursor:'pointer', background:'rgba(255,255,255,.03)' }}>
-                <input type="file" accept=".png,.jpg,.jpeg,.svg,.webp" style={{ display:'none' }} onChange={handleDesignUpload} />
-                <span style={{ fontSize:32 }}>🎨</span>
-                <span style={{ fontSize:13, color:designImg?'#00a86b':'rgba(255,255,255,.55)', fontWeight:600 }}>{designImg?'✓ Loaded — tap to change':'Tap to upload your design'}</span>
-                <span style={{ fontSize:11, color:'rgba(255,255,255,.28)' }}>PNG · JPG · SVG · Min 300 DPI</span>
-              </label>
-              {designImg && (<>
-                <button onClick={()=>setDesignImg(null)} style={{ marginTop:10, width:'100%', padding:'8px', background:'rgba(255,255,255,.06)', border:'1px solid rgba(255,255,255,.14)', borderRadius:6, color:'rgba(255,255,255,.5)', fontSize:11, fontWeight:700, cursor:'pointer' }}>✕ Remove Design</button>
-                <div style={{ marginTop:16, display:'flex', flexDirection:'column', gap:14 }}>
-                  <div>
-                    <div style={rowStyle}><p style={lblStyle}>Print Position Y</p><span style={{ fontSize:11, color:'#fff' }}>{designPosY.toFixed(2)}</span></div>
-                    <input type="range" min="-0.3" max="0.4" step="0.01" value={designPosY} onChange={e=>setDesignPosY(parseFloat(e.target.value))} style={sliderStyle} />
+          {/* ORDER TAB — combined order form */}
+          {tab==='order' && (
+            <div style={{ display:'flex', flexDirection:'column', gap:18 }}>
+              {status==='done' && (
+                <div style={{ background:'rgba(0,168,107,.12)', border:'1px solid rgba(0,168,107,.3)', borderRadius:8, padding:'12px 16px', fontSize:13, color:'#00a86b', fontWeight:600 }}>
+                  ✓ Order placed! We'll contact you on WhatsApp within 2 hours.
+                </div>
+              )}
+              {/* Name */}
+              <div>
+                <p style={{ ...lblStyle, marginBottom:7 }}>Full Name</p>
+                <input type="text" placeholder="Your full name" value={form.name} onChange={e=>setForm({...form,name:e.target.value})}
+                  style={{ width:'100%', background:'rgba(255,255,255,.08)', border:'1.5px solid rgba(255,255,255,.15)', borderRadius:8, padding:'10px 12px', fontSize:13, color:'#fff', outline:'none', fontFamily:'inherit' }} />
+              </div>
+              {/* Phone */}
+              <div>
+                <p style={{ ...lblStyle, marginBottom:7 }}>Phone / WhatsApp</p>
+                <input type="text" placeholder="+91 00000 00000" value={form.phone} onChange={e=>setForm({...form,phone:e.target.value})}
+                  style={{ width:'100%', background:'rgba(255,255,255,.08)', border:'1.5px solid rgba(255,255,255,.15)', borderRadius:8, padding:'10px 12px', fontSize:13, color:'#fff', outline:'none', fontFamily:'inherit' }} />
+              </div>
+              {/* Size */}
+              <div>
+                <p style={{ ...lblStyle, marginBottom:8 }}>Size</p>
+                <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
+                  {SIZES.map(s=>(
+                    <button key={s} onClick={()=>setSize(s)}
+                      style={{ padding:'7px 14px', border:`1.5px solid ${size===s?'#c8102e':'rgba(255,255,255,.2)'}`, background:size===s?'#c8102e':'rgba(255,255,255,.06)', borderRadius:4, fontSize:13, fontWeight:600, cursor:'pointer', color:'#fff' }}>
+                      {s}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              {/* Qty */}
+              <div>
+                <p style={{ ...lblStyle, marginBottom:7 }}>Quantity</p>
+                <input type="number" min="1" value={form.qty} onChange={e=>setForm({...form,qty:e.target.value})}
+                  style={{ width:100, background:'rgba(255,255,255,.08)', border:'1.5px solid rgba(255,255,255,.15)', borderRadius:8, padding:'9px 12px', fontSize:13, color:'#fff', outline:'none', fontFamily:'inherit' }} />
+              </div>
+              {/* Design upload */}
+              <div>
+                <p style={{ ...lblStyle, marginBottom:8 }}>Your Design</p>
+                <p style={{ fontSize:12, color:'rgba(255,255,255,.35)', marginBottom:10, lineHeight:1.6 }}>
+                  Upload your design — it appears on the mockup above instantly. Or pick from Samples tab.
+                </p>
+                <label style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:8, padding:'20px 16px', border:'1.5px dashed rgba(255,255,255,.18)', borderRadius:10, cursor:'pointer', background:'rgba(255,255,255,.03)' }}>
+                  <input type="file" accept=".png,.jpg,.jpeg,.svg" style={{ display:'none' }} onChange={handleFile} />
+                  <span style={{ fontSize:28 }}>🎨</span>
+                  <span style={{ fontSize:13, color:uploadedFile?'#00a86b':'rgba(255,255,255,.55)', fontWeight:600 }}>
+                    {uploadedFile ? `✓ ${uploadedFile.name}` : 'Tap to upload your design'}
+                  </span>
+                  <span style={{ fontSize:11, color:'rgba(255,255,255,.28)' }}>PNG · JPG · SVG · Max 20MB</span>
+                </label>
+                {selectedSample && (
+                  <div style={{ marginTop:8, display:'flex', alignItems:'center', gap:8, padding:'8px 12px', background:'rgba(0,168,107,.1)', border:'1px solid rgba(0,168,107,.25)', borderRadius:8 }}>
+                    <img src={selectedSample.image_url} alt="" style={{ width:32, height:32, borderRadius:4, objectFit:'cover' }} />
+                    <span style={{ fontSize:12, color:'#00a86b', fontWeight:600 }}>✓ Sample: {selectedSample.name}</span>
+                    <button onClick={()=>{ setSample(null); setDesignImg(null) }} style={{ marginLeft:'auto', background:'none', border:'none', color:'rgba(255,255,255,.4)', cursor:'pointer', fontSize:16 }}>×</button>
                   </div>
-                  <div>
-                    <div style={rowStyle}><p style={lblStyle}>Print Position X</p><span style={{ fontSize:11, color:'#fff' }}>{designPosX.toFixed(2)}</span></div>
-                    <input type="range" min="-0.3" max="0.3" step="0.01" value={designPosX} onChange={e=>setDesignPosX(parseFloat(e.target.value))} style={sliderStyle} />
+                )}
+                {uploadErr && <div style={{ marginTop:8, fontSize:12, color:'#c8102e', background:'rgba(200,16,46,.1)', border:'1px solid rgba(200,16,46,.3)', borderRadius:8, padding:'8px 12px' }}>⚠ {uploadErr}</div>}
+              </div>
+              {/* Address */}
+              <div>
+                <p style={{ ...lblStyle, marginBottom:7 }}>Delivery Address</p>
+                <textarea value={form.address} onChange={e=>setForm({...form,address:e.target.value})} rows={3} placeholder="Full address with pincode"
+                  style={{ width:'100%', background:'rgba(255,255,255,.08)', border:'1.5px solid rgba(255,255,255,.15)', borderRadius:8, padding:'10px 12px', fontSize:13, color:'#fff', outline:'none', fontFamily:'inherit', resize:'vertical' }} />
+              </div>
+              {status==='uploading' && (
+                <div>
+                  <div style={{ display:'flex', justifyContent:'space-between', fontSize:12, color:'rgba(255,255,255,.6)', marginBottom:6 }}>
+                    <span>Uploading design…</span><span>{uploadPct}%</span>
                   </div>
-                  <div>
-                    <div style={rowStyle}><p style={lblStyle}>Print Size</p><span style={{ fontSize:11, color:'#fff' }}>{Math.round(designScale*100)}%</span></div>
-                    <input type="range" min="0.2" max="0.9" step="0.01" value={designScale} onChange={e=>setDesignScale(parseFloat(e.target.value))} style={sliderStyle} />
-                  </div>
-                  <div>
-                    <div style={rowStyle}><p style={lblStyle}>Rotation</p><span style={{ fontSize:11, color:'#fff' }}>{designRot}°</span></div>
-                    <input type="range" min="-180" max="180" step="1" value={designRot} onChange={e=>setDesignRot(parseInt(e.target.value))} style={sliderStyle} />
-                    <div style={{ display:'flex', gap:7, marginTop:8 }}>
-                      {[0,90,180,-90].map(v=>(
-                        <button key={v} onClick={()=>setDesignRot(v)}
-                          style={{ flex:1, padding:'6px 0', borderRadius:6, fontSize:11, fontWeight:600, cursor:'pointer', background:designRot===v?'#0a1f5d':'rgba(255,255,255,.06)', color:designRot===v?'#fff':'rgba(255,255,255,.5)', border:designRot===v?'1px solid #c8102e':'1px solid rgba(255,255,255,.1)' }}>
-                          {v}°
-                        </button>
-                      ))}
-                    </div>
+                  <div style={{ height:5, background:'rgba(255,255,255,.1)', borderRadius:3, overflow:'hidden' }}>
+                    <div style={{ height:'100%', width:`${uploadPct}%`, background:'linear-gradient(90deg,#0a1f5d,#c8102e)', borderRadius:3, transition:'width .3s' }} />
                   </div>
                 </div>
-              </>)}
+              )}
+              <button onClick={handleSubmit} disabled={status==='saving'||status==='uploading'}
+                style={{ width:'100%', padding:15, background:'#c8102e', border:'none', borderRadius:8, color:'#fff', fontSize:14, fontWeight:700, cursor:'pointer', opacity:(status==='saving'||status==='uploading')?.6:1 }}>
+                {status==='uploading'?`Uploading… ${uploadPct}%`:status==='saving'?'Saving Order…':'Place Custom Order'}
+              </button>
+              <p style={{ fontSize:11, color:'rgba(255,255,255,.25)', textAlign:'center', lineHeight:1.6 }}>Our team will contact you on WhatsApp within 2 hours to confirm pricing and delivery.</p>
             </div>
           )}
 
@@ -689,22 +758,12 @@ function MockupStudio() {
               <p style={lblStyle}>Cloth Colour</p>
               <div style={{ display:'flex', gap:10, flexWrap:'wrap', marginBottom:18 }}>
                 {SWATCHES.map(c=>(
-                  <div key={c} onClick={()=>setGColor(c)}
-                    style={{ width:38, height:38, borderRadius:'50%', background:c, cursor:'pointer', border:c==='#ffffff'?'2px solid rgba(255,255,255,.35)':'2px solid transparent', boxShadow:gColor===c?'0 0 0 3px #0d1b3e, 0 0 0 5px #c8102e':'none', transition:'box-shadow .15s' }} />
+                  <div key={c} onClick={()=>setColor(c)}
+                    style={{ width:38, height:38, borderRadius:'50%', background:c, cursor:'pointer', border:c==='#ffffff'?'2px solid rgba(255,255,255,.35)':'2px solid transparent', boxShadow:color===c?'0 0 0 3px #0d1b3e, 0 0 0 5px #c8102e':'none', transition:'box-shadow .15s' }} />
                 ))}
               </div>
-              <p style={lblStyle}>Custom Cloth Colour</p>
-              <input type="color" value={gColor} onChange={e=>setGColor(e.target.value)} style={{ width:52, height:52, border:'none', borderRadius:8, cursor:'pointer', background:'none', marginBottom:20 }} />
-              <p style={{ ...lblStyle, marginTop:4 }}>Background Colour</p>
-              <div style={{ display:'flex', gap:8, flexWrap:'wrap', marginBottom:14 }}>
-                {BG_PRESETS.map(p=>(
-                  <button key={p.label} onClick={()=>setBgColor(p.value)}
-                    style={{ padding:'7px 12px', borderRadius:50, fontSize:11, fontWeight:600, cursor:'pointer', background:bgColor===p.value?'rgba(200,16,46,.25)':'rgba(255,255,255,.07)', color:'#fff', border:bgColor===p.value?'1px solid #c8102e':'1px solid rgba(255,255,255,.14)' }}>
-                    {p.label}
-                  </button>
-                ))}
-              </div>
-              <input type="color" defaultValue="#1a2744" onChange={e=>setBgColor(e.target.value)} style={{ width:52, height:52, border:'none', borderRadius:8, cursor:'pointer', background:'none' }} />
+              <p style={lblStyle}>Custom Colour</p>
+              <input type="color" value={color} onChange={e=>setColor(e.target.value)} style={{ width:52, height:52, border:'none', borderRadius:8, cursor:'pointer', background:'none' }} />
             </div>
           )}
 
@@ -853,11 +912,11 @@ function MockupStudio() {
                     .filter(s => studioSampleCat==='All' || s.category===studioSampleCat)
                     .map(s => (
                       <div key={s.id}
-                        onClick={()=>{ setDesignImg(s.image_url); setTab('design') }}
-                        style={{ borderRadius:10, overflow:'hidden', border:`2px solid ${designImg===s.image_url?'#c8102e':'rgba(255,255,255,.12)'}`, cursor:'pointer', background:'rgba(255,255,255,.05)', transition:'all .15s', position:'relative' }}>
+                        onClick={()=>{ handleSamplePick(s); setTab('order') }}
+                        style={{ borderRadius:10, overflow:'hidden', border:`2px solid ${selectedSample?.id===s.id?'#c8102e':'rgba(255,255,255,.12)'}`, cursor:'pointer', background:'rgba(255,255,255,.05)', transition:'all .15s', position:'relative' }}>
                         <img src={s.image_url} alt={s.name}
                           style={{ width:'100%', aspectRatio:'1', objectFit:'cover', display:'block' }} />
-                        {designImg===s.image_url && (
+                        {selectedSample?.id===s.id && (
                           <div style={{ position:'absolute', top:5, right:5, width:20, height:20, borderRadius:'50%', background:'#c8102e', display:'flex', alignItems:'center', justifyContent:'center', fontSize:11, color:'#fff', fontWeight:700 }}>✓</div>
                         )}
                         <div style={{ padding:'6px 8px' }}>
@@ -887,7 +946,7 @@ function MockupStudio() {
                 <div style={{ display:'grid', gridTemplateColumns:'repeat(2,1fr)', gap:12 }}>
                   {studioPicks.map(p => (
                     <div key={p.id}
-                      onClick={()=>{ setGarmentType(p.category==='Hoodies'?'hoodie':p.category==='Polos'?'polo':p.category==='Joggers'?'joggers':'tshirt'); setTab('design') }}
+                      onClick={()=>{ setGarment(p.category==='Hoodies'?'Hoodie':p.category==='Polos'?'Polo':p.category==='Joggers'?'Joggers':'T-Shirt'); setTab('order') }}
                       style={{ borderRadius:10, overflow:'hidden', border:'1.5px solid rgba(255,255,255,.12)', cursor:'pointer', background:'rgba(255,255,255,.05)', transition:'all .15s', position:'relative' }}
                       onMouseEnter={e=>e.currentTarget.style.borderColor='#c8102e'}
                       onMouseLeave={e=>e.currentTarget.style.borderColor='rgba(255,255,255,.12)'}>
@@ -911,73 +970,11 @@ function MockupStudio() {
             </div>
           )}
 
-          {/* CUSTOMER UPLOAD TAB */}
-          {tab==='upload' && (
-            <div>
-              {uploadDone ? (
-                <div style={{ textAlign:'center', padding:'32px 0' }}>
-                  <div style={{ fontSize:52, marginBottom:12 }}>✅</div>
-                  <h3 style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:26, letterSpacing:'.1em', marginBottom:8, color:'#fff' }}>UPLOADED!</h3>
-                  <p style={{ fontSize:13, color:'rgba(255,255,255,.45)', lineHeight:1.7, marginBottom:20 }}>
-                    Your photo is saved. The DRYNN team will contact you on WhatsApp shortly.
-                  </p>
-                  <button onClick={()=>{setUploadDone(false);setCustFile(null);setCustPreview(null);setCustName('');setCustPhone('')}}
-                    style={{ width:'100%', padding:11, background:'rgba(255,255,255,.08)', border:'1px solid rgba(255,255,255,.18)', borderRadius:8, color:'#fff', fontSize:12, fontWeight:700, cursor:'pointer' }}>
-                    Upload Another Photo
-                  </button>
-                </div>
-              ) : (<>
-                <p style={{ fontSize:12, color:'rgba(255,255,255,.4)', marginBottom:16, lineHeight:1.65 }}>
-                  Upload your reference photo or measurement photo. Our team will contact you on WhatsApp.
-                </p>
-                <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
-                  <div>
-                    <p style={{ ...lblStyle, marginBottom:7 }}>Your Name *</p>
-                    <input type="text" placeholder="Full name" value={custName} onChange={e=>setCustName(e.target.value)}
-                      style={{ width:'100%', background:'rgba(255,255,255,.08)', border:'1.5px solid rgba(255,255,255,.15)', borderRadius:8, padding:'9px 12px', fontSize:13, color:'#fff', outline:'none', fontFamily:'inherit' }} />
-                  </div>
-                  <div>
-                    <p style={{ ...lblStyle, marginBottom:7 }}>WhatsApp Number *</p>
-                    <input type="text" placeholder="+91 00000 00000" value={custPhone} onChange={e=>setCustPhone(e.target.value)}
-                      style={{ width:'100%', background:'rgba(255,255,255,.08)', border:'1.5px solid rgba(255,255,255,.15)', borderRadius:8, padding:'9px 12px', fontSize:13, color:'#fff', outline:'none', fontFamily:'inherit' }} />
-                  </div>
-                  <div>
-                    <p style={{ ...lblStyle, marginBottom:7 }}>Upload Your Photo *</p>
-                    <label style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:8, padding:'20px 14px', border:'1.5px dashed rgba(255,255,255,.18)', borderRadius:10, cursor:'pointer', background:'rgba(255,255,255,.03)' }}>
-                      <input type="file" accept="image/*" style={{ display:'none' }} onChange={handleCustFile} />
-                      {custPreview ? (
-                        <img src={custPreview} alt="" style={{ width:80, height:80, objectFit:'cover', borderRadius:8, border:'1px solid rgba(255,255,255,.1)' }} />
-                      ) : (
-                        <span style={{ fontSize:32 }}>📸</span>
-                      )}
-                      <span style={{ fontSize:12, color:custFile?'#00a86b':'rgba(255,255,255,.5)', fontWeight:600 }}>
-                        {custFile ? `✓ ${custFile.name}` : 'Tap to upload photo'}
-                      </span>
-                    </label>
-                  </div>
-                  {uploadErr && (
-                    <div style={{ background:'rgba(200,16,46,.1)', border:'1px solid rgba(200,16,46,.3)', borderRadius:8, padding:'10px 12px', fontSize:12, color:'#c8102e' }}>
-                      {uploadErr}
-                    </div>
-                  )}
-                  <button onClick={handleCustomerUpload} disabled={uploading}
-                    style={{ padding:'13px', background:'#c8102e', border:'none', borderRadius:8, color:'#fff', fontSize:13, fontWeight:700, cursor:'pointer', opacity:uploading?.6:1, display:'flex', alignItems:'center', justifyContent:'center', gap:8 }}>
-                    {uploading ? (<><div style={{ width:14, height:14, border:'2px solid rgba(255,255,255,.3)', borderTopColor:'#fff', borderRadius:'50%', animation:'drynn-spin .7s linear infinite' }} />Uploading…</>) : '📤 Submit to DRYNN Team'}
-                  </button>
-                  <p style={{ fontSize:11, color:'rgba(255,255,255,.25)', textAlign:'center', lineHeight:1.65 }}>
-                    Stored securely in Supabase. Admin team sees it immediately.
-                  </p>
-                </div>
-              </>)}
-            </div>
-          )}
-
         </div>
       </div>
     </div>
   )
 }
-
 
 function HomePage({ user, onNav, cart, onAddToCart }) {
   const products = usePublicProducts()
@@ -1362,302 +1359,6 @@ async function uploadToCloudinary(file, onProgress) {
     xhr.onerror = () => reject(new Error('Network error during upload'))
     xhr.send(formData)
   })
-}
-
-// ── Live T-Shirt Preview ─────────────────────────────────────
-// Shows customer's uploaded design overlaid on the selected garment+color in real time.
-function LiveTshirtPreview({ designSrc, garmentType, color }) {
-  const GARMENT_IMGS = {
-    'T-Shirt': 'https://res.cloudinary.com/dfhdyp4oq/image/upload/drynn/products/tshirt_white.png',
-    'Hoodie':  'https://res.cloudinary.com/dfhdyp4oq/image/upload/drynn/products/hoodie_navy.png',
-    'Polo':    'https://res.cloudinary.com/dfhdyp4oq/image/upload/drynn/products/polo_white.png',
-    'Joggers': 'https://res.cloudinary.com/dfhdyp4oq/image/upload/drynn/products/joggers_black.png',
-  }
-  const GARMENT_EMOJI = { 'T-Shirt':'👕', 'Hoodie':'🧥', 'Polo':'👔', 'Joggers':'👖' }
-
-  const colorToFilter = (hex) => {
-    if (hex === '#ffffff') return 'none'
-    if (hex === '#0a0a0a' || hex === '#000000') return 'brightness(0)'
-    if (hex === '#c8102e') return 'sepia(1) saturate(5) hue-rotate(320deg)'
-    if (hex === '#0a1f5d') return 'sepia(1) saturate(3) hue-rotate(195deg) brightness(0.6)'
-    if (hex === '#00a86b') return 'sepia(1) saturate(4) hue-rotate(110deg) brightness(0.8)'
-    if (hex === '#f5a623') return 'sepia(1) saturate(4) hue-rotate(10deg) brightness(1)'
-    if (hex === '#9b59b6') return 'sepia(1) saturate(3) hue-rotate(260deg)'
-    if (hex === '#888888') return 'brightness(0.55)'
-    return 'none'
-  }
-
-  const garmentKey = garmentType.toLowerCase().replace('-shirt','shirt').replace('t shirt','tshirt')
-  const imgKey = garmentType === 'T-Shirt' ? 'T-Shirt' : garmentType
-
-  return (
-    <div style={{ background:'linear-gradient(135deg,#0a1f3d,#0d1b3e)', borderRadius:16, overflow:'hidden', border:'1px solid rgba(255,255,255,.1)' }}>
-      {/* Header */}
-      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'12px 16px', borderBottom:'1px solid rgba(255,255,255,.08)' }}>
-        <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-          <div style={{ width:8, height:8, borderRadius:'50%', background: designSrc ? '#00a86b' : '#f5a623', boxShadow: designSrc ? '0 0 8px #00a86b' : '0 0 8px #f5a623' }} />
-          <span style={{ fontSize:11, fontWeight:700, letterSpacing:'.14em', textTransform:'uppercase', color:'rgba(255,255,255,.7)' }}>
-            {designSrc ? 'Live Preview' : 'Preview Ready'}
-          </span>
-        </div>
-        <span style={{ fontSize:10, color:'rgba(255,255,255,.35)', fontWeight:600 }}>
-          {GARMENT_EMOJI[garmentType]} {garmentType} · {color.toUpperCase()}
-        </span>
-      </div>
-
-      {/* Mockup canvas */}
-      <div style={{ padding:'16px', display:'flex', justifyContent:'center' }}>
-        <div style={{ position:'relative', width:'100%', maxWidth:280, borderRadius:12, overflow:'hidden', background:'#f8f8f8' }}>
-          {/* Garment base */}
-          <img
-            src={GARMENT_IMGS[imgKey]}
-            alt={garmentType}
-            style={{ width:'100%', display:'block', filter:colorToFilter(color) }}
-            onError={e => { e.target.style.display='none' }}
-          />
-          {/* Fallback emoji watermark */}
-          <div style={{ position:'absolute', inset:0, display:'flex', alignItems:'center', justifyContent:'center', fontSize:100, opacity:0.06, pointerEvents:'none' }}>
-            {GARMENT_EMOJI[garmentType]}
-          </div>
-
-          {/* Design overlay — shown once customer uploads */}
-          {designSrc ? (
-            <img
-              src={designSrc}
-              alt="Your design"
-              style={{
-                position:'absolute',
-                top:'35%', left:'50%',
-                transform:'translate(-50%, -50%)',
-                width:'40%',
-                objectFit:'contain',
-                pointerEvents:'none',
-                filter:'drop-shadow(0 2px 6px rgba(0,0,0,0.18))',
-              }}
-            />
-          ) : (
-            /* Placeholder dashed print zone */
-            <div style={{
-              position:'absolute',
-              top:'22%', left:'30%', width:'40%', height:'28%',
-              border:'2px dashed rgba(200,16,46,.5)',
-              borderRadius:8,
-              display:'flex', alignItems:'center', justifyContent:'center',
-              background:'rgba(200,16,46,.05)',
-            }}>
-              <span style={{ fontSize:9, fontWeight:700, letterSpacing:'.1em', color:'rgba(200,16,46,.7)', textTransform:'uppercase', textAlign:'center', lineHeight:1.5 }}>
-                Print<br/>Zone
-              </span>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Status bar */}
-      <div style={{ padding:'10px 16px 14px', textAlign:'center' }}>
-        {designSrc ? (
-          <p style={{ fontSize:11, color:'#00a86b', fontWeight:600 }}>
-            ✓ Your design is showing on the {garmentType.toLowerCase()} above
-          </p>
-        ) : (
-          <p style={{ fontSize:11, color:'rgba(255,255,255,.35)', lineHeight:1.6 }}>
-            Upload your design below to see it on the {garmentType.toLowerCase()} instantly
-          </p>
-        )}
-      </div>
-    </div>
-  )
-}
-
-function StudioPage({ user, onNav }) {
-  const [garment, setGarment]       = useState('T-Shirt')
-  const [color, setColor]           = useState('#ffffff')
-  const [size, setSize]             = useState('M')
-  const [designMode, setDesignMode] = useState('') // '' | 'upload' | 'sample'
-  const [uploadedFile, setFile]     = useState(null)
-  const [uploadPct,  setUploadPct]  = useState(0)
-  const [designPreviewUrl, setDesignPreviewUrl] = useState(null) // object URL for live preview
-  const [selectedSample, setSample] = useState(null) // { id, name, image_url, category }
-  const [samples, setSamples]       = useState([])
-  const [samplesLoading, setSamplesLoading] = useState(false)
-  const [sampleCategory, setSampleCat]     = useState('All')
-  const [form, setForm]     = useState({ name: user?.user_metadata?.full_name||'', phone:'', qty:1, address:'' })
-  const [status, setStatus] = useState('')
-  const [uploadErr, setUploadErr] = useState('')
-
-  // Load samples when user picks sample mode
-  const loadSamples = async () => {
-    setSamplesLoading(true)
-    const { data, error } = await supabase.from('drynn_samples').select('*').order('created_at', { ascending: false })
-    if (!error) setSamples(data || [])
-    setSamplesLoading(false)
-  }
-
-  const handleModeSelect = mode => {
-    setDesignMode(mode)
-    setFile(null); setSample(null); setUploadErr(''); setDesignPreviewUrl(null)
-    if (mode === 'sample') loadSamples()
-  }
-
-  const handleFile = e => {
-    const f = e.target.files[0]
-    if (!f) return
-    const allowed = ['image/png','image/jpeg','image/jpg','image/svg+xml']
-    if (!allowed.includes(f.type)) { setUploadErr('Only PNG, JPG, or SVG files allowed.'); return }
-    if (f.size > 20 * 1024 * 1024) { setUploadErr('File too large. Max 20MB.'); return }
-    setUploadErr(''); setFile(f); setUploadPct(0)
-    // Generate live preview URL
-    if (designPreviewUrl) URL.revokeObjectURL(designPreviewUrl)
-    setDesignPreviewUrl(URL.createObjectURL(f))
-  }
-
-  const hasDesign = designMode==='upload' ? !!uploadedFile : designMode==='sample' ? !!selectedSample : false
-
-  const handleSubmit = async () => {
-    if (!form.name||!form.phone||!form.address||!hasDesign) { alert('Please fill all fields and choose a design.'); return }
-    setStatus('saving')
-    const orderId = crypto.randomUUID(), placedAt = new Date().toISOString()
-    try {
-      let designUrl = ''
-      if (designMode === 'upload') {
-        setStatus('uploading')
-        try {
-          designUrl = await uploadToCloudinary(uploadedFile, pct => setUploadPct(pct))
-        } catch(e) {
-          console.error('[Studio → Cloudinary] Design upload failed:', e.message)
-          setStatus('')
-          alert(`[Design Upload Failed]\n\nArea: Cloudinary image upload\nReason: ${e.message || 'Network error'}\n\nFix: Check your internet, then try again. If this repeats, your Cloudinary preset may not be configured.`)
-          return
-        }
-      } else {
-        // Sample design - use Cloudinary URL directly
-        designUrl = selectedSample.image_url
-      }
-      setStatus('saving')
-      const { error:dbErr } = await supabase.from('drynn_orders').insert({
-        id:orderId, user_id:user?.id||null, name:form.name, phone:form.phone,
-        garment, color, size, qty:Number(form.qty), address:form.address,
-        design_file: designUrl, status:'pending', placed_at:placedAt
-      })
-      if (dbErr) {
-        console.error('[Studio → Supabase] Order save failed:', dbErr.message)
-        alert(`[Order Save Failed]\n\nArea: Supabase drynn_orders table\nReason: ${dbErr.message}\n\nYour design was uploaded but the order was not saved. Please WhatsApp us at +91 99447 61306 with your name and design details.`)
-      }
-      if (GOOGLE_SHEET_WEBHOOK) fetch(GOOGLE_SHEET_WEBHOOK,{ method:'POST', mode:'no-cors', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ sheet:'DRYNN_Orders', orderId, userId:user?.id||'', name:form.name, phone:form.phone, garment, color, size, qty:form.qty, address:form.address, designUrl, placedAt }) }).catch(e => console.error('[Studio → Google Sheets] Webhook failed:', e.message))
-      setStatus('done')
-      setTimeout(()=>setStatus(''),5000)
-      setForm({ name:user?.user_metadata?.full_name||'', phone:'', qty:1, address:'' })
-      setFile(null); setSample(null); setUploadPct(0); setDesignMode(''); setDesignPreviewUrl(null)
-    } catch(e) {
-      console.error('[Studio] Unexpected error during order submission:', e.message)
-      setStatus('')
-      alert(`[Unexpected Error]\n\nArea: Studio order submission\nReason: ${e.message || 'Unknown error'}\n\nPlease try again or WhatsApp us at +91 99447 61306.`)
-    }
-  }
-
-  return (
-    <div>
-      {/* Header */}
-      <div style={{ background:'linear-gradient(90deg,#0a1f5d,#1a0a2e)', padding:'28px 20px' }}>
-        <div style={{ maxWidth:1100, margin:'0 auto' }}>
-          <button onClick={()=>onNav('home')} style={{ display:'inline-flex', alignItems:'center', gap:6, background:'rgba(255,255,255,.1)', border:'1px solid rgba(255,255,255,.2)', color:'#fff', padding:'6px 14px', borderRadius:50, fontSize:12, cursor:'pointer', fontWeight:600, marginBottom:12 }}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg>
-            Back
-          </button>
-          <span className="sec-label" style={{ color:'rgba(255,255,255,.6)' }}>Design Studio</span>
-          <h1 className="sec-title" style={{ color:'#fff' }}>CUSTOM PRINT ORDER</h1>
-          <p style={{ fontSize:14, color:'rgba(255,255,255,.6)', marginTop:6 }}>Upload your design and we print it on your chosen garment.</p>
-        </div>
-      </div>
-
-      {/* Order form */}
-      <div style={{ maxWidth:680, margin:'0 auto', padding:'28px 20px' }}>
-        {status==='done' && (
-          <div style={{ background:'rgba(0,168,107,.08)', border:'1px solid rgba(0,168,107,.25)', borderRadius:8, padding:'14px 18px', marginBottom:24, fontSize:13, color:'#00a86b', fontWeight:600 }}>
-            ✓ Order placed! We'll contact you on WhatsApp within 2 hours.
-          </div>
-        )}
-        <div style={{ display:'flex', flexDirection:'column', gap:20 }}>
-          {/* Name */}
-          <div><label style={{ fontSize:11, fontWeight:700, letterSpacing:'.12em', textTransform:'uppercase', color:'#555', display:'block', marginBottom:7 }}>Full Name</label>
-            <input className="input-field" placeholder="Your full name" value={form.name} onChange={e=>setForm({...form,name:e.target.value})} /></div>
-          {/* Phone */}
-          <div><label style={{ fontSize:11, fontWeight:700, letterSpacing:'.12em', textTransform:'uppercase', color:'#555', display:'block', marginBottom:7 }}>Phone / WhatsApp</label>
-            <input className="input-field" placeholder="+91 00000 00000" value={form.phone} onChange={e=>setForm({...form,phone:e.target.value})} /></div>
-          {/* Garment */}
-          <div><label style={{ fontSize:11, fontWeight:700, letterSpacing:'.12em', textTransform:'uppercase', color:'#555', display:'block', marginBottom:7 }}>Garment Type</label>
-            <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
-              {GARMENTS.map(g=><button key={g} className={`size-btn${garment===g?' active':''}`} onClick={()=>setGarment(g)}>{g}</button>)}
-            </div></div>
-          {/* Colour */}
-          <div><label style={{ fontSize:11, fontWeight:700, letterSpacing:'.12em', textTransform:'uppercase', color:'#555', display:'block', marginBottom:7 }}>Garment Colour</label>
-            <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
-              {SWATCHES.map(c=><div key={c} className={`swatch${c==color?' active':''}${c==='#ffffff'?' white':''}`} onClick={()=>setColor(c)} style={{ background:c }} />)}
-            </div></div>
-          {/* Size */}
-          <div><label style={{ fontSize:11, fontWeight:700, letterSpacing:'.12em', textTransform:'uppercase', color:'#555', display:'block', marginBottom:7 }}>Size</label>
-            <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
-              {SIZES.map(s=><button key={s} className={`size-btn${size===s?' active':''}`} onClick={()=>setSize(s)}>{s}</button>)}
-            </div></div>
-          {/* Qty */}
-          <div><label style={{ fontSize:11, fontWeight:700, letterSpacing:'.12em', textTransform:'uppercase', color:'#555', display:'block', marginBottom:7 }}>Quantity</label>
-            <input className="input-field" type="number" min="1" value={form.qty} onChange={e=>setForm({...form,qty:e.target.value})} style={{ maxWidth:120 }} /></div>
-
-          {/* ── LIVE T-SHIRT PREVIEW ── */}
-          <div>
-            <label style={{ fontSize:11, fontWeight:700, letterSpacing:'.12em', textTransform:'uppercase', color:'#555', display:'block', marginBottom:10 }}>Live Preview</label>
-            <LiveTshirtPreview
-              designSrc={designPreviewUrl || (selectedSample?.image_url ?? null)}
-              garmentType={garment}
-              color={color}
-            />
-          </div>
-
-          {/* DESIGN — upload only, samples are in MockupStudio above */}
-          <div>
-            <label style={{ fontSize:11, fontWeight:700, letterSpacing:'.12em', textTransform:'uppercase', color:'#555', display:'block', marginBottom:8 }}>Your Design</label>
-            <p style={{ fontSize:12, color:'#888', marginBottom:10 }}>
-              Upload your design to see it instantly on the garment preview above.
-            </p>
-            <div className="upload-zone" onClick={()=>document.getElementById('studioFile').click()}>
-              <input id="studioFile" type="file" accept=".png,.jpg,.jpeg,.svg" style={{ display:'none' }} onChange={handleFile} />
-              {uploadedFile
-                ? <div>
-                    <p style={{ fontSize:13, fontWeight:600, color:'#00a86b', marginBottom:4 }}>✓ {uploadedFile.name}</p>
-                    <p style={{ fontSize:11, color:'#888' }}>{(uploadedFile.size/1024/1024).toFixed(2)} MB · Click to change</p>
-                  </div>
-                : <div><p style={{ fontSize:13, fontWeight:600, marginBottom:4 }}>📁 Upload your own design</p><p style={{ fontSize:11, color:'#888' }}>PNG, JPG, SVG · Max 20MB · Min 300 DPI</p></div>}
-            </div>
-          </div>
-          {/* Address */}
-          <div><label style={{ fontSize:11, fontWeight:700, letterSpacing:'.12em', textTransform:'uppercase', color:'#555', display:'block', marginBottom:7 }}>Delivery Address</label>
-            <textarea className="input-field" rows={3} placeholder="Full address with pincode" style={{ resize:'vertical' }} value={form.address} onChange={e=>setForm({...form,address:e.target.value})} /></div>
-          {uploadErr && (
-            <div style={{ background:'rgba(200,16,46,.06)', border:'1px solid rgba(200,16,46,.2)', borderRadius:8, padding:'10px 14px', fontSize:13, color:'#c8102e' }}>
-              ⚠ {uploadErr}
-            </div>
-          )}
-          {status==='uploading' && (
-            <div>
-              <div style={{ display:'flex', justifyContent:'space-between', fontSize:12, color:'#555', marginBottom:6 }}>
-                <span>Uploading design to Cloudinary…</span><span>{uploadPct}%</span>
-              </div>
-              <div style={{ height:6, background:'#f0f0f0', borderRadius:3, overflow:'hidden' }}>
-                <div style={{ height:'100%', width:`${uploadPct}%`, background:'linear-gradient(90deg,#0a1f5d,#c8102e)', borderRadius:3, transition:'width .3s' }} />
-              </div>
-            </div>
-          )}
-          <button className="btn-primary" style={{ width:'100%', padding:15, fontSize:13, opacity:(status==='saving'||status==='uploading')?.6:1 }} onClick={handleSubmit} disabled={status==='saving'||status==='uploading'}>
-            {status==='uploading'?`Uploading… ${uploadPct}%`:status==='saving'?'Saving Order…':'Place Custom Order'}
-          </button>
-          <p style={{ fontSize:12, color:'#aaa', textAlign:'center', lineHeight:1.6 }}>Our team will contact you on WhatsApp within 2 hours to confirm pricing and delivery.</p>
-        </div>
-      </div>
-
-      {/* 3D Mockup Studio */}
-      <MockupStudio />
-    </div>
-  )
 }
 
 function AboutPage({ onNav }) {

@@ -627,10 +627,6 @@ function MockupStudio() {
         </div>
       </div>
 
-            </div>
-
-
-
       {/* Tab bar */}
       <div style={{ maxWidth:900, margin:'0 auto', borderTop:'1px solid rgba(255,255,255,.08)' }}>
         <div style={{ display:'flex', justifyContent:'space-around', background:'rgba(0,0,0,.3)', overflowX:'auto' }}>

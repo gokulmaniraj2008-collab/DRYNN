@@ -508,12 +508,11 @@ function MockupStudio() {
     if (!custFile||!custName||!custPhone) { alert('Please fill your name, phone, and upload a photo.'); return }
     setUploading(true); setUploadErr('')
     try {
-      const filePath = `customer-uploads/${Date.now()}-${custFile.name}`
-      const { error: storageErr } = await supabase.storage.from('uploads').upload(filePath, custFile)
-      if (storageErr) throw storageErr
+      // Upload to Cloudinary (avoids Supabase bucket dependency)
+      const imageUrl = await uploadToCloudinary(custFile, ()=>{})
       const { error: dbErr } = await supabase.from('drynn_customer_uploads').insert({
         name: custName, phone: custPhone, filename: custFile.name,
-        storage_path: filePath, garment: garmentType, color: gColor,
+        storage_path: imageUrl, garment: garmentType, color: gColor,
       })
       if (dbErr) throw dbErr
       setUploadDone(true)
@@ -541,12 +540,12 @@ function MockupStudio() {
   }
 
   const TABS = [
-    { key:'design',  icon:'🎨', label:'Design'  },
-    { key:'colour',  icon:'🎨', label:'Colour'  },
-    { key:'text',    icon:'✍️', label:'Text'    },
+    { key:'design',  icon:'🎨', label:'Design'   },
+    { key:'colour',  icon:'🖌️', label:'Colour'   },
+    { key:'text',    icon:'✍️', label:'Text'     },
     { key:'motion',  icon:'↔️', label:'Position' },
     { key:'effects', icon:'✨', label:'Effects'  },
-    { key:'camera',  icon:'📷', label:'360°'    },
+    { key:'camera',  icon:'📷', label:'360°'     },
     { key:'samples', icon:'🖼️', label:'Samples'  },
     { key:'picks',   icon:'⭐', label:'Picks'    },
     { key:'upload',  icon:'📤', label:'Upload'   },
@@ -629,10 +628,12 @@ function MockupStudio() {
 
       {/* Tab bar */}
       <div style={{ maxWidth:900, margin:'0 auto', borderTop:'1px solid rgba(255,255,255,.08)' }}>
-        <div style={{ display:'flex', justifyContent:'space-around', background:'rgba(0,0,0,.3)', overflowX:'auto' }}>
+        <div style={{ display:'flex', background:'rgba(0,0,0,.3)', overflowX:'auto', WebkitOverflowScrolling:'touch', scrollbarWidth:'none' }}
+          ref={el=>{ if(el) el.style.cssText += '; scrollbar-width:none; -ms-overflow-style:none;' }}>
+          <style>{`.studio-tabs::-webkit-scrollbar{display:none}`}</style>
           {TABS.map(t=>(
             <button key={t.key} onClick={()=>{ setTab(t.key); if(t.key==='samples') loadStudioSamples(); if(t.key==='picks') loadStudioPicks() }}
-              style={{ flex:1, minWidth:54, padding:'11px 4px', background:'none', border:'none', cursor:'pointer', display:'flex', flexDirection:'column', alignItems:'center', gap:2, borderBottom:tab===t.key?'2px solid #c8102e':'2px solid transparent', transition:'all .15s', whiteSpace:'nowrap' }}>
+              style={{ flexShrink:0, minWidth:64, padding:'11px 8px', background:'none', border:'none', cursor:'pointer', display:'flex', flexDirection:'column', alignItems:'center', gap:2, borderBottom:tab===t.key?'2px solid #c8102e':'2px solid transparent', transition:'all .15s', whiteSpace:'nowrap' }}>
               <span style={{ fontSize:18 }}>{t.icon}</span>
               <span style={{ fontSize:9, fontWeight:700, letterSpacing:'.07em', textTransform:'uppercase', color:tab===t.key?'#c8102e':'rgba(255,255,255,.4)' }}>{t.label}</span>
             </button>
@@ -1326,11 +1327,21 @@ function ProductsPage({ onAddToCart, onNav }) {
           </div>
         )}
       </div>
+
+      {/* Group Order CTA */}
+      {onNav && (
+        <div style={{ margin:'0 20px 32px', background:'linear-gradient(135deg,#0a1f5d,#1a0a2e)', borderRadius:12, padding:'20px', display:'flex', alignItems:'center', gap:16, cursor:'pointer' }} onClick={()=>onNav('group')}>
+          <span style={{ fontSize:36, flexShrink:0 }}>👥</span>
+          <div style={{ flex:1 }}>
+            <div style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:20, color:'#fff', letterSpacing:'.05em', marginBottom:2 }}>GROUP ORDER?</div>
+            <div style={{ fontSize:12, color:'rgba(255,255,255,.6)', lineHeight:1.5 }}>Bulk discount for 10+ pieces · Teams, colleges, events</div>
+          </div>
+          <span style={{ color:'#c8102e', fontSize:20, flexShrink:0 }}>›</span>
+        </div>
+      )}
     </div>
   )
-}
-
-const CLOUDINARY_CLOUD = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || 'dfhdyp4oq'
+} = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || 'dfhdyp4oq'
 const CLOUDINARY_PRESET = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET || 'drynn_uploads'
 
 async function uploadToCloudinary(file, onProgress) {
@@ -2164,11 +2175,15 @@ function AccountPage({ user, onLogout, onNav }) {
       </div>
       <div style={{ maxWidth:500, margin:'0 auto', padding:'28px 20px' }}>
         {[
-          { icon:'📦', label:'My Orders',     sub:'Track and manage your orders',  page:'orders'  },
-          { icon:'💳', label:'Payments',      sub:'UPI, Razorpay',            page:null       },
-          { icon:'📍', label:'Addresses',     sub:'Manage delivery addresses',     page:null       },
-          { icon:'🔔', label:'Notifications', sub:'Order updates on WhatsApp',     page:null       },
-          { icon:'🛡️', label:'Privacy',       sub:'Data & privacy settings',       page:'privacy'  },
+          { icon:'📦', label:'My Orders',     sub:'Track and manage your orders',      page:'orders'  },
+          { icon:'🚚', label:'Track Order',   sub:'Check live delivery status',         page:'track'   },
+          { icon:'👥', label:'Group Order',   sub:'Bulk orders for teams & events',     page:'group'   },
+          { icon:'💳', label:'Payments',      sub:'UPI, Razorpay',                      page:null       },
+          { icon:'📍', label:'Addresses',     sub:'Manage delivery addresses',          page:null       },
+          { icon:'🔔', label:'Notifications', sub:'Order updates on WhatsApp',          page:null       },
+          { icon:'ℹ️',  label:'About DRYNN',  sub:'Our story & how it works',           page:'about'   },
+          { icon:'💬', label:'Contact Us',    sub:'WhatsApp, email & support',          page:'contact' },
+          { icon:'🛡️', label:'Privacy',       sub:'Data & privacy settings',            page:'privacy'  },
         ].map((item,i)=>(
           <div key={i} onClick={()=>{ if(item.page) onNav(item.page) }}
             style={{ display:'flex', alignItems:'center', gap:16, padding:'16px 0', borderBottom:'1px solid #f5f5f5', cursor:'pointer', transition:'padding .15s' }}
@@ -3329,28 +3344,14 @@ function MainSite({ user }) {
       {/* ── MOBILE MORE DRAWER ── */}
       {mobileMore && (
         <div className="mobile-bottom-nav" style={{ position:'fixed', bottom:60, left:0, right:0, zIndex:199, background:'#fff', borderTop:'1px solid #f0f0f0', padding:'12px 16px 8px', boxShadow:'0 -8px 24px rgba(0,0,0,.1)', display:'block' }}>
-          <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:8 }}>
-            {[
-              { key:'track',   label:'Track',  emoji:'📦' },
-              { key:'group',   label:'Group',  emoji:'👥' },
-              { key:'about',   label:'About',  emoji:'ℹ️' },
-              { key:'contact', label:'Contact',emoji:'💬' },
-            ].map(item=>(
-              <button key={item.key} onClick={()=>{ setPage(item.key); setMobileMore(false) }}
-                style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:4, padding:'10px 4px', background: page===item.key ? 'rgba(200,16,46,.07)' : '#f8f8f8', border: page===item.key ? '1px solid rgba(200,16,46,.2)' : '1px solid #f0f0f0', borderRadius:10, cursor:'pointer' }}>
-                <span style={{ fontSize:20 }}>{item.emoji}</span>
-                <span style={{ fontSize:9, fontWeight:700, letterSpacing:'.04em', textTransform:'uppercase', color: page===item.key ? '#c8102e' : '#555' }}>{item.label}</span>
-              </button>
-            ))}
-          </div>
           {isAdmin && (
             <button onClick={()=>{ setPage('admin'); setMobileMore(false) }}
-              style={{ width:'100%', marginTop:8, padding:'10px', background:'rgba(200,16,46,.06)', border:'1px solid rgba(200,16,46,.2)', borderRadius:8, fontSize:12, fontWeight:700, color:'#c8102e', cursor:'pointer', letterSpacing:'.04em' }}>
+              style={{ width:'100%', marginBottom:8, padding:'12px', background:'rgba(200,16,46,.06)', border:'1px solid rgba(200,16,46,.2)', borderRadius:8, fontSize:13, fontWeight:700, color:'#c8102e', cursor:'pointer', letterSpacing:'.04em' }}>
               ⚙️ Admin Panel
             </button>
           )}
           <button onClick={()=>{ handleLogout(); setMobileMore(false) }}
-            style={{ width:'100%', marginTop:6, padding:'10px', background:'#f8f8f8', border:'1px solid #e8e8e8', borderRadius:8, fontSize:12, fontWeight:700, color:'#888', cursor:'pointer' }}>
+            style={{ width:'100%', padding:'12px', background:'#f8f8f8', border:'1px solid #e8e8e8', borderRadius:8, fontSize:13, fontWeight:700, color:'#888', cursor:'pointer' }}>
             Sign Out
           </button>
         </div>

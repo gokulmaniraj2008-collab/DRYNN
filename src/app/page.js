@@ -1601,6 +1601,8 @@ function StudioPage({ user, onNav }) {
 
         </div>
       </div>
+      </div>
+      </div>
 
       {/* ── LIVE T-SHIRT CANVAS PREVIEW SECTION ── */}
       <div style={{ background:'#fff', padding:'48px 16px' }}>

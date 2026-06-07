@@ -1650,6 +1650,10 @@ function AdminPanel({ onBack }) {
   const [editOrder, setEditOrder] = useState(null)
   const [editProd, setEditProd]   = useState(null)
   const [toast, setToast]         = useState('')
+  // New product form state
+  const [showAddProduct, setShowAddProduct] = useState(false)
+  const [newProduct, setNewProduct] = useState({ name:'', price:'', mrp:'', tag:'', category:'T-Shirts', emoji:'👕', rating:'4.5', reviews:'0' })
+  const [addingProduct, setAddingProduct] = useState(false)
   // Samples state
   const [samples, setSamples]         = useState([])
   const [samplesLoading, setSamplesLoading] = useState(false)
@@ -1744,10 +1748,57 @@ function AdminPanel({ onBack }) {
     if (!error) { setOrders(o => o.filter(x => x.id !== id)); showToast('Order deleted') }
   }
 
-  const saveProduct = (p) => {
+  const loadProducts = async () => {
+    const { data, error } = await supabase.from('drynn_products').select('*').order('id')
+    if (!error && data && data.length > 0) setProducts(data)
+  }
+
+  const saveProduct = async (p) => {
+    const { error } = await supabase.from('drynn_products').upsert({
+      id: p.id, name: p.name, price: Number(p.price), mrp: Number(p.mrp),
+      tag: p.tag, tag_color: p.tagColor || p.tag_color,
+      category: p.category, emoji: p.emoji,
+      rating: Number(p.rating), reviews: Number(p.reviews)
+    }, { onConflict: 'id' })
+    if (error) {
+      alert('Save failed: ' + error.message)
+      return
+    }
     setProducts(ps => ps.map(x => x.id===p.id ? p : x))
     setEditProd(null)
-    showToast('Product updated')
+    showToast('Product updated ✓')
+  }
+
+  const addProduct = async () => {
+    if (!newProduct.name || !newProduct.price || !newProduct.mrp) { alert('Name, Price and MRP are required.'); return }
+    setAddingProduct(true)
+    const newId = products.length > 0 ? Math.max(...products.map(p=>Number(p.id))) + 1 : 1
+    const product = {
+      id: newId,
+      name: newProduct.name,
+      price: Number(newProduct.price),
+      mrp: Number(newProduct.mrp),
+      tag: newProduct.tag || 'New',
+      tag_color: '#0a1f5d',
+      category: newProduct.category,
+      emoji: newProduct.emoji,
+      rating: Number(newProduct.rating) || 4.5,
+      reviews: Number(newProduct.reviews) || 0,
+    }
+    const { error } = await supabase.from('drynn_products').insert(product)
+    if (error) { alert('Failed to add product: ' + error.message); setAddingProduct(false); return }
+    setProducts(ps => [...ps, product])
+    setNewProduct({ name:'', price:'', mrp:'', tag:'', category:'T-Shirts', emoji:'👕', rating:'4.5', reviews:'0' })
+    setShowAddProduct(false)
+    setAddingProduct(false)
+    showToast('Product added ✓')
+  }
+
+  const deleteProduct = async (id) => {
+    if (!confirm('Delete this product?')) return
+    const { error } = await supabase.from('drynn_products').delete().eq('id', id)
+    if (!error) { setProducts(ps => ps.filter(p => p.id !== id)); showToast('Product deleted') }
+    else alert('Delete failed: ' + error.message)
   }
 
   const ORDER_STATUSES = ['Received','Approved','Printing','Packed','Shipped','Delivered']
@@ -1784,7 +1835,7 @@ function AdminPanel({ onBack }) {
         </div>
         <div style={{ display:'flex', gap:8 }}>
           <button onClick={()=>{setTab('orders');loadOrders()}} style={{ padding:'6px 16px', borderRadius:4, border:'none', cursor:'pointer', background:tab==='orders'?'#c8102e':'#222', color:'#fff', fontSize:12, fontWeight:700 }}>Orders</button>
-          <button onClick={()=>setTab('products')} style={{ padding:'6px 16px', borderRadius:4, border:'none', cursor:'pointer', background:tab==='products'?'#c8102e':'#222', color:'#fff', fontSize:12, fontWeight:700 }}>Products</button>
+          <button onClick={()=>{setTab('products');loadProducts()}} style={{ padding:'6px 16px', borderRadius:4, border:'none', cursor:'pointer', background:tab==='products'?'#c8102e':'#222', color:'#fff', fontSize:12, fontWeight:700 }}>Products</button>
           <button onClick={()=>{setTab('samples');loadSamples()}} style={{ padding:'6px 16px', borderRadius:4, border:'none', cursor:'pointer', background:tab==='samples'?'#c8102e':'#222', color:'#fff', fontSize:12, fontWeight:700 }}>🎨 Samples</button>
           <button onClick={onBack} style={{ padding:'6px 16px', borderRadius:4, border:'1px solid #333', cursor:'pointer', background:'none', color:'#888', fontSize:12 }}>Exit</button>
         </div>
@@ -1868,7 +1919,62 @@ function AdminPanel({ onBack }) {
         {/* PRODUCTS TAB */}
         {tab==='products' && (
           <div>
-            <h2 style={{ fontSize:18, fontWeight:700, marginBottom:16 }}>Products</h2>
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16 }}>
+              <h2 style={{ fontSize:18, fontWeight:700 }}>Products ({products.length})</h2>
+              <button className="btn-primary" style={{ padding:'8px 18px', fontSize:12 }} onClick={()=>setShowAddProduct(v=>!v)}>
+                {showAddProduct ? '✕ Cancel' : '+ Add Product'}
+              </button>
+            </div>
+
+            {/* Add New Product Form */}
+            {showAddProduct && (
+              <div style={{ background:'#fff', borderRadius:12, padding:'20px', border:'1.5px solid #c8102e', marginBottom:20 }}>
+                <div style={{ fontSize:14, fontWeight:700, marginBottom:14, color:'#c8102e' }}>+ Add New Product</div>
+                <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12, marginBottom:12 }}>
+                  <div style={{ gridColumn:'1/-1' }}>
+                    <label style={{ fontSize:10, fontWeight:700, letterSpacing:'.1em', color:'#888', textTransform:'uppercase', display:'block', marginBottom:4 }}>Product Name *</label>
+                    <input className="input-field" placeholder="e.g. Premium Cotton Tee" value={newProduct.name} onChange={e=>setNewProduct({...newProduct,name:e.target.value})} style={{ padding:'8px 12px', fontSize:13 }} />
+                  </div>
+                  <div>
+                    <label style={{ fontSize:10, fontWeight:700, letterSpacing:'.1em', color:'#888', textTransform:'uppercase', display:'block', marginBottom:4 }}>Price (₹) *</label>
+                    <input className="input-field" type="number" placeholder="699" value={newProduct.price} onChange={e=>setNewProduct({...newProduct,price:e.target.value})} style={{ padding:'8px 12px', fontSize:13 }} />
+                  </div>
+                  <div>
+                    <label style={{ fontSize:10, fontWeight:700, letterSpacing:'.1em', color:'#888', textTransform:'uppercase', display:'block', marginBottom:4 }}>MRP (₹) *</label>
+                    <input className="input-field" type="number" placeholder="999" value={newProduct.mrp} onChange={e=>setNewProduct({...newProduct,mrp:e.target.value})} style={{ padding:'8px 12px', fontSize:13 }} />
+                  </div>
+                  <div>
+                    <label style={{ fontSize:10, fontWeight:700, letterSpacing:'.1em', color:'#888', textTransform:'uppercase', display:'block', marginBottom:4 }}>Category</label>
+                    <select className="input-field" value={newProduct.category} onChange={e=>setNewProduct({...newProduct,category:e.target.value})} style={{ padding:'8px 12px', fontSize:13 }}>
+                      {['T-Shirts','Hoodies','Polos','Joggers'].map(c=><option key={c}>{c}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label style={{ fontSize:10, fontWeight:700, letterSpacing:'.1em', color:'#888', textTransform:'uppercase', display:'block', marginBottom:4 }}>Tag</label>
+                    <input className="input-field" placeholder="New / Best Seller / Sale" value={newProduct.tag} onChange={e=>setNewProduct({...newProduct,tag:e.target.value})} style={{ padding:'8px 12px', fontSize:13 }} />
+                  </div>
+                  <div>
+                    <label style={{ fontSize:10, fontWeight:700, letterSpacing:'.1em', color:'#888', textTransform:'uppercase', display:'block', marginBottom:4 }}>Emoji Icon</label>
+                    <select className="input-field" value={newProduct.emoji} onChange={e=>setNewProduct({...newProduct,emoji:e.target.value})} style={{ padding:'8px 12px', fontSize:13 }}>
+                      {[['👕','T-Shirt'],['🧥','Hoodie'],['👔','Polo'],['👖','Joggers/Pants']].map(([e,l])=><option key={e} value={e}>{e} {l}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label style={{ fontSize:10, fontWeight:700, letterSpacing:'.1em', color:'#888', textTransform:'uppercase', display:'block', marginBottom:4 }}>Rating</label>
+                    <input className="input-field" type="number" min="1" max="5" step="0.1" placeholder="4.5" value={newProduct.rating} onChange={e=>setNewProduct({...newProduct,rating:e.target.value})} style={{ padding:'8px 12px', fontSize:13 }} />
+                  </div>
+                  <div>
+                    <label style={{ fontSize:10, fontWeight:700, letterSpacing:'.1em', color:'#888', textTransform:'uppercase', display:'block', marginBottom:4 }}>Reviews Count</label>
+                    <input className="input-field" type="number" placeholder="0" value={newProduct.reviews} onChange={e=>setNewProduct({...newProduct,reviews:e.target.value})} style={{ padding:'8px 12px', fontSize:13 }} />
+                  </div>
+                </div>
+                <button className="btn-primary" style={{ padding:'10px 24px', fontSize:13, opacity:addingProduct?.6:1 }} onClick={addProduct} disabled={addingProduct}>
+                  {addingProduct ? 'Adding…' : '+ Add Product'}
+                </button>
+              </div>
+            )}
+
+            {/* Products List */}
             <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
               {products.map(p => (
                 <div key={p.id} style={{ background:'#fff', borderRadius:10, padding:'16px 20px', border:'1px solid #e8e8e8' }}>
@@ -1879,10 +1985,13 @@ function AdminPanel({ onBack }) {
                       <div style={{ fontSize:36, width:52, textAlign:'center', flexShrink:0 }}>{p.emoji}</div>
                       <div style={{ flex:1 }}>
                         <div style={{ fontSize:14, fontWeight:700 }}>{p.name}</div>
-                        <div style={{ fontSize:12, color:'#888' }}>{p.category} · ₹{p.price.toLocaleString()} (MRP ₹{p.mrp.toLocaleString()})</div>
+                        <div style={{ fontSize:12, color:'#888' }}>{p.category} · ₹{Number(p.price).toLocaleString()} (MRP ₹{Number(p.mrp).toLocaleString()})</div>
                         <div style={{ fontSize:11, color:'#aaa' }}>⭐ {p.rating} · {p.reviews} reviews · Tag: {p.tag}</div>
                       </div>
-                      <button onClick={()=>setEditProd(p.id)} style={{ padding:'8px 18px', fontSize:12, borderRadius:4, border:'1px solid #0a1f5d', color:'#0a1f5d', background:'none', cursor:'pointer', fontWeight:600 }}>Edit</button>
+                      <div style={{ display:'flex', gap:8 }}>
+                        <button onClick={()=>setEditProd(p.id)} style={{ padding:'8px 16px', fontSize:12, borderRadius:4, border:'1px solid #0a1f5d', color:'#0a1f5d', background:'none', cursor:'pointer', fontWeight:600 }}>Edit</button>
+                        <button onClick={()=>deleteProduct(p.id)} style={{ padding:'8px 12px', fontSize:12, borderRadius:4, border:'1px solid #fdd', color:'#c8102e', background:'none', cursor:'pointer', fontWeight:600 }}>✕</button>
+                      </div>
                     </div>
                   )}
                 </div>

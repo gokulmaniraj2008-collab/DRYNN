@@ -1695,18 +1695,35 @@ function AdminPanel({ onBack }) {
     setSampleSaving(true)
     try {
       let imageUrl = sampleForm.image_url
+
+      // Step 1: Upload to Cloudinary
       if (sampleFile) {
         setSamplePct(0)
-        imageUrl = await uploadToCloudinary(sampleFile, pct => setSamplePct(pct))
+        try {
+          imageUrl = await uploadToCloudinary(sampleFile, pct => setSamplePct(pct))
+        } catch(uploadErr) {
+          alert('Image upload to Cloudinary failed: ' + uploadErr.message)
+          return
+        }
       }
-      const { error } = await supabase.from('drynn_samples').insert({
+
+      // Step 2: Save to Supabase
+      const { data, error } = await supabase.from('drynn_samples').insert({
         name: sampleForm.name, category: sampleForm.category || null, image_url: imageUrl
-      })
-      if (error) throw error
+      }).select()
+
+      if (error) {
+        alert('Supabase error: ' + error.message + ' | Code: ' + error.code)
+        return
+      }
+
       showToast('Sample design added!')
       setSampleForm({ name:'', category:'', image_url:'' }); setSampleFile(null); setSamplePct(0)
       loadSamples()
-    } catch(e) { console.error(e); alert('Failed to save sample.') }
+    } catch(e) {
+      console.error(e)
+      alert('Unexpected error: ' + (e.message || JSON.stringify(e)))
+    }
     finally { setSampleSaving(false) }
   }
 

@@ -553,6 +553,9 @@ function MockupStudio() {
   ]
 
   return (
+    <div style={{ background:'#0d1b3e', position:'relative', overflow:'hidden' }}>
+      <div style={{ position:'absolute', top:'5%', left:'5%', width:200, height:200, background:'radial-gradient(circle,rgba(200,16,46,.14) 0%,transparent 70%)', pointerEvents:'none' }} />
+      <div style={{ position:'absolute', bottom:'10%', right:'5%', width:280, height:280, background:'radial-gradient(circle,rgba(59,130,246,.12) 0%,transparent 70%)', pointerEvents:'none' }} />
 
       {/* Title */}
       <div style={{ textAlign:'center', padding:'40px 16px 12px' }}>

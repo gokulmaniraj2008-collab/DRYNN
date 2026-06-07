@@ -474,10 +474,10 @@ function StudioPage({ user, onNav }) {
   const [uploadErr, setUploadErr] = useState('')
 
   const GARMENT_TYPES = [
-    { key:'tshirt', label:'T-Shirt', emoji:'👕' },
-    { key:'hoodie', label:'Hoodie',  emoji:'🧥' },
-    { key:'polo',   label:'Polo',    emoji:'👔' },
-    { key:'joggers',label:'Joggers', emoji:'👖' },
+    { key:'tshirt', label:'T-Shirt', emoji:'.' },
+    { key:'hoodie', label:'Hoodie',  emoji:'.' },
+    { key:'polo',   label:'Polo',    emoji:'.' },
+    { key:'joggers',label:'Joggers', emoji:'.' },
   ]
 
   const canvasFilter = `brightness(${brightness}%) contrast(${contrast}%) saturate(${saturation}%)`

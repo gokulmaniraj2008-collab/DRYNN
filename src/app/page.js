@@ -1364,7 +1364,7 @@ async function uploadToCloudinary(file, onProgress) {
   })
 }
 
-function StudioPage({ user }) {
+function StudioPage({ user, onNav }) {
   const [garment, setGarment]       = useState('T-Shirt')
   const [color, setColor]           = useState('#ffffff')
   const [size, setSize]             = useState('M')
@@ -1451,6 +1451,10 @@ function StudioPage({ user }) {
       {/* Header */}
       <div style={{ background:'linear-gradient(90deg,#0a1f5d,#1a0a2e)', padding:'28px 20px' }}>
         <div style={{ maxWidth:1100, margin:'0 auto' }}>
+          <button onClick={()=>onNav('home')} style={{ display:'inline-flex', alignItems:'center', gap:6, background:'rgba(255,255,255,.1)', border:'1px solid rgba(255,255,255,.2)', color:'#fff', padding:'6px 14px', borderRadius:50, fontSize:12, cursor:'pointer', fontWeight:600, marginBottom:12 }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg>
+            Back
+          </button>
           <span className="sec-label" style={{ color:'rgba(255,255,255,.6)' }}>Design Studio</span>
           <h1 className="sec-title" style={{ color:'#fff' }}>CUSTOM PRINT ORDER</h1>
           <p style={{ fontSize:14, color:'rgba(255,255,255,.6)', marginTop:6 }}>Upload your design and we print it on your chosen garment.</p>
@@ -1539,13 +1543,16 @@ function StudioPage({ user }) {
   )
 }
 
-function AboutPage() {
+function AboutPage({ onNav }) {
   const [openFaq, setOpenFaq] = useState(null)
   return (
     <div>
       {/* Header */}
       <div style={{ background:'linear-gradient(135deg,#0a1f5d,#1a0a2e)', padding:'48px 16px 56px', textAlign:'center', position:'relative', overflow:'hidden' }}>
         <div style={{ position:'absolute', inset:0, background:'radial-gradient(ellipse at 50% 60%,rgba(200,16,46,.15) 0%,transparent 60%)', pointerEvents:'none' }} />
+        <button onClick={()=>onNav('home')} style={{ position:'absolute', top:16, left:16, display:'inline-flex', alignItems:'center', gap:6, background:'rgba(255,255,255,.1)', border:'1px solid rgba(255,255,255,.2)', color:'#fff', padding:'6px 14px', borderRadius:50, fontSize:12, cursor:'pointer', fontWeight:600, zIndex:2 }}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg>Back
+        </button>
         <div style={{ position:'relative', zIndex:1 }}>
           <span className="sec-label" style={{ color:'rgba(255,255,255,.6)' }}>Our Story</span>
           <h1 className="sec-title" style={{ color:'#fff', marginBottom:12 }}>ABOUT DRYNN</h1>
@@ -1601,7 +1608,7 @@ function AboutPage() {
   )
 }
 
-function ContactPage() {
+function ContactPage({ onNav }) {
   const [sent, setSent]       = useState(false)
   const [saving, setSaving]   = useState(false)
   const [error, setError]     = useState('')
@@ -1648,6 +1655,9 @@ function ContactPage() {
     <div>
       <div style={{ background:'linear-gradient(90deg,#0a1f5d,#1a0a2e)', padding:'28px 20px' }}>
         <div style={{ maxWidth:1100, margin:'0 auto' }}>
+          <button onClick={()=>onNav('home')} style={{ display:'inline-flex', alignItems:'center', gap:6, background:'rgba(255,255,255,.1)', border:'1px solid rgba(255,255,255,.2)', color:'#fff', padding:'6px 14px', borderRadius:50, fontSize:12, cursor:'pointer', fontWeight:600, marginBottom:12 }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg>Back
+          </button>
           <span className="sec-label" style={{ color:'rgba(255,255,255,.6)' }}>Get In Touch</span>
           <h1 className="sec-title" style={{ color:'#fff' }}>CONTACT US</h1>
         </div>
@@ -1690,7 +1700,7 @@ function ContactPage() {
   )
 }
 
-function CartPage({ cart, onRemove, onClear, user }) {
+function CartPage({ cart, onRemove, onClear, user, onNav }) {
   const total      = cart.reduce((s,i) => s + i.price * i.qty, 0)
   const shipping   = total >= 1500 ? 0 : 99
   const grandTotal = total + shipping
@@ -1812,6 +1822,9 @@ function CartPage({ cart, onRemove, onClear, user }) {
     <div>
       <div style={{ background:'linear-gradient(90deg,#0a1f5d,#1a0a2e)', padding:'28px 20px' }}>
         <div style={{ maxWidth:1100, margin:'0 auto' }}>
+          <button onClick={()=>onNav('products')} style={{ display:'inline-flex', alignItems:'center', gap:6, background:'rgba(255,255,255,.1)', border:'1px solid rgba(255,255,255,.2)', color:'#fff', padding:'6px 14px', borderRadius:50, fontSize:12, cursor:'pointer', fontWeight:600, marginBottom:12 }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg>Back
+          </button>
           <span className="sec-label" style={{ color:'rgba(255,255,255,.6)' }}>My Cart</span>
           <h1 className="sec-title" style={{ color:'#fff' }}>SHOPPING CART</h1>
         </div>
@@ -2827,7 +2840,7 @@ function ProductEditRow({ product, onSave, onCancel }) {
 // ══════════════════════════════════════════════════════════════
 // ORDER TRACKING PAGE
 // ══════════════════════════════════════════════════════════════
-function OrderTrackingPage() {
+function OrderTrackingPage({ onNav }) {
   const [orderId, setOrderId]   = useState('')
   const [phone, setPhone]       = useState('')
   const [order, setOrder]       = useState(null)
@@ -2863,6 +2876,9 @@ function OrderTrackingPage() {
       <div style={{ background:'linear-gradient(135deg,#0a1f5d,#1a0a2e)', padding:'48px 20px 56px', position:'relative', overflow:'hidden' }}>
         <div style={{ position:'absolute', inset:0, background:'radial-gradient(ellipse at 60% 40%,rgba(200,16,46,.18) 0%,transparent 55%)', pointerEvents:'none' }} />
         <div style={{ maxWidth:1100, margin:'0 auto', position:'relative', zIndex:1, padding:'0 4px' }}>
+          <button onClick={()=>onNav('home')} style={{ display:'inline-flex', alignItems:'center', gap:6, background:'rgba(255,255,255,.1)', border:'1px solid rgba(255,255,255,.2)', color:'#fff', padding:'6px 14px', borderRadius:50, fontSize:12, cursor:'pointer', fontWeight:600, marginBottom:12 }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg>Back
+          </button>
           <span className="sec-label" style={{ color:'rgba(255,255,255,.6)' }}>Real-Time Tracking</span>
           <h1 className="sec-title" style={{ color:'#fff' }}>TRACK YOUR ORDER</h1>
           <p style={{ fontSize:14, color:'rgba(255,255,255,.6)', marginTop:6 }}>Enter your Order ID or WhatsApp number to see your order status.</p>
@@ -2947,7 +2963,7 @@ function OrderTrackingPage() {
 // ══════════════════════════════════════════════════════════════
 // GROUP ORDER PAGE
 // ══════════════════════════════════════════════════════════════
-function GroupOrderPage({ user }) {
+function GroupOrderPage({ user, onNav }) {
   const [tab, setTab] = useState('create') // create | join
   const [groupId, setGroupId] = useState('')
 
@@ -2956,6 +2972,9 @@ function GroupOrderPage({ user }) {
       <div style={{ background:'linear-gradient(135deg,#00a86b,#0a1f5d)', padding:'48px 20px 56px', position:'relative', overflow:'hidden' }}>
         <div style={{ position:'absolute', inset:0, background:'radial-gradient(ellipse at 30% 60%,rgba(200,16,46,.12) 0%,transparent 55%)', pointerEvents:'none' }} />
         <div style={{ maxWidth:1100, margin:'0 auto', position:'relative', zIndex:1, padding:'0 4px' }}>
+          <button onClick={()=>onNav('home')} style={{ display:'inline-flex', alignItems:'center', gap:6, background:'rgba(255,255,255,.1)', border:'1px solid rgba(255,255,255,.2)', color:'#fff', padding:'6px 14px', borderRadius:50, fontSize:12, cursor:'pointer', fontWeight:600, marginBottom:12 }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg>Back
+          </button>
           <span className="sec-label" style={{ color:'rgba(255,255,255,.6)' }}>For Teams & Events</span>
           <h1 className="sec-title" style={{ color:'#fff' }}>GROUP ORDERS</h1>
           <p style={{ fontSize:14, color:'rgba(255,255,255,.65)', marginTop:6, maxWidth:480, lineHeight:1.7 }}>
@@ -3220,10 +3239,7 @@ function MainSite({ user }) {
     { key:'account',  label:'Account', icon:<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg> },
   ]
 
-  // Extra pages accessible via a "more" drawer on mobile
   const isAdmin = user?.email === ADMIN_EMAIL
-
-  const [mobileMore, setMobileMore] = useState(false)
 
   return (
     <div style={{ paddingBottom:64 }}>
@@ -3277,14 +3293,14 @@ function MainSite({ user }) {
       {/* ── PAGE CONTENT ── */}
       {page==='home'     && <HomePage     user={user} onNav={setPage} cart={cart} onAddToCart={addToCart} />}
       {page==='products' && <ProductsPage onAddToCart={addToCart} onNav={setPage} />}
-      {page==='studio'   && <StudioPage   user={user} />}
-      {page==='about'    && <AboutPage />}
-      {page==='contact'  && <ContactPage />}
-      {page==='cart'     && <CartPage cart={cart} onRemove={i=>setCart(c=>c.filter((_,idx)=>idx!==i))} onClear={()=>setCart([])} user={user} />}
+      {page==='studio'   && <StudioPage   user={user} onNav={setPage} />}
+      {page==='about'    && <AboutPage    onNav={setPage} />}
+      {page==='contact'  && <ContactPage  onNav={setPage} />}
+      {page==='cart'     && <CartPage cart={cart} onRemove={i=>setCart(c=>c.filter((_,idx)=>idx!==i))} onClear={()=>setCart([])} user={user} onNav={setPage} />}
       {page==='account'  && <AccountPage user={user} onLogout={handleLogout} onNav={setPage} />}
       {page==='orders'   && <OrdersPage  user={user} onBack={()=>setPage('account')} />}
-      {page==='track'    && <OrderTrackingPage />}
-      {page==='group'    && <GroupOrderPage user={user} />}
+      {page==='track'    && <OrderTrackingPage onNav={setPage} />}
+      {page==='group'    && <GroupOrderPage user={user} onNav={setPage} />}
 
       {/* ── FOOTER (only on main pages) ── */}
       {['home','about','contact','track','group'].includes(page) && page !== 'products' && (
@@ -3322,7 +3338,7 @@ function MainSite({ user }) {
       {/* ── MOBILE BOTTOM NAV ── */}
       <nav className="mobile-bottom-nav" style={{ display:'flex', position:'fixed', bottom:0, left:0, right:0, zIndex:200, background:'#fff', borderTop:'1px solid #ebebeb', height:60, alignItems:'center', justifyContent:'space-around', boxShadow:'0 -4px 16px rgba(0,0,0,.08)' }}>
         {NAV_ITEMS.map(item=>(
-          <button key={item.key} onClick={()=>{ setMobileMore(false); setPage(item.key) }}
+          <button key={item.key} onClick={()=>setPage(item.key)}
             className={`bnav-item${page===item.key?' active':''}`}
             style={{ position:'relative', ...(item.special ? { background:'#c8102e', width:48, height:48, borderRadius:'50%', transform:'translateY(-10px)', boxShadow:'0 4px 16px rgba(200,16,46,.45)', flexShrink:0 } : {}) }}>
             <span style={{ color: item.special ? '#fff' : (page===item.key ? '#c8102e' : '#aaa'), display:'flex', alignItems:'center', justifyContent:'center' }}>{item.icon}</span>
@@ -3330,34 +3346,7 @@ function MainSite({ user }) {
             {item.key==='cart' && cart.length>0 && <div className="cart-badge" style={{ top:-4, right:-4 }}>{cart.length}</div>}
           </button>
         ))}
-        {/* More button */}
-        <button onClick={()=>setMobileMore(v=>!v)}
-          className={`bnav-item${mobileMore?' active':''}`}
-          style={{ position:'relative' }}>
-          <span style={{ color: mobileMore ? '#c8102e' : '#aaa', display:'flex', alignItems:'center', justifyContent:'center' }}>
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="12" cy="5" r="1" fill="currentColor"/><circle cx="12" cy="12" r="1" fill="currentColor"/><circle cx="12" cy="19" r="1" fill="currentColor"/>
-            </svg>
-          </span>
-          <span style={{ fontSize:9, fontWeight:700, color:mobileMore?'#c8102e':'#bbb', letterSpacing:'.04em', textTransform:'uppercase', marginTop:1 }}>More</span>
-        </button>
       </nav>
-
-      {/* ── MOBILE MORE DRAWER ── */}
-      {mobileMore && (
-        <div className="mobile-bottom-nav" style={{ position:'fixed', bottom:60, left:0, right:0, zIndex:199, background:'#fff', borderTop:'1px solid #f0f0f0', padding:'12px 16px 8px', boxShadow:'0 -8px 24px rgba(0,0,0,.1)', display:'block' }}>
-          {isAdmin && (
-            <button onClick={()=>{ setPage('admin'); setMobileMore(false) }}
-              style={{ width:'100%', marginBottom:8, padding:'12px', background:'rgba(200,16,46,.06)', border:'1px solid rgba(200,16,46,.2)', borderRadius:8, fontSize:13, fontWeight:700, color:'#c8102e', cursor:'pointer', letterSpacing:'.04em' }}>
-              ⚙️ Admin Panel
-            </button>
-          )}
-          <button onClick={()=>{ handleLogout(); setMobileMore(false) }}
-            style={{ width:'100%', padding:'12px', background:'#f8f8f8', border:'1px solid #e8e8e8', borderRadius:8, fontSize:13, fontWeight:700, color:'#888', cursor:'pointer' }}>
-            Sign Out
-          </button>
-        </div>
-      )}
 
       {/* ── TOAST ── */}
       {toast && <div className="toast">{toast}</div>}

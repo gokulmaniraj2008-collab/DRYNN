@@ -1365,13 +1365,20 @@ async function uploadToCloudinary(file, onProgress) {
 }
 
 function StudioPage({ user, onNav }) {
+  const allProducts = useProducts()  // all admin products including studio_only
+
+  // Step 1 — pick a product as base (optional but highlighted)
+  const [selectedProduct, setSelectedProduct] = useState(null)
+  const [productSearch,   setProductSearch]   = useState('')
+  const [showPicker,      setShowPicker]       = useState(true)
+
   const [garment, setGarment]       = useState('T-Shirt')
   const [color, setColor]           = useState('#ffffff')
   const [size, setSize]             = useState('M')
   const [designMode, setDesignMode] = useState('') // '' | 'upload' | 'sample'
   const [uploadedFile, setFile]     = useState(null)
   const [uploadPct,  setUploadPct]  = useState(0)
-  const [selectedSample, setSample] = useState(null) // { id, name, image_url, category }
+  const [selectedSample, setSample] = useState(null)
   const [samples, setSamples]       = useState([])
   const [samplesLoading, setSamplesLoading] = useState(false)
   const [sampleCategory, setSampleCat]     = useState('All')
@@ -1379,12 +1386,19 @@ function StudioPage({ user, onNav }) {
   const [status, setStatus] = useState('')
   const [uploadErr, setUploadErr] = useState('')
 
-  // Load samples when user picks sample mode
   const loadSamples = async () => {
     setSamplesLoading(true)
     const { data, error } = await supabase.from('drynn_samples').select('*').order('created_at', { ascending: false })
     if (!error) setSamples(data || [])
     setSamplesLoading(false)
+  }
+
+  // When admin product is selected, auto-set garment type
+  const pickProduct = (p) => {
+    setSelectedProduct(p)
+    const catMap = { 'Hoodies':'Hoodie', 'Polos':'Polo', 'Joggers':'Joggers', 'T-Shirts':'T-Shirt' }
+    setGarment(catMap[p.category] || 'T-Shirt')
+    setShowPicker(false)
   }
 
   const handleModeSelect = mode => {
@@ -1415,36 +1429,44 @@ function StudioPage({ user, onNav }) {
         try {
           designUrl = await uploadToCloudinary(uploadedFile, pct => setUploadPct(pct))
         } catch(e) {
-          console.error('[Studio → Cloudinary] Design upload failed:', e.message)
           setStatus('')
-          alert(`[Design Upload Failed]\n\nArea: Cloudinary image upload\nReason: ${e.message || 'Network error'}\n\nFix: Check your internet, then try again. If this repeats, your Cloudinary preset may not be configured.`)
+          alert(`[Design Upload Failed]\n\nReason: ${e.message || 'Network error'}\n\nCheck your internet and try again.`)
           return
         }
       } else {
-        // Sample design - use Cloudinary URL directly
         designUrl = selectedSample.image_url
       }
       setStatus('saving')
+      const { data:{ user: authUser } } = await supabase.auth.getUser()
+      const uid = authUser?.id || user?.id || null
+      // Use selected admin product name as garment if picked
+      const garmentLabel = selectedProduct ? `${selectedProduct.name} (${garment})` : garment
       const { error:dbErr } = await supabase.from('drynn_orders').insert({
-        id:orderId, user_id:user?.id||null, name:form.name, phone:form.phone,
-        garment, color, size, qty:Number(form.qty), address:form.address,
-        design_file: designUrl, status:'pending', placed_at:placedAt
+        id:orderId, user_id:uid, name:form.name, phone:form.phone,
+        garment:garmentLabel, color, size, qty:Number(form.qty), address:form.address,
+        design_file: designUrl, status:'Received', placed_at:placedAt,
+        product_id: selectedProduct?.id || null,
       })
       if (dbErr) {
-        console.error('[Studio → Supabase] Order save failed:', dbErr.message)
-        alert(`[Order Save Failed]\n\nArea: Supabase drynn_orders table\nReason: ${dbErr.message}\n\nYour design was uploaded but the order was not saved. Please WhatsApp us at +91 99447 61306 with your name and design details.`)
+        alert(`[Order Save Failed]\n\nReason: ${dbErr.message}\n\nPlease WhatsApp us at +91 99447 61306.`)
       }
-      if (GOOGLE_SHEET_WEBHOOK) fetch(GOOGLE_SHEET_WEBHOOK,{ method:'POST', mode:'no-cors', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ sheet:'DRYNN_Orders', orderId, userId:user?.id||'', name:form.name, phone:form.phone, garment, color, size, qty:form.qty, address:form.address, designUrl, placedAt }) }).catch(e => console.error('[Studio → Google Sheets] Webhook failed:', e.message))
+      if (GOOGLE_SHEET_WEBHOOK) fetch(GOOGLE_SHEET_WEBHOOK,{ method:'POST', mode:'no-cors', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ sheet:'DRYNN_Orders', orderId, userId:uid||'', name:form.name, phone:form.phone, garment:garmentLabel, color, size, qty:form.qty, address:form.address, designUrl, placedAt }) }).catch(console.error)
       setStatus('done')
       setTimeout(()=>setStatus(''),5000)
       setForm({ name:user?.user_metadata?.full_name||'', phone:'', qty:1, address:'' })
       setFile(null); setSample(null); setUploadPct(0); setDesignMode('')
+      setSelectedProduct(null); setShowPicker(true)
     } catch(e) {
-      console.error('[Studio] Unexpected error during order submission:', e.message)
       setStatus('')
-      alert(`[Unexpected Error]\n\nArea: Studio order submission\nReason: ${e.message || 'Unknown error'}\n\nPlease try again or WhatsApp us at +91 99447 61306.`)
+      alert(`[Unexpected Error]\n\nReason: ${e.message || 'Unknown error'}\n\nPlease try again or WhatsApp us at +91 99447 61306.`)
     }
   }
+
+  const filteredProducts = allProducts.filter(p =>
+    !productSearch.trim() ||
+    p.name.toLowerCase().includes(productSearch.toLowerCase()) ||
+    p.category.toLowerCase().includes(productSearch.toLowerCase())
+  )
 
   return (
     <div>
@@ -1452,17 +1474,122 @@ function StudioPage({ user, onNav }) {
       <div style={{ background:'linear-gradient(90deg,#0a1f5d,#1a0a2e)', padding:'28px 20px' }}>
         <div style={{ maxWidth:1100, margin:'0 auto' }}>
           <button onClick={()=>onNav('home')} style={{ display:'inline-flex', alignItems:'center', gap:6, background:'rgba(255,255,255,.1)', border:'1px solid rgba(255,255,255,.2)', color:'#fff', padding:'6px 14px', borderRadius:50, fontSize:12, cursor:'pointer', fontWeight:600, marginBottom:12 }}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg>
-            Back
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg>Back
           </button>
           <span className="sec-label" style={{ color:'rgba(255,255,255,.6)' }}>Design Studio</span>
           <h1 className="sec-title" style={{ color:'#fff' }}>CUSTOM PRINT ORDER</h1>
-          <p style={{ fontSize:14, color:'rgba(255,255,255,.6)', marginTop:6 }}>Upload your design and we print it on your chosen garment.</p>
+          <p style={{ fontSize:14, color:'rgba(255,255,255,.6)', marginTop:6 }}>Pick a garment from our collection and place your custom design on it.</p>
         </div>
       </div>
 
-      {/* Order form */}
       <div style={{ maxWidth:680, margin:'0 auto', padding:'28px 20px' }}>
+
+        {/* ── STEP 1: PICK GARMENT FROM ADMIN PRODUCTS ── */}
+        <div style={{ marginBottom:28 }}>
+          {/* Step header */}
+          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:14 }}>
+            <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+              <div style={{ width:28, height:28, borderRadius:'50%', background: selectedProduct ? '#00a86b' : '#c8102e', color:'#fff', fontWeight:700, fontSize:13, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+                {selectedProduct ? '✓' : '1'}
+              </div>
+              <span style={{ fontSize:13, fontWeight:700, letterSpacing:'.04em', textTransform:'uppercase', color:'#0a0a0a' }}>Choose Garment</span>
+            </div>
+            {selectedProduct && (
+              <button onClick={()=>setShowPicker(v=>!v)} style={{ fontSize:12, fontWeight:600, color:'#0a1f5d', background:'none', border:'1px solid #e0e0e0', borderRadius:50, padding:'4px 12px', cursor:'pointer' }}>
+                {showPicker ? 'Collapse' : 'Change'}
+              </button>
+            )}
+          </div>
+
+          {/* Selected product preview (when collapsed) */}
+          {selectedProduct && !showPicker && (
+            <div style={{ display:'flex', alignItems:'center', gap:14, background:'rgba(0,168,107,.06)', border:'1.5px solid rgba(0,168,107,.3)', borderRadius:12, padding:'12px 16px' }}>
+              <div style={{ width:52, height:52, borderRadius:8, background:'#f0f0f0', overflow:'hidden', flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center' }}>
+                {selectedProduct.image_url
+                  ? <img src={selectedProduct.image_url} alt={selectedProduct.name} style={{ width:'100%', height:'100%', objectFit:'contain' }} />
+                  : <span style={{ fontSize:28 }}>{selectedProduct.emoji}</span>}
+              </div>
+              <div>
+                <div style={{ fontSize:14, fontWeight:700, color:'#0a0a0a' }}>{selectedProduct.name}</div>
+                <div style={{ fontSize:12, color:'#555' }}>{selectedProduct.category} · ₹{Number(selectedProduct.price).toLocaleString()}</div>
+                <div style={{ fontSize:11, color:'#00a86b', fontWeight:600, marginTop:2 }}>✓ Selected for customisation</div>
+              </div>
+            </div>
+          )}
+
+          {/* Product picker grid */}
+          {showPicker && (
+            <div style={{ border:'1.5px solid #e8e8e8', borderRadius:12, overflow:'hidden' }}>
+              {/* Search within picker */}
+              <div style={{ padding:'12px 14px', borderBottom:'1px solid #f0f0f0', background:'#fafafa' }}>
+                <div style={{ display:'flex', alignItems:'center', gap:8, background:'#fff', border:'1.5px solid #e0e0e0', borderRadius:8, padding:'8px 12px' }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#aaa" strokeWidth="2" strokeLinecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                  <input value={productSearch} onChange={e=>setProductSearch(e.target.value)} placeholder="Search garments…" style={{ flex:1, border:'none', outline:'none', fontSize:13, fontFamily:'DM Sans,sans-serif', background:'transparent', color:'#0a0a0a' }} />
+                </div>
+              </div>
+
+              {allProducts.length === 0 ? (
+                <div style={{ padding:'32px 20px', textAlign:'center', color:'#aaa', fontSize:13 }}>
+                  <div style={{ fontSize:40, marginBottom:8 }}>👕</div>
+                  <p>No products added by admin yet.</p>
+                  <p style={{ fontSize:11, marginTop:4 }}>Using standard garment types below.</p>
+                </div>
+              ) : (
+                <div style={{ display:'grid', gridTemplateColumns:'repeat(2,1fr)', gap:1, background:'#f0f0f0', maxHeight:380, overflowY:'auto' }}>
+                  {filteredProducts.map(p => {
+                    const isSelected = selectedProduct?.id === p.id
+                    return (
+                      <div key={p.id} onClick={()=>pickProduct(p)}
+                        style={{ background: isSelected ? 'rgba(200,16,46,.05)' : '#fff', cursor:'pointer', padding:'14px', display:'flex', gap:12, alignItems:'center', border: isSelected ? '2px solid #c8102e' : '2px solid transparent', transition:'all .15s', position:'relative' }}>
+                        {/* Product image */}
+                        <div style={{ width:56, height:56, borderRadius:8, background:'#f8f8f8', overflow:'hidden', flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center', border:'1px solid #eee' }}>
+                          {p.image_url
+                            ? <img src={p.image_url} alt={p.name} style={{ width:'100%', height:'100%', objectFit:'contain' }} />
+                            : <span style={{ fontSize:30 }}>{p.emoji}</span>}
+                        </div>
+                        <div style={{ flex:1, minWidth:0 }}>
+                          <div style={{ fontSize:13, fontWeight:700, color:'#0a0a0a', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{p.name}</div>
+                          <div style={{ fontSize:11, color:'#888', marginTop:2 }}>{p.category}</div>
+                          <div style={{ fontSize:12, fontWeight:700, color:'#c8102e', marginTop:3 }}>₹{Number(p.price).toLocaleString()}</div>
+                        </div>
+                        {/* Selected tick */}
+                        {isSelected && (
+                          <div style={{ position:'absolute', top:6, right:6, width:18, height:18, borderRadius:'50%', background:'#c8102e', display:'flex', alignItems:'center', justifyContent:'center' }}>
+                            <svg width="9" height="9" viewBox="0 0 10 10" fill="none"><polyline points="1.5,5 4,7.5 8.5,2.5" stroke="#fff" strokeWidth="1.8" strokeLinecap="round"/></svg>
+                          </div>
+                        )}
+                        {/* Studio exclusive badge */}
+                        {p.studio_only && (
+                          <div style={{ position:'absolute', top:6, left:6, background:'#c8102e', color:'#fff', fontSize:7, fontWeight:700, letterSpacing:'.08em', textTransform:'uppercase', padding:'2px 6px', borderRadius:2 }}>Studio</div>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+
+              {/* Or use standard garment fallback */}
+              <div style={{ padding:'10px 14px', borderTop:'1px solid #f0f0f0', background:'#fafafa', textAlign:'center' }}>
+                <button onClick={()=>{ setSelectedProduct(null); setShowPicker(false) }}
+                  style={{ fontSize:12, color:'#888', background:'none', border:'none', cursor:'pointer', textDecoration:'underline' }}>
+                  Skip — use standard garment type instead
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Step divider */}
+        <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:24 }}>
+          <div style={{ flex:1, height:1, background:'#f0f0f0' }} />
+          <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+            <div style={{ width:22, height:22, borderRadius:'50%', background:'#0a1f5d', color:'#fff', fontWeight:700, fontSize:11, display:'flex', alignItems:'center', justifyContent:'center' }}>2</div>
+            <span style={{ fontSize:11, fontWeight:700, letterSpacing:'.08em', textTransform:'uppercase', color:'#555' }}>Customise & Order</span>
+          </div>
+          <div style={{ flex:1, height:1, background:'#f0f0f0' }} />
+        </div>
+
+        {/* ── STEP 2: ORDER FORM ── */}
         {status==='done' && (
           <div style={{ background:'rgba(0,168,107,.08)', border:'1px solid rgba(0,168,107,.25)', borderRadius:8, padding:'14px 18px', marginBottom:24, fontSize:13, color:'#00a86b', fontWeight:600 }}>
             ✓ Order placed! We'll contact you on WhatsApp within 2 hours.
@@ -1475,11 +1602,15 @@ function StudioPage({ user, onNav }) {
           {/* Phone */}
           <div><label style={{ fontSize:11, fontWeight:700, letterSpacing:'.12em', textTransform:'uppercase', color:'#555', display:'block', marginBottom:7 }}>Phone / WhatsApp</label>
             <input className="input-field" placeholder="+91 00000 00000" value={form.phone} onChange={e=>setForm({...form,phone:e.target.value})} /></div>
-          {/* Garment */}
-          <div><label style={{ fontSize:11, fontWeight:700, letterSpacing:'.12em', textTransform:'uppercase', color:'#555', display:'block', marginBottom:7 }}>Garment Type</label>
-            <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
-              {GARMENTS.map(g=><button key={g} className={`size-btn${garment===g?' active':''}`} onClick={()=>setGarment(g)}>{g}</button>)}
-            </div></div>
+
+          {/* Garment fallback (shown only if no product selected) */}
+          {!selectedProduct && (
+            <div><label style={{ fontSize:11, fontWeight:700, letterSpacing:'.12em', textTransform:'uppercase', color:'#555', display:'block', marginBottom:7 }}>Garment Type</label>
+              <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
+                {GARMENTS.map(g=><button key={g} className={`size-btn${garment===g?' active':''}`} onClick={()=>setGarment(g)}>{g}</button>)}
+              </div></div>
+          )}
+
           {/* Colour */}
           <div><label style={{ fontSize:11, fontWeight:700, letterSpacing:'.12em', textTransform:'uppercase', color:'#555', display:'block', marginBottom:7 }}>Garment Colour</label>
             <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
@@ -1493,11 +1624,12 @@ function StudioPage({ user, onNav }) {
           {/* Qty */}
           <div><label style={{ fontSize:11, fontWeight:700, letterSpacing:'.12em', textTransform:'uppercase', color:'#555', display:'block', marginBottom:7 }}>Quantity</label>
             <input className="input-field" type="number" min="1" value={form.qty} onChange={e=>setForm({...form,qty:e.target.value})} style={{ maxWidth:120 }} /></div>
-          {/* DESIGN — upload only, samples are in MockupStudio above */}
+
+          {/* Design choice */}
           <div>
             <label style={{ fontSize:11, fontWeight:700, letterSpacing:'.12em', textTransform:'uppercase', color:'#555', display:'block', marginBottom:8 }}>Your Design</label>
             <p style={{ fontSize:12, color:'#888', marginBottom:10 }}>
-              Use the <strong>🖼 Samples</strong> tab above to pick a ready-made design, or upload your own below.
+              Use the <strong>🖼 Samples</strong> tab in the mockup studio below, or upload your own design.
             </p>
             <div className="upload-zone" onClick={()=>document.getElementById('studioFile').click()}>
               <input id="studioFile" type="file" accept=".png,.jpg,.jpeg,.svg" style={{ display:'none' }} onChange={handleFile} />
@@ -1523,13 +1655,28 @@ function StudioPage({ user, onNav }) {
           {status==='uploading' && (
             <div>
               <div style={{ display:'flex', justifyContent:'space-between', fontSize:12, color:'#555', marginBottom:6 }}>
-                <span>Uploading design to Cloudinary…</span><span>{uploadPct}%</span>
+                <span>Uploading design…</span><span>{uploadPct}%</span>
               </div>
               <div style={{ height:6, background:'#f0f0f0', borderRadius:3, overflow:'hidden' }}>
                 <div style={{ height:'100%', width:`${uploadPct}%`, background:'linear-gradient(90deg,#0a1f5d,#c8102e)', borderRadius:3, transition:'width .3s' }} />
               </div>
             </div>
           )}
+
+          {/* Order summary chip if product selected */}
+          {selectedProduct && (
+            <div style={{ background:'#f8f8f8', borderRadius:10, padding:'12px 16px', display:'flex', gap:12, alignItems:'center' }}>
+              <div style={{ width:40, height:40, borderRadius:6, background:'#fff', border:'1px solid #eee', overflow:'hidden', flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center' }}>
+                {selectedProduct.image_url ? <img src={selectedProduct.image_url} alt="" style={{ width:'100%', height:'100%', objectFit:'contain' }} /> : <span style={{ fontSize:22 }}>{selectedProduct.emoji}</span>}
+              </div>
+              <div style={{ flex:1 }}>
+                <div style={{ fontSize:12, fontWeight:700 }}>{selectedProduct.name}</div>
+                <div style={{ fontSize:11, color:'#888' }}>Size: {size} · Qty: {form.qty} · Colour: {color}</div>
+              </div>
+              <div style={{ fontSize:14, fontWeight:800, color:'#c8102e' }}>₹{(Number(selectedProduct.price) * Number(form.qty || 1)).toLocaleString()}</div>
+            </div>
+          )}
+
           <button className="btn-primary" style={{ width:'100%', padding:15, fontSize:13, opacity:(status==='saving'||status==='uploading')?.6:1 }} onClick={handleSubmit} disabled={status==='saving'||status==='uploading'}>
             {status==='uploading'?`Uploading… ${uploadPct}%`:status==='saving'?'Saving Order…':'Place Custom Order'}
           </button>
@@ -1543,16 +1690,13 @@ function StudioPage({ user, onNav }) {
   )
 }
 
-function AboutPage({ onNav }) {
+function AboutPage() {
   const [openFaq, setOpenFaq] = useState(null)
   return (
     <div>
       {/* Header */}
       <div style={{ background:'linear-gradient(135deg,#0a1f5d,#1a0a2e)', padding:'48px 16px 56px', textAlign:'center', position:'relative', overflow:'hidden' }}>
         <div style={{ position:'absolute', inset:0, background:'radial-gradient(ellipse at 50% 60%,rgba(200,16,46,.15) 0%,transparent 60%)', pointerEvents:'none' }} />
-        <button onClick={()=>onNav('home')} style={{ position:'absolute', top:16, left:16, display:'inline-flex', alignItems:'center', gap:6, background:'rgba(255,255,255,.1)', border:'1px solid rgba(255,255,255,.2)', color:'#fff', padding:'6px 14px', borderRadius:50, fontSize:12, cursor:'pointer', fontWeight:600, zIndex:2 }}>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg>Back
-        </button>
         <div style={{ position:'relative', zIndex:1 }}>
           <span className="sec-label" style={{ color:'rgba(255,255,255,.6)' }}>Our Story</span>
           <h1 className="sec-title" style={{ color:'#fff', marginBottom:12 }}>ABOUT DRYNN</h1>
@@ -1608,7 +1752,7 @@ function AboutPage({ onNav }) {
   )
 }
 
-function ContactPage({ onNav }) {
+function ContactPage() {
   const [sent, setSent]       = useState(false)
   const [saving, setSaving]   = useState(false)
   const [error, setError]     = useState('')
@@ -1655,9 +1799,6 @@ function ContactPage({ onNav }) {
     <div>
       <div style={{ background:'linear-gradient(90deg,#0a1f5d,#1a0a2e)', padding:'28px 20px' }}>
         <div style={{ maxWidth:1100, margin:'0 auto' }}>
-          <button onClick={()=>onNav('home')} style={{ display:'inline-flex', alignItems:'center', gap:6, background:'rgba(255,255,255,.1)', border:'1px solid rgba(255,255,255,.2)', color:'#fff', padding:'6px 14px', borderRadius:50, fontSize:12, cursor:'pointer', fontWeight:600, marginBottom:12 }}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg>Back
-          </button>
           <span className="sec-label" style={{ color:'rgba(255,255,255,.6)' }}>Get In Touch</span>
           <h1 className="sec-title" style={{ color:'#fff' }}>CONTACT US</h1>
         </div>
@@ -1700,7 +1841,7 @@ function ContactPage({ onNav }) {
   )
 }
 
-function CartPage({ cart, onRemove, onClear, user, onNav }) {
+function CartPage({ cart, onRemove, onClear, user }) {
   const total      = cart.reduce((s,i) => s + i.price * i.qty, 0)
   const shipping   = total >= 1500 ? 0 : 99
   const grandTotal = total + shipping
@@ -1822,9 +1963,6 @@ function CartPage({ cart, onRemove, onClear, user, onNav }) {
     <div>
       <div style={{ background:'linear-gradient(90deg,#0a1f5d,#1a0a2e)', padding:'28px 20px' }}>
         <div style={{ maxWidth:1100, margin:'0 auto' }}>
-          <button onClick={()=>onNav('products')} style={{ display:'inline-flex', alignItems:'center', gap:6, background:'rgba(255,255,255,.1)', border:'1px solid rgba(255,255,255,.2)', color:'#fff', padding:'6px 14px', borderRadius:50, fontSize:12, cursor:'pointer', fontWeight:600, marginBottom:12 }}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg>Back
-          </button>
           <span className="sec-label" style={{ color:'rgba(255,255,255,.6)' }}>My Cart</span>
           <h1 className="sec-title" style={{ color:'#fff' }}>SHOPPING CART</h1>
         </div>
@@ -2304,7 +2442,9 @@ function AdminPanel({ onBack }) {
   const [toast, setToast]         = useState('')
   // New product form state
   const [showAddProduct, setShowAddProduct] = useState(false)
-  const [newProduct, setNewProduct] = useState({ name:'', price:'', mrp:'', tag:'', category:'T-Shirts', emoji:'👕', rating:'4.5', reviews:'0', studio_only: false })
+  const [newProduct, setNewProduct] = useState({ name:'', price:'', mrp:'', tag:'', category:'T-Shirts', emoji:'👕', rating:'4.5', reviews:'0', studio_only: false, image_url:'' })
+  const [newProductImgFile, setNewProductImgFile] = useState(null)
+  const [newProductImgPct,  setNewProductImgPct]  = useState(0)
   const [addingProduct, setAddingProduct] = useState(false)
   // Samples state
   const [samples, setSamples]         = useState([])
@@ -2426,6 +2566,17 @@ function AdminPanel({ onBack }) {
   const addProduct = async () => {
     if (!newProduct.name || !newProduct.price || !newProduct.mrp) { alert('Name, Price and MRP are required.'); return }
     setAddingProduct(true)
+    let imageUrl = newProduct.image_url || null
+    // Upload product image to Cloudinary if a file was selected
+    if (newProductImgFile) {
+      try {
+        imageUrl = await uploadToCloudinary(newProductImgFile, pct => setNewProductImgPct(pct))
+      } catch(e) {
+        alert('Image upload failed: ' + e.message)
+        setAddingProduct(false)
+        return
+      }
+    }
     const newId = products.length > 0 ? Math.max(...products.map(p=>Number(p.id))) + 1 : 1
     const product = {
       id: newId,
@@ -2439,11 +2590,13 @@ function AdminPanel({ onBack }) {
       rating: Number(newProduct.rating) || 4.5,
       reviews: Number(newProduct.reviews) || 0,
       studio_only: newProduct.studio_only || false,
+      image_url: imageUrl,
     }
     const { error } = await supabase.from('drynn_products').insert(product)
     if (error) { alert('Failed to add product: ' + error.message); setAddingProduct(false); return }
     setProducts(ps => [...ps, product])
-    setNewProduct({ name:'', price:'', mrp:'', tag:'', category:'T-Shirts', emoji:'👕', rating:'4.5', reviews:'0', studio_only: false })
+    setNewProduct({ name:'', price:'', mrp:'', tag:'', category:'T-Shirts', emoji:'👕', rating:'4.5', reviews:'0', studio_only: false, image_url:'' })
+    setNewProductImgFile(null); setNewProductImgPct(0)
     setShowAddProduct(false)
     setAddingProduct(false)
     showToast('Product added ✓')
@@ -2622,6 +2775,40 @@ function AdminPanel({ onBack }) {
                     <label style={{ fontSize:10, fontWeight:700, letterSpacing:'.1em', color:'#888', textTransform:'uppercase', display:'block', marginBottom:4 }}>Reviews Count</label>
                     <input className="input-field" type="number" placeholder="0" value={newProduct.reviews} onChange={e=>setNewProduct({...newProduct,reviews:e.target.value})} style={{ padding:'8px 12px', fontSize:13 }} />
                   </div>
+                  {/* Product Image Upload */}
+                  <div style={{ gridColumn:'1/-1' }}>
+                    <label style={{ fontSize:10, fontWeight:700, letterSpacing:'.1em', color:'#888', textTransform:'uppercase', display:'block', marginBottom:6 }}>Product Image (for Studio)</label>
+                    <div style={{ border:'2px dashed #e0e0e0', borderRadius:8, padding:'16px', background:'#fafafa', cursor:'pointer', textAlign:'center' }}
+                      onClick={()=>document.getElementById('adminProdImg').click()}>
+                      <input id="adminProdImg" type="file" accept=".png,.jpg,.jpeg,.webp" style={{ display:'none' }}
+                        onChange={e=>{ const f=e.target.files[0]; if(f){ setNewProductImgFile(f); setNewProduct({...newProduct,image_url:''}) }}} />
+                      {newProductImgFile ? (
+                        <div>
+                          <img src={URL.createObjectURL(newProductImgFile)} alt="preview" style={{ maxHeight:80, maxWidth:'100%', objectFit:'contain', borderRadius:6, margin:'0 auto 8px' }} />
+                          <p style={{ fontSize:12, color:'#00a86b', fontWeight:600 }}>✓ {newProductImgFile.name}</p>
+                          <p style={{ fontSize:11, color:'#888' }}>Click to change</p>
+                        </div>
+                      ) : newProduct.image_url ? (
+                        <div>
+                          <img src={newProduct.image_url} alt="preview" style={{ maxHeight:80, maxWidth:'100%', objectFit:'contain', borderRadius:6, margin:'0 auto 8px' }} />
+                          <p style={{ fontSize:11, color:'#888' }}>Click to change</p>
+                        </div>
+                      ) : (
+                        <div>
+                          <div style={{ fontSize:28, marginBottom:6 }}>📷</div>
+                          <p style={{ fontSize:12, fontWeight:600, color:'#555' }}>Upload product photo</p>
+                          <p style={{ fontSize:11, color:'#aaa' }}>PNG, JPG · shown in Studio garment picker</p>
+                        </div>
+                      )}
+                    </div>
+                    {newProductImgPct > 0 && newProductImgPct < 100 && (
+                      <div style={{ marginTop:6, height:4, background:'#f0f0f0', borderRadius:2, overflow:'hidden' }}>
+                        <div style={{ height:'100%', width:`${newProductImgPct}%`, background:'#c8102e', borderRadius:2, transition:'width .3s' }} />
+                      </div>
+                    )}
+                    <p style={{ fontSize:11, color:'#888', marginTop:6 }}>Or paste image URL:</p>
+                    <input className="input-field" placeholder="https://res.cloudinary.com/…" value={newProduct.image_url} onChange={e=>{ setNewProduct({...newProduct,image_url:e.target.value}); setNewProductImgFile(null) }} style={{ padding:'8px 12px', fontSize:12, marginTop:4 }} />
+                  </div>
                   <div style={{ gridColumn:'1/-1' }}>
                     <label style={{ display:'flex', alignItems:'center', gap:10, cursor:'pointer', userSelect:'none', background: newProduct.studio_only ? 'rgba(200,16,46,.07)' : '#f8f8f8', border: `1.5px solid ${newProduct.studio_only ? '#c8102e' : '#e8e8e8'}`, borderRadius:8, padding:'12px 14px' }}>
                       <input type="checkbox" checked={newProduct.studio_only} onChange={e=>setNewProduct({...newProduct,studio_only:e.target.checked})}
@@ -2634,7 +2821,7 @@ function AdminPanel({ onBack }) {
                   </div>
                 </div>
                 <button className="btn-primary" style={{ padding:'10px 24px', fontSize:13, opacity:addingProduct?.6:1 }} onClick={addProduct} disabled={addingProduct}>
-                  {addingProduct ? 'Adding…' : '+ Add Product'}
+                  {addingProduct ? (newProductImgPct > 0 && newProductImgPct < 100 ? `Uploading image… ${newProductImgPct}%` : 'Adding…') : '+ Add Product'}
                 </button>
               </div>
             )}
@@ -2840,7 +3027,7 @@ function ProductEditRow({ product, onSave, onCancel }) {
 // ══════════════════════════════════════════════════════════════
 // ORDER TRACKING PAGE
 // ══════════════════════════════════════════════════════════════
-function OrderTrackingPage({ onNav }) {
+function OrderTrackingPage() {
   const [orderId, setOrderId]   = useState('')
   const [phone, setPhone]       = useState('')
   const [order, setOrder]       = useState(null)
@@ -2876,9 +3063,6 @@ function OrderTrackingPage({ onNav }) {
       <div style={{ background:'linear-gradient(135deg,#0a1f5d,#1a0a2e)', padding:'48px 20px 56px', position:'relative', overflow:'hidden' }}>
         <div style={{ position:'absolute', inset:0, background:'radial-gradient(ellipse at 60% 40%,rgba(200,16,46,.18) 0%,transparent 55%)', pointerEvents:'none' }} />
         <div style={{ maxWidth:1100, margin:'0 auto', position:'relative', zIndex:1, padding:'0 4px' }}>
-          <button onClick={()=>onNav('home')} style={{ display:'inline-flex', alignItems:'center', gap:6, background:'rgba(255,255,255,.1)', border:'1px solid rgba(255,255,255,.2)', color:'#fff', padding:'6px 14px', borderRadius:50, fontSize:12, cursor:'pointer', fontWeight:600, marginBottom:12 }}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg>Back
-          </button>
           <span className="sec-label" style={{ color:'rgba(255,255,255,.6)' }}>Real-Time Tracking</span>
           <h1 className="sec-title" style={{ color:'#fff' }}>TRACK YOUR ORDER</h1>
           <p style={{ fontSize:14, color:'rgba(255,255,255,.6)', marginTop:6 }}>Enter your Order ID or WhatsApp number to see your order status.</p>
@@ -2963,7 +3147,7 @@ function OrderTrackingPage({ onNav }) {
 // ══════════════════════════════════════════════════════════════
 // GROUP ORDER PAGE
 // ══════════════════════════════════════════════════════════════
-function GroupOrderPage({ user, onNav }) {
+function GroupOrderPage({ user }) {
   const [tab, setTab] = useState('create') // create | join
   const [groupId, setGroupId] = useState('')
 
@@ -2972,9 +3156,6 @@ function GroupOrderPage({ user, onNav }) {
       <div style={{ background:'linear-gradient(135deg,#00a86b,#0a1f5d)', padding:'48px 20px 56px', position:'relative', overflow:'hidden' }}>
         <div style={{ position:'absolute', inset:0, background:'radial-gradient(ellipse at 30% 60%,rgba(200,16,46,.12) 0%,transparent 55%)', pointerEvents:'none' }} />
         <div style={{ maxWidth:1100, margin:'0 auto', position:'relative', zIndex:1, padding:'0 4px' }}>
-          <button onClick={()=>onNav('home')} style={{ display:'inline-flex', alignItems:'center', gap:6, background:'rgba(255,255,255,.1)', border:'1px solid rgba(255,255,255,.2)', color:'#fff', padding:'6px 14px', borderRadius:50, fontSize:12, cursor:'pointer', fontWeight:600, marginBottom:12 }}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg>Back
-          </button>
           <span className="sec-label" style={{ color:'rgba(255,255,255,.6)' }}>For Teams & Events</span>
           <h1 className="sec-title" style={{ color:'#fff' }}>GROUP ORDERS</h1>
           <p style={{ fontSize:14, color:'rgba(255,255,255,.65)', marginTop:6, maxWidth:480, lineHeight:1.7 }}>
@@ -3239,7 +3420,10 @@ function MainSite({ user }) {
     { key:'account',  label:'Account', icon:<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg> },
   ]
 
+  // Extra pages accessible via a "more" drawer on mobile
   const isAdmin = user?.email === ADMIN_EMAIL
+
+  const [mobileMore, setMobileMore] = useState(false)
 
   return (
     <div style={{ paddingBottom:64 }}>
@@ -3293,14 +3477,14 @@ function MainSite({ user }) {
       {/* ── PAGE CONTENT ── */}
       {page==='home'     && <HomePage     user={user} onNav={setPage} cart={cart} onAddToCart={addToCart} />}
       {page==='products' && <ProductsPage onAddToCart={addToCart} onNav={setPage} />}
-      {page==='studio'   && <StudioPage   user={user} onNav={setPage} />}
-      {page==='about'    && <AboutPage    onNav={setPage} />}
-      {page==='contact'  && <ContactPage  onNav={setPage} />}
-      {page==='cart'     && <CartPage cart={cart} onRemove={i=>setCart(c=>c.filter((_,idx)=>idx!==i))} onClear={()=>setCart([])} user={user} onNav={setPage} />}
+      {page==='studio'   && <StudioPage   user={user} />}
+      {page==='about'    && <AboutPage />}
+      {page==='contact'  && <ContactPage />}
+      {page==='cart'     && <CartPage cart={cart} onRemove={i=>setCart(c=>c.filter((_,idx)=>idx!==i))} onClear={()=>setCart([])} user={user} />}
       {page==='account'  && <AccountPage user={user} onLogout={handleLogout} onNav={setPage} />}
       {page==='orders'   && <OrdersPage  user={user} onBack={()=>setPage('account')} />}
-      {page==='track'    && <OrderTrackingPage onNav={setPage} />}
-      {page==='group'    && <GroupOrderPage user={user} onNav={setPage} />}
+      {page==='track'    && <OrderTrackingPage />}
+      {page==='group'    && <GroupOrderPage user={user} />}
 
       {/* ── FOOTER (only on main pages) ── */}
       {['home','about','contact','track','group'].includes(page) && page !== 'products' && (
@@ -3338,7 +3522,7 @@ function MainSite({ user }) {
       {/* ── MOBILE BOTTOM NAV ── */}
       <nav className="mobile-bottom-nav" style={{ display:'flex', position:'fixed', bottom:0, left:0, right:0, zIndex:200, background:'#fff', borderTop:'1px solid #ebebeb', height:60, alignItems:'center', justifyContent:'space-around', boxShadow:'0 -4px 16px rgba(0,0,0,.08)' }}>
         {NAV_ITEMS.map(item=>(
-          <button key={item.key} onClick={()=>setPage(item.key)}
+          <button key={item.key} onClick={()=>{ setMobileMore(false); setPage(item.key) }}
             className={`bnav-item${page===item.key?' active':''}`}
             style={{ position:'relative', ...(item.special ? { background:'#c8102e', width:48, height:48, borderRadius:'50%', transform:'translateY(-10px)', boxShadow:'0 4px 16px rgba(200,16,46,.45)', flexShrink:0 } : {}) }}>
             <span style={{ color: item.special ? '#fff' : (page===item.key ? '#c8102e' : '#aaa'), display:'flex', alignItems:'center', justifyContent:'center' }}>{item.icon}</span>
@@ -3346,7 +3530,34 @@ function MainSite({ user }) {
             {item.key==='cart' && cart.length>0 && <div className="cart-badge" style={{ top:-4, right:-4 }}>{cart.length}</div>}
           </button>
         ))}
+        {/* More button */}
+        <button onClick={()=>setMobileMore(v=>!v)}
+          className={`bnav-item${mobileMore?' active':''}`}
+          style={{ position:'relative' }}>
+          <span style={{ color: mobileMore ? '#c8102e' : '#aaa', display:'flex', alignItems:'center', justifyContent:'center' }}>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="5" r="1" fill="currentColor"/><circle cx="12" cy="12" r="1" fill="currentColor"/><circle cx="12" cy="19" r="1" fill="currentColor"/>
+            </svg>
+          </span>
+          <span style={{ fontSize:9, fontWeight:700, color:mobileMore?'#c8102e':'#bbb', letterSpacing:'.04em', textTransform:'uppercase', marginTop:1 }}>More</span>
+        </button>
       </nav>
+
+      {/* ── MOBILE MORE DRAWER ── */}
+      {mobileMore && (
+        <div className="mobile-bottom-nav" style={{ position:'fixed', bottom:60, left:0, right:0, zIndex:199, background:'#fff', borderTop:'1px solid #f0f0f0', padding:'12px 16px 8px', boxShadow:'0 -8px 24px rgba(0,0,0,.1)', display:'block' }}>
+          {isAdmin && (
+            <button onClick={()=>{ setPage('admin'); setMobileMore(false) }}
+              style={{ width:'100%', marginBottom:8, padding:'12px', background:'rgba(200,16,46,.06)', border:'1px solid rgba(200,16,46,.2)', borderRadius:8, fontSize:13, fontWeight:700, color:'#c8102e', cursor:'pointer', letterSpacing:'.04em' }}>
+              ⚙️ Admin Panel
+            </button>
+          )}
+          <button onClick={()=>{ handleLogout(); setMobileMore(false) }}
+            style={{ width:'100%', padding:'12px', background:'#f8f8f8', border:'1px solid #e8e8e8', borderRadius:8, fontSize:13, fontWeight:700, color:'#888', cursor:'pointer' }}>
+            Sign Out
+          </button>
+        </div>
+      )}
 
       {/* ── TOAST ── */}
       {toast && <div className="toast">{toast}</div>}

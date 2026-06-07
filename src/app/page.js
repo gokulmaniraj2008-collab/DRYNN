@@ -593,7 +593,7 @@ function ThreeJSMockup() {
     const init = async () => {
       try {
         // Dynamically import three
-        const threeModule = await import('https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.module.js')
+        const threeModule = await import('https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js')
         if (cancelled) return
         THREE = threeModule
 
@@ -692,7 +692,7 @@ function ThreeJSMockup() {
   // Rebuild garment when type/color changes
   useEffect(() => {
     if (!sceneRef.current || !loaded) return
-    import('https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.module.js').then(THREE => {
+    import('https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js').then(THREE => {
       buildGarment(THREE, sceneRef.current, garment, color)
     })
   }, [garment, color, loaded])

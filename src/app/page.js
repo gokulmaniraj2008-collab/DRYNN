@@ -50,7 +50,7 @@ const REVIEWS = [
 const FAQS = [
   { q:'How long does delivery take?',         a:'We deliver within 5-7 working days across India. Express delivery (2-3 days) is available for select pincodes.' },
   { q:'What file formats do you accept?',     a:'We accept PNG, JPG, JPEG, and SVG files. Minimum 300 DPI is recommended for best print quality.' },
-  { q:'Do you offer Cash on Delivery?',       a:'Yes! We accept UPI, Razorpay, and Cash on Delivery (COD) for all orders across India.' },
+  { q:'What payment methods do you accept?',     a:'We accept UPI and Razorpay for all orders across India. Pay securely online at checkout.' },
   { q:'Can I return or exchange my order?',   a:'We offer replacements only for manufacturing defects or incorrect items. Custom printed items cannot be returned due to change of mind.' },
   { q:'What is the minimum order quantity?',  a:'We accept single piece orders. Bulk discounts apply for orders of 10+ pieces  -  contact us on WhatsApp for a custom quote.' },
   { q:'How do I track my order?',             a:'Once shipped, you will receive a WhatsApp message with your tracking link and courier details.' },
@@ -245,9 +245,9 @@ function IntroPage({ onGoToLogin }) {
       <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(220px,1fr))', gap:16, padding:'0 20px 48px', maxWidth:900, margin:'0 auto', width:'100%' }}>
         {[
           { icon:'👕', label:'Custom Print',        desc:'Any design, any garment, any colour',    bg:'rgba(200,16,46,0.07)'  },
-          { icon:'🚚', label:'Fast Delivery',        desc:'5-7 days across India, COD available',   bg:'rgba(10,31,93,0.07)'   },
+          { icon:'🚚', label:'Fast Delivery',        desc:'5-7 days across India, express available',   bg:'rgba(10,31,93,0.07)'   },
           { icon:'💎', label:'Quality Guaranteed',   desc:'Heat press, wash-proof, 100% guarantee', bg:'rgba(0,168,107,0.07)'  },
-          { icon:'💳', label:'Easy Payment',         desc:'UPI, Razorpay, COD  -  all accepted',       bg:'rgba(245,166,35,0.10)' },
+          { icon:'💳', label:'Easy Payment',         desc:'UPI & Razorpay  -  secure payment',       bg:'rgba(245,166,35,0.10)' },
         ].map((f,i) => (
           <div key={i} style={{ display:'flex', alignItems:'center', gap:14, background:f.bg, borderRadius:12, padding:'16px 18px' }}>
             <div style={{ fontSize:28, flexShrink:0 }}>{f.icon}</div>
@@ -282,7 +282,7 @@ function IntroPage({ onGoToLogin }) {
       </div>
       {/* Footer mini */}
       <div style={{ background:'#0a0a0a', color:'#666', padding:'20px', textAlign:'center', fontSize:11 }}>
-        © 2024 DRYNN · Tamil Nadu, India · UPI / Razorpay / COD Accepted
+        © 2025 DRYNN · Tamil Nadu, India · UPI / Razorpay Accepted
       </div>
     </div>
   )
@@ -781,7 +781,7 @@ function HomePage({ user, onNav, cart, onAddToCart }) {
           {[
             { icon:'🚚', label:'Free Delivery', sub:'Above ₹1,500' },
             { icon:'↩️', label:'Easy Returns',  sub:'Manufacturing defects' },
-            { icon:'🔒', label:'Secure Pay',    sub:'UPI · Razorpay · COD' },
+            { icon:'🔒', label:'Secure Pay',    sub:'UPI · Razorpay · Secure' },
             { icon:'💬', label:'WhatsApp Support', sub:'2-hour response' },
           ].map((f,i) => (
             <div key={i} style={{ display:'flex', alignItems:'center', gap:10, padding:'14px 8px', borderRight:i<3?'1px solid #f0f0f0':'none' }}>
@@ -873,354 +873,31 @@ function HomePage({ user, onNav, cart, onAddToCart }) {
       {/* CTA Banner */}
       <div style={{ background:'linear-gradient(135deg,#c8102e,#0a1f5d)', padding:'56px 16px', textAlign:'center' }}>
         <h2 style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:'clamp(28px,6vw,52px)', color:'#fff', letterSpacing:'.03em', marginBottom:10 }}>READY TO PRINT YOUR DESIGN?</h2>
-        <p style={{ color:'rgba(255,255,255,.7)', fontSize:14, marginBottom:24 }}>Free delivery above ₹1,500 · COD available · Delivered in 5-7 days</p>
+        <p style={{ color:'rgba(255,255,255,.7)', fontSize:14, marginBottom:24 }}>Free delivery above ₹1,500 · UPI & Razorpay · Delivered in 5-7 days</p>
         <button className="btn-primary" style={{ fontSize:14, padding:'14px 32px', background:'#fff', color:'#c8102e' }} onClick={()=>onNav('studio')}>Start Designing →</button>
       </div>
     </div>
   )
 }
 
-// ══════════════════════════════════════════════════════════════
-// PRODUCT DETAIL PAGE  (Flipkart-style)
-// ══════════════════════════════════════════════════════════════
-const PRODUCT_DESCRIPTIONS = {
-  'T-Shirts': 'Crafted from 100% pre-shrunk cotton with a relaxed oversized silhouette. Reinforced stitching at shoulders and double-needle hem for durability. Machine washable, retains shape wash after wash.',
-  'Hoodies':  'Premium 320 GSM fleece blend for ultimate warmth and comfort. Kangaroo pocket, ribbed cuffs and hem. Pre-shrunk so what you order is what you wear.',
-  'Polos':    'Fine pique cotton fabric with a classic two-button placket. Ribbed collar and cuffs with tonal stitching. Perfect for formal and smart-casual occasions.',
-  'Joggers':  'Lightweight yet sturdy 260 GSM cotton-poly blend. Elastic waistband with drawstring, tapered fit, and zip pockets. Ideal for workouts and casual wear.',
-}
-
-const PRODUCT_FEATURES = {
-  'T-Shirts': ['100% Cotton · 200 GSM','Oversized relaxed fit','Pre-shrunk fabric','Double-needle hem','Machine washable'],
-  'Hoodies':  ['320 GSM fleece blend','Kangaroo pocket','Ribbed cuffs & hem','Pre-shrunk','Machine washable'],
-  'Polos':    ['Fine pique cotton','Two-button placket','Ribbed collar','Tonal stitching','Easy-care fabric'],
-  'Joggers':  ['260 GSM cotton-poly','Elastic + drawstring','Tapered fit','Zip side pockets','Anti-pilling finish'],
-}
-
-const MOCK_REVIEWS_DETAIL = [
-  { name:'Arjun R.',   location:'Chennai',   rating:5, color:'#c8102e', text:'Amazing quality! The fabric is super soft and the fit is exactly as described. Will order again.' },
-  { name:'Priya S.',   location:'Bangalore', rating:5, color:'#0a1f5d', text:'Delivered in 5 days, packaging was neat. The print quality exceeded my expectations.' },
-  { name:'Karthik M.', location:'Coimbatore',rating:4, color:'#00a86b', text:'Great product for the price. Slight delay in delivery but worth the wait.' },
-]
-
-function ProductDetailPage({ product, onBack, onAddToCart, wishlist, onToggleWishlist }) {
-  const [selectedSize,  setSelectedSize]  = useState('M')
-  const [selectedColor, setSelectedColor] = useState(SWATCHES[0])
-  const [qty,           setQty]           = useState(1)
-  const [activeTab,     setActiveTab]     = useState('description')
-  const [added,         setAdded]         = useState(false)
-  const inWishlist = wishlist.includes(product.id)
-
-  const handleAddToCart = () => {
-    onAddToCart({ ...product, qty, selectedSize, selectedColor })
-    setAdded(true)
-    setTimeout(() => setAdded(false), 2000)
-  }
-
-  const savings = product.mrp - product.price
-
-  return (
-    <div style={{ background:'#fff', minHeight:'100vh' }}>
-      {/* ── Sticky top bar ── */}
-      <div style={{ position:'sticky', top:55, zIndex:50, background:'#fff', borderBottom:'1px solid #f0f0f0', padding:'10px 16px', display:'flex', alignItems:'center', gap:12 }}>
-        <button onClick={onBack} style={{ background:'none', border:'none', cursor:'pointer', display:'flex', alignItems:'center', gap:6, color:'#555', fontSize:13, fontWeight:600, padding:0 }}>
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg>
-          Back
-        </button>
-        <div style={{ flex:1, overflow:'hidden', whiteSpace:'nowrap', textOverflow:'ellipsis', fontSize:13, fontWeight:700, color:'#0a0a0a' }}>{product.name}</div>
-        <button onClick={()=>onToggleWishlist(product.id)} style={{ background:'none', border:'none', cursor:'pointer', fontSize:20, padding:4 }}>
-          {inWishlist ? '❤️' : '🤍'}
-        </button>
-      </div>
-
-      {/* ── Hero image area ── */}
-      <div style={{ background:'linear-gradient(160deg,#f8f8f8,#f0f0f0)', position:'relative', display:'flex', alignItems:'center', justifyContent:'center', minHeight:320, overflow:'hidden' }}>
-        {/* Discount badge */}
-        <div style={{ position:'absolute', top:16, left:16, background:'#c8102e', color:'#fff', fontWeight:700, fontSize:13, padding:'4px 12px', borderRadius:4 }}>
-          {disc(product.price, product.mrp)}% OFF
-        </div>
-        {/* Tag badge */}
-        <div style={{ position:'absolute', top:16, right:16, background:product.tagColor, color:'#fff', fontSize:10, fontWeight:700, letterSpacing:'.1em', textTransform:'uppercase', padding:'4px 10px', borderRadius:4 }}>
-          {product.tag}
-        </div>
-        {/* Big emoji product image */}
-        <div style={{ fontSize:160, lineHeight:1, userSelect:'none', filter:'drop-shadow(0 12px 32px rgba(0,0,0,0.10))' }}>{product.emoji}</div>
-        {/* Color tint overlay based on selected color */}
-        <div style={{ position:'absolute', inset:0, background:selectedColor==='#ffffff'?'transparent':`${selectedColor}18`, pointerEvents:'none', transition:'background .3s' }} />
-      </div>
-
-      {/* ── Main info ── */}
-      <div style={{ padding:'20px 16px 0', maxWidth:700, margin:'0 auto' }}>
-        {/* Category chip */}
-        <span style={{ fontSize:10, fontWeight:700, letterSpacing:'.14em', textTransform:'uppercase', color:'#c8102e', background:'rgba(200,16,46,.08)', padding:'3px 10px', borderRadius:20 }}>{product.category}</span>
-
-        {/* Name */}
-        <h1 style={{ fontSize:22, fontWeight:800, color:'#0a0a0a', marginTop:10, marginBottom:6, lineHeight:1.25 }}>{product.name}</h1>
-
-        {/* Rating row */}
-        <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:16 }}>
-          <div style={{ display:'inline-flex', alignItems:'center', gap:6, background:'#00a86b', color:'#fff', fontWeight:700, fontSize:12, padding:'3px 10px', borderRadius:4 }}>
-            <StarRating rating={product.rating} />
-          </div>
-          <span style={{ fontSize:13, color:'#555' }}>{product.rating} · {product.reviews.toLocaleString()} ratings</span>
-        </div>
-
-        {/* Price block */}
-        <div style={{ background:'#f8fff8', border:'1px solid #d4edda', borderRadius:10, padding:'14px 16px', marginBottom:20 }}>
-          <div style={{ display:'flex', alignItems:'baseline', gap:12, marginBottom:4 }}>
-            <span style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:36, color:'#0a0a0a', letterSpacing:'.02em' }}>₹{product.price.toLocaleString()}</span>
-            <span style={{ fontSize:16, color:'#aaa', textDecoration:'line-through' }}>₹{product.mrp.toLocaleString()}</span>
-            <span style={{ fontSize:14, fontWeight:700, color:'#00a86b' }}>{disc(product.price, product.mrp)}% off</span>
-          </div>
-          <p style={{ fontSize:12, color:'#00a86b', fontWeight:600 }}>You save ₹{savings.toLocaleString()} on this order!</p>
-          <p style={{ fontSize:11, color:'#888', marginTop:4 }}>Inclusive of all taxes · Free delivery above ₹1,500</p>
-        </div>
-
-        {/* Colour picker */}
-        <div style={{ marginBottom:20 }}>
-          <p style={{ fontSize:12, fontWeight:700, letterSpacing:'.1em', textTransform:'uppercase', color:'#333', marginBottom:10 }}>
-            Colour — <span style={{ fontWeight:400, color:'#888', textTransform:'none', letterSpacing:0 }}>{selectedColor === '#ffffff' ? 'White' : selectedColor === '#0a0a0a' ? 'Black' : selectedColor}</span>
-          </p>
-          <div style={{ display:'flex', gap:10, flexWrap:'wrap' }}>
-            {SWATCHES.map(c => (
-              <div key={c} onClick={()=>setSelectedColor(c)}
-                style={{ width:36, height:36, borderRadius:'50%', background:c, cursor:'pointer', border:c==='#ffffff'?'1.5px solid #d0d0d0':'1.5px solid transparent', boxShadow:selectedColor===c?`0 0 0 3px #fff, 0 0 0 5px #c8102e`:'0 1px 4px rgba(0,0,0,.15)', transition:'box-shadow .15s', position:'relative' }}>
-                {selectedColor===c && <div style={{ position:'absolute', inset:'50%', transform:'translate(-50%,-50%)', width:10, height:10, borderRadius:'50%', background: c==='#ffffff'?'#333':'#fff', opacity:.7 }} />}
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Size picker */}
-        <div style={{ marginBottom:20 }}>
-          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:10 }}>
-            <p style={{ fontSize:12, fontWeight:700, letterSpacing:'.1em', textTransform:'uppercase', color:'#333' }}>Size — <span style={{ fontWeight:600, color:'#c8102e', textTransform:'none', letterSpacing:0 }}>{selectedSize}</span></p>
-            <button style={{ fontSize:11, color:'#0a1f5d', fontWeight:600, background:'none', border:'none', cursor:'pointer', textDecoration:'underline' }}>Size Guide</button>
-          </div>
-          <div style={{ display:'flex', gap:10, flexWrap:'wrap' }}>
-            {SIZES.map(s => (
-              <button key={s} onClick={()=>setSelectedSize(s)}
-                style={{ width:52, height:52, borderRadius:8, border:selectedSize===s?'2px solid #c8102e':'1.5px solid #e0e0e0', background:selectedSize===s?'rgba(200,16,46,.06)':'#fff', color:selectedSize===s?'#c8102e':'#555', fontWeight:700, fontSize:14, cursor:'pointer', transition:'all .15s' }}>
-                {s}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Quantity */}
-        <div style={{ marginBottom:24 }}>
-          <p style={{ fontSize:12, fontWeight:700, letterSpacing:'.1em', textTransform:'uppercase', color:'#333', marginBottom:10 }}>Quantity</p>
-          <div style={{ display:'flex', alignItems:'center', gap:0, width:'fit-content', border:'1.5px solid #e0e0e0', borderRadius:8, overflow:'hidden' }}>
-            <button onClick={()=>setQty(q=>Math.max(1,q-1))} style={{ width:44, height:44, background:'#f8f8f8', border:'none', cursor:'pointer', fontSize:20, fontWeight:700, color:'#555', display:'flex', alignItems:'center', justifyContent:'center' }}>−</button>
-            <div style={{ width:52, height:44, display:'flex', alignItems:'center', justifyContent:'center', fontSize:16, fontWeight:700, borderLeft:'1px solid #e0e0e0', borderRight:'1px solid #e0e0e0' }}>{qty}</div>
-            <button onClick={()=>setQty(q=>q+1)} style={{ width:44, height:44, background:'#f8f8f8', border:'none', cursor:'pointer', fontSize:20, fontWeight:700, color:'#555', display:'flex', alignItems:'center', justifyContent:'center' }}>+</button>
-          </div>
-          <p style={{ fontSize:11, color:'#00a86b', marginTop:6, fontWeight:600 }}>✓ In Stock · Usually ships in 2-3 days</p>
-        </div>
-
-        {/* Action buttons */}
-        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10, marginBottom:24 }}>
-          <button onClick={handleAddToCart}
-            style={{ padding:'14px', borderRadius:8, border:'none', background: added ? '#00a86b' : '#c8102e', color:'#fff', fontWeight:700, fontSize:14, cursor:'pointer', transition:'background .2s', display:'flex', alignItems:'center', justifyContent:'center', gap:8 }}>
-            {added ? '✓ Added!' : '🛒 Add to Cart'}
-          </button>
-          <button style={{ padding:'14px', borderRadius:8, border:'2px solid #0a1f5d', background:'#fff', color:'#0a1f5d', fontWeight:700, fontSize:14, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:8 }}
-            onClick={()=>{ handleAddToCart() }}>
-            ⚡ Buy Now
-          </button>
-        </div>
-
-        {/* Delivery + offers strip */}
-        <div style={{ background:'#f8f8f8', borderRadius:10, padding:'14px 16px', marginBottom:24 }}>
-          {[
-            { icon:'🚚', label:'Free Delivery', sub:'On orders above ₹1,500' },
-            { icon:'↩️', label:'Easy Returns',  sub:'Replacement for manufacturing defects' },
-            { icon:'✅', label:'Quality Check', sub:'Every piece inspected before dispatch' },
-            { icon:'💬', label:'WhatsApp Support', sub:'Reply within 2 hours' },
-          ].map((f,i) => (
-            <div key={i} style={{ display:'flex', alignItems:'center', gap:12, padding:'8px 0', borderBottom:i<3?'1px solid #efefef':'none' }}>
-              <span style={{ fontSize:20, width:28, textAlign:'center', flexShrink:0 }}>{f.icon}</span>
-              <div>
-                <span style={{ fontSize:13, fontWeight:700 }}>{f.label} </span>
-                <span style={{ fontSize:12, color:'#888' }}>— {f.sub}</span>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {/* Tabs: Description / Features / Reviews */}
-        <div style={{ borderBottom:'2px solid #f0f0f0', display:'flex', gap:0, marginBottom:20 }}>
-          {[['description','Description'],['features','Features'],['reviews','Reviews']].map(([key,label]) => (
-            <button key={key} onClick={()=>setActiveTab(key)}
-              style={{ padding:'12px 20px', border:'none', background:'none', cursor:'pointer', fontSize:13, fontWeight:700, color:activeTab===key?'#c8102e':'#888', borderBottom:activeTab===key?'2px solid #c8102e':'2px solid transparent', marginBottom:'-2px', transition:'color .15s', letterSpacing:'.02em' }}>
-              {label}
-            </button>
-          ))}
-        </div>
-
-        {activeTab === 'description' && (
-          <div style={{ marginBottom:28 }}>
-            <p style={{ fontSize:14, color:'#444', lineHeight:1.85 }}>
-              {PRODUCT_DESCRIPTIONS[product.category] || 'Premium quality garment crafted for comfort and style. Perfect for everyday wear or custom printing.'}
-            </p>
-            <div style={{ marginTop:16, display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
-              {[['Material','Premium Cotton Blend'],['Fit','Regular / Relaxed'],['Care','Machine Wash Cold'],['Origin','Made in India']].map(([k,v])=>(
-                <div key={k} style={{ background:'#f8f8f8', borderRadius:8, padding:'10px 12px' }}>
-                  <div style={{ fontSize:10, fontWeight:700, letterSpacing:'.1em', textTransform:'uppercase', color:'#aaa', marginBottom:3 }}>{k}</div>
-                  <div style={{ fontSize:13, fontWeight:600, color:'#0a0a0a' }}>{v}</div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {activeTab === 'features' && (
-          <div style={{ marginBottom:28 }}>
-            <ul style={{ listStyle:'none', padding:0, display:'flex', flexDirection:'column', gap:10 }}>
-              {(PRODUCT_FEATURES[product.category] || []).map((f,i) => (
-                <li key={i} style={{ display:'flex', alignItems:'center', gap:12, padding:'10px 14px', background:'#f8f8f8', borderRadius:8, fontSize:13, fontWeight:600 }}>
-                  <span style={{ width:22, height:22, borderRadius:'50%', background:'#00a86b', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-                    <svg width="11" height="11" viewBox="0 0 10 10" fill="none"><polyline points="1.5,5 4,7.5 8.5,2.5" stroke="#fff" strokeWidth="1.8" strokeLinecap="round"/></svg>
-                  </span>
-                  {f}
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
-
-        {activeTab === 'reviews' && (
-          <div style={{ marginBottom:28 }}>
-            {/* Rating summary */}
-            <div style={{ display:'flex', alignItems:'center', gap:20, padding:'16px', background:'#f8f8f8', borderRadius:10, marginBottom:20 }}>
-              <div style={{ textAlign:'center' }}>
-                <div style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:52, color:'#0a0a0a', lineHeight:1 }}>{product.rating}</div>
-                <StarRating rating={product.rating} />
-                <div style={{ fontSize:11, color:'#aaa', marginTop:4 }}>{product.reviews.toLocaleString()} ratings</div>
-              </div>
-              <div style={{ flex:1 }}>
-                {[5,4,3,2,1].map(star => {
-                  const pct = star===5?62:star===4?22:star===3?10:star===2?4:2
-                  return (
-                    <div key={star} style={{ display:'flex', alignItems:'center', gap:8, marginBottom:5 }}>
-                      <span style={{ fontSize:11, color:'#555', width:8 }}>{star}</span>
-                      <span style={{ color:'#f5a623', fontSize:11 }}>★</span>
-                      <div style={{ flex:1, height:6, background:'#e0e0e0', borderRadius:3, overflow:'hidden' }}>
-                        <div style={{ width:`${pct}%`, height:'100%', background: star>=4?'#00a86b':star===3?'#f5a623':'#c8102e', borderRadius:3 }} />
-                      </div>
-                      <span style={{ fontSize:11, color:'#aaa', width:28 }}>{pct}%</span>
-                    </div>
-                  )
-                })}
-              </div>
-            </div>
-            {/* Individual reviews */}
-            <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
-              {MOCK_REVIEWS_DETAIL.map((r,i) => (
-                <div key={i} style={{ border:'1px solid #f0f0f0', borderRadius:10, padding:'16px' }}>
-                  <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:10 }}>
-                    <div style={{ width:36, height:36, borderRadius:'50%', background:r.color, display:'flex', alignItems:'center', justifyContent:'center', color:'#fff', fontWeight:700, fontSize:15, flexShrink:0 }}>{r.name[0]}</div>
-                    <div>
-                      <div style={{ fontSize:13, fontWeight:700 }}>{r.name}</div>
-                      <div style={{ fontSize:11, color:'#aaa' }}>{r.location}</div>
-                    </div>
-                    <div style={{ marginLeft:'auto', background:'#00a86b', color:'#fff', fontSize:11, fontWeight:700, padding:'2px 8px', borderRadius:4, display:'flex', alignItems:'center', gap:3 }}>
-                      {r.rating} ★
-                    </div>
-                  </div>
-                  <p style={{ fontSize:13, color:'#444', lineHeight:1.75 }}>"{r.text}"</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Bottom spacer for sticky bar */}
-        <div style={{ height:24 }} />
-      </div>
-
-      {/* ── Sticky bottom Add to Cart bar ── */}
-      <div style={{ position:'fixed', bottom:60, left:0, right:0, zIndex:150, background:'#fff', borderTop:'1px solid #f0f0f0', padding:'12px 16px', boxShadow:'0 -4px 20px rgba(0,0,0,.10)', display:'flex', gap:10 }}>
-        <div style={{ flex:1 }}>
-          <div style={{ fontSize:11, color:'#888' }}>Total</div>
-          <div style={{ fontSize:20, fontWeight:800, color:'#c8102e' }}>₹{(product.price * qty).toLocaleString()}</div>
-        </div>
-        <button onClick={handleAddToCart}
-          style={{ flex:2, padding:'13px', borderRadius:8, border:'none', background:added?'#00a86b':'#c8102e', color:'#fff', fontWeight:700, fontSize:15, cursor:'pointer', transition:'background .2s' }}>
-          {added ? '✓ Added to Cart!' : '🛒 Add to Cart'}
-        </button>
-      </div>
-    </div>
-  )
-}
-
-// ══════════════════════════════════════════════════════════════
-// PRODUCTS PAGE  (with search + tap-to-detail)
-// ══════════════════════════════════════════════════════════════
 function ProductsPage({ onAddToCart }) {
-  const products    = useProducts()
-  const [activeTab,    setActiveTab]    = useState('All')
-  const [sort,         setSort]         = useState('popular')
-  const [wishlist,     setWishlist]     = useState([])
-  const [search,       setSearch]       = useState('')
-  const [searching,    setSearching]    = useState(false)
-  const [detailProduct,setDetailProduct]= useState(null)   // open product detail
-
+  const products  = useProducts()
+  const [activeTab, setActiveTab] = useState('All')
+  const [sort, setSort]           = useState('popular')
+  const [wishlist, setWishlist]   = useState([])
   const categories = ['All','T-Shirts','Hoodies','Polos','Joggers']
-
-  const filtered = products.filter(p => {
-    const matchTab  = activeTab === 'All' || p.category === activeTab
-    const matchSearch = search.trim() === '' || p.name.toLowerCase().includes(search.toLowerCase()) || p.category.toLowerCase().includes(search.toLowerCase())
-    return matchTab && matchSearch
-  })
+  const filtered = products.filter(p => activeTab === 'All' || p.category === activeTab)
   const sorted = [...filtered].sort((a,b) => sort==='price-asc'?a.price-b.price : sort==='price-desc'?b.price-a.price : b.reviews-a.reviews)
-
-  const toggleWishlist = id => setWishlist(w => w.includes(id) ? w.filter(x=>x!==id) : [...w, id])
-
-  // Show product detail page
-  if (detailProduct) {
-    return (
-      <ProductDetailPage
-        product={detailProduct}
-        onBack={()=>setDetailProduct(null)}
-        onAddToCart={onAddToCart}
-        wishlist={wishlist}
-        onToggleWishlist={toggleWishlist}
-      />
-    )
-  }
 
   return (
     <div style={{ padding:'0 0 40px' }}>
       {/* Header */}
-      <div style={{ background:'linear-gradient(90deg,#0a1f5d,#1a0a2e)', padding:'24px 16px 20px' }}>
+      <div style={{ background:'linear-gradient(90deg,#0a1f5d,#1a0a2e)', padding:'32px 16px' }}>
         <div style={{ maxWidth:1100, margin:'0 auto' }}>
           <span className="sec-label" style={{ color:'rgba(255,255,255,.6)' }}>Our Collection</span>
-          <h1 className="sec-title" style={{ color:'#fff', marginBottom:16 }}>ALL PRODUCTS</h1>
-          {/* ── Search bar ── */}
-          {searching ? (
-            <div style={{ display:'flex', alignItems:'center', gap:10, background:'rgba(255,255,255,.1)', border:'1.5px solid rgba(255,255,255,.3)', borderRadius:10, padding:'10px 14px' }}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.6)" strokeWidth="2" strokeLinecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-              <input
-                autoFocus
-                value={search}
-                onChange={e=>setSearch(e.target.value)}
-                placeholder="Search t-shirts, hoodies, polos…"
-                style={{ flex:1, background:'none', border:'none', outline:'none', fontSize:14, color:'#fff', fontFamily:'DM Sans,sans-serif' }}
-              />
-              {search && <button onClick={()=>setSearch('')} style={{ background:'none', border:'none', cursor:'pointer', color:'rgba(255,255,255,.5)', fontSize:18, lineHeight:1, padding:0 }}>×</button>}
-              <button onClick={()=>{ setSearching(false); setSearch('') }} style={{ background:'none', border:'none', cursor:'pointer', color:'rgba(255,255,255,.7)', fontSize:13, fontWeight:600, padding:0, whiteSpace:'nowrap' }}>Cancel</button>
-            </div>
-          ) : (
-            <button onClick={()=>setSearching(true)}
-              style={{ display:'flex', alignItems:'center', gap:10, width:'100%', background:'rgba(255,255,255,.1)', border:'1.5px solid rgba(255,255,255,.2)', borderRadius:10, padding:'10px 14px', cursor:'text', color:'rgba(255,255,255,.5)', fontSize:14, fontFamily:'DM Sans,sans-serif' }}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.5)" strokeWidth="2" strokeLinecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-              Search products…
-            </button>
-          )}
+          <h1 className="sec-title" style={{ color:'#fff' }}>ALL PRODUCTS</h1>
         </div>
       </div>
-
       {/* Tabs + sort */}
       <div style={{ background:'#fff', borderBottom:'1px solid #f0f0f0', position:'sticky', top:56, zIndex:10 }}>
         <div style={{ maxWidth:1100, margin:'0 auto', display:'flex', alignItems:'center', justifyContent:'space-between', padding:'0 16px', flexWrap:'wrap', gap:8 }}>
@@ -1235,55 +912,36 @@ function ProductsPage({ onAddToCart }) {
           </select>
         </div>
       </div>
-
       {/* Grid */}
       <div style={{ maxWidth:1100, margin:'0 auto', padding:'24px 16px' }}>
-        {/* Search results info */}
-        {search && (
-          <div style={{ marginBottom:14, display:'flex', alignItems:'center', gap:10 }}>
-            <span style={{ fontSize:13, color:'#555' }}>Results for <strong>"{search}"</strong></span>
-            <button onClick={()=>setSearch('')} style={{ fontSize:11, color:'#c8102e', background:'rgba(200,16,46,.08)', border:'none', borderRadius:20, padding:'3px 10px', cursor:'pointer', fontWeight:600 }}>✕ Clear</button>
-          </div>
-        )}
         <p style={{ fontSize:12, color:'#aaa', marginBottom:16 }}>{sorted.length} product{sorted.length!==1?'s':''}</p>
-
-        {sorted.length === 0 ? (
-          <div style={{ textAlign:'center', padding:'64px 16px' }}>
-            <div style={{ fontSize:64, marginBottom:12 }}>🔍</div>
-            <h3 style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:26, marginBottom:8 }}>NO PRODUCTS FOUND</h3>
-            <p style={{ color:'#aaa', fontSize:13 }}>Try a different search or browse all categories.</p>
-            <button onClick={()=>{ setSearch(''); setActiveTab('All') }} className="btn-primary" style={{ marginTop:16, padding:'10px 24px' }}>Browse All</button>
-          </div>
-        ) : (
-          <div className="products-grid" style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:16 }}>
-            {sorted.map(p => (
-              <div key={p.id} className="product-card" onClick={()=>setDetailProduct(p)}>
-                <div style={{ background:'#f8f8f8', height:200, display:'flex', alignItems:'center', justifyContent:'center', fontSize:80, position:'relative' }}>
-                  {p.emoji}
-                  <div style={{ position:'absolute', top:10, left:10, background:p.tagColor, color:'#fff', fontSize:9, fontWeight:700, letterSpacing:'.1em', textTransform:'uppercase', padding:'3px 8px', borderRadius:2 }}>{p.tag}</div>
-                  <button onClick={e=>{ e.stopPropagation(); toggleWishlist(p.id) }}
-                    style={{ position:'absolute', top:8, right:8, background:'#fff', border:'none', borderRadius:'50%', width:30, height:30, display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', fontSize:16, boxShadow:'0 2px 8px rgba(0,0,0,.1)' }}>
-                    {wishlist.includes(p.id)?'❤️':'🤍'}
-                  </button>
-                </div>
-                <div style={{ padding:'12px 14px' }}>
-                  <p style={{ fontSize:13, fontWeight:600, marginBottom:4 }}>{p.name}</p>
-                  <div style={{ display:'flex', alignItems:'center', gap:6, marginBottom:6 }}>
-                    <StarRating rating={p.rating} />
-                    <span style={{ fontSize:11, color:'#aaa' }}>({p.reviews})</span>
-                  </div>
-                  <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:4 }}>
-                    <span style={{ fontSize:16, fontWeight:700 }}>₹{p.price.toLocaleString()}</span>
-                    <span style={{ fontSize:12, color:'#aaa', textDecoration:'line-through' }}>₹{p.mrp.toLocaleString()}</span>
-                  </div>
-                  <div style={{ fontSize:11, color:'#00a86b', fontWeight:600, marginBottom:10 }}>{disc(p.price,p.mrp)}% off</div>
-                  <button className="btn-primary" style={{ width:'100%', padding:'9px', fontSize:12 }}
-                    onClick={e=>{ e.stopPropagation(); onAddToCart(p) }}>Add to Cart</button>
-                </div>
+        <div className="products-grid" style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:16 }}>
+          {sorted.map(p => (
+            <div key={p.id} className="product-card">
+              <div style={{ background:'#f8f8f8', height:200, display:'flex', alignItems:'center', justifyContent:'center', fontSize:80, position:'relative' }}>
+                {p.emoji}
+                <div style={{ position:'absolute', top:10, left:10, background:p.tagColor, color:'#fff', fontSize:9, fontWeight:700, letterSpacing:'.1em', textTransform:'uppercase', padding:'3px 8px', borderRadius:2 }}>{p.tag}</div>
+                <button onClick={e=>{ e.stopPropagation(); setWishlist(w=>w.includes(p.id)?w.filter(x=>x!==p.id):[...w,p.id]) }}
+                  style={{ position:'absolute', top:8, right:8, background:'#fff', border:'none', borderRadius:'50%', width:30, height:30, display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', fontSize:16, boxShadow:'0 2px 8px rgba(0,0,0,.1)' }}>
+                  {wishlist.includes(p.id)?'❤️':'🤍'}
+                </button>
               </div>
-            ))}
-          </div>
-        )}
+              <div style={{ padding:'12px 14px' }}>
+                <p style={{ fontSize:13, fontWeight:600, marginBottom:4 }}>{p.name}</p>
+                <div style={{ display:'flex', alignItems:'center', gap:6, marginBottom:6 }}>
+                  <StarRating rating={p.rating} />
+                  <span style={{ fontSize:11, color:'#aaa' }}>({p.reviews})</span>
+                </div>
+                <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:4 }}>
+                  <span style={{ fontSize:16, fontWeight:700 }}>₹{p.price.toLocaleString()}</span>
+                  <span style={{ fontSize:12, color:'#aaa', textDecoration:'line-through' }}>₹{p.mrp.toLocaleString()}</span>
+                </div>
+                <div style={{ fontSize:11, color:'#00a86b', fontWeight:600, marginBottom:10 }}>{disc(p.price,p.mrp)}% off</div>
+                <button className="btn-primary" style={{ width:'100%', padding:'9px', fontSize:12 }} onClick={()=>onAddToCart(p)}>Add to Cart</button>
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   )
@@ -1587,7 +1245,7 @@ function AboutPage() {
             { title:'Who We Are', color:'#c8102e', text:'DRYNN is a custom garment printing service based in Tamil Nadu, India. We bring your designs to life on premium quality t-shirts, hoodies, polos, and joggers  -  delivered right to your door.' },
             { title:'Our Mission', color:'#0a1f5d', text:"We believe everyone deserves to wear exactly what they imagine. From individual pieces to bulk corporate orders, we treat every print with the same precision and care." },
             { title:"Quality First", color:"#00a86b", text:"We use heat press printing technology on pre-shrunk, premium fabrics. Every order goes through quality checks before dispatch. If it's not right, we reprint it - simple as that." },
-            { title:'Delivery',    color:'#f5a623', text:'We deliver across India in 5-7 working days. Cash on delivery is available. For bulk orders of 10+ pieces, contact us on WhatsApp for custom pricing and express timelines.' },
+            { title:'Delivery',    color:'#f5a623', text:'We deliver across India in 5-7 working days. For bulk orders of 10+ pieces, contact us on WhatsApp for custom pricing and express timelines.' },
           ].map((s,i) => (
             <div key={i} style={{ display:'flex', gap:16 }}>
               <div style={{ width:4, minHeight:60, background:s.color, borderRadius:2, flexShrink:0 }} />
@@ -1722,7 +1380,7 @@ function CartPage({ cart, onRemove, onClear, user }) {
   const [step,   setStep]   = React.useState('cart')
   const [saving, setSaving] = React.useState(false)
   const [form,   setForm]   = React.useState({
-    name: '', phone: '', address: '', pincode: '', payment: 'cod',
+    name: '', phone: '', address: '', pincode: '', payment: 'upi',
   })
 
   const placeOrder = async () => {
@@ -1763,7 +1421,7 @@ function CartPage({ cart, onRemove, onClear, user }) {
         <h2 style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:32, marginBottom:12 }}>ORDER CONFIRMED!</h2>
         <p style={{ fontSize:14, color:'#555', lineHeight:1.8, marginBottom:28 }}>We received your order and will WhatsApp you within 2 hours to confirm printing and delivery.</p>
         <div style={{ background:'#f8f8f8', borderRadius:12, padding:'20px', marginBottom:24, textAlign:'left' }}>
-          {[['Payment', form.payment==='cod'?'Cash on Delivery':'UPI (link sent on WhatsApp)'],['Delivery','5-7 working days'],['Support','WhatsApp: +91 99447 61306']].map(([k,v])=>(
+          {[['Payment','UPI / Razorpay (link sent on WhatsApp)'],['Delivery','5-7 working days'],['Support','WhatsApp: +91 99447 61306']].map(([k,v])=>(
             <div key={k} style={{ display:'flex', justifyContent:'space-between', padding:'8px 0', borderBottom:'1px solid #eee', fontSize:13 }}>
               <span style={{ color:'#888' }}>{k}</span><span style={{ fontWeight:600 }}>{v}</span>
             </div>
@@ -1809,15 +1467,13 @@ function CartPage({ cart, onRemove, onClear, user }) {
             <input className="input-field" placeholder="6-digit pincode" maxLength={6} value={form.pincode} onChange={e=>setForm({...form,pincode:e.target.value})} style={{ maxWidth:160 }} /></div>
           <div>
             <label style={{ fontSize:11, fontWeight:700, letterSpacing:'.12em', textTransform:'uppercase', color:'#555', display:'block', marginBottom:10 }}>Payment Method</label>
-            <div style={{ display:'flex', gap:10 }}>
-              {[['cod','💵 Cash on Delivery'],['upi','📱 UPI / Online']].map(([val,label])=>(
-                <button key={val} onClick={()=>setForm({...form,payment:val})}
-                  style={{ flex:1, padding:'12px', border:`2px solid ${form.payment===val?'#c8102e':'#e0e0e0'}`, borderRadius:8, background:form.payment===val?'rgba(200,16,46,.05)':'#fff', cursor:'pointer', fontSize:13, fontWeight:600, color:form.payment===val?'#c8102e':'#555', transition:'all .15s' }}>
-                  {label}
-                </button>
-              ))}
+            <div style={{ padding:'14px 16px', border:'2px solid #c8102e', borderRadius:8, background:'rgba(200,16,46,.04)', display:'flex', alignItems:'center', gap:10 }}>
+              <span style={{ fontSize:20 }}>📱</span>
+              <div>
+                <div style={{ fontWeight:700, fontSize:13, color:'#c8102e' }}>UPI / Razorpay</div>
+                <div style={{ fontSize:11, color:'#888', marginTop:2 }}>We'll send a payment link on WhatsApp within 30 minutes.</div>
+              </div>
             </div>
-            {form.payment==='upi' && <p style={{ fontSize:12, color:'#888', marginTop:8, background:'#f8f8f8', padding:'10px 12px', borderRadius:6 }}>📲 We'll send a UPI payment link on WhatsApp within 30 minutes.</p>}
           </div>
           <button className="btn-primary" style={{ padding:15, fontSize:14, opacity:saving?.6:1 }} onClick={placeOrder} disabled={saving}>
             {saving?'Placing Order…':`Place Order · ₹${grandTotal.toLocaleString()}`}
@@ -1879,6 +1535,191 @@ function CartPage({ cart, onRemove, onClear, user }) {
   )
 }
 
+// ══════════════════════════════════════════════════════════════
+// MY ORDERS PAGE
+// ══════════════════════════════════════════════════════════════
+function OrdersPage({ user, onBack }) {
+  const [orders,  setOrders]  = useState([])
+  const [loading, setLoading] = useState(true)
+  const [selected,setSelected]= useState(null)  // order to show detail
+
+  useEffect(() => {
+    if (!user) { setLoading(false); return }
+    supabase.from('drynn_orders')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('placed_at', { ascending: false })
+      .then(({ data, error }) => {
+        if (!error && data) setOrders(data)
+        setLoading(false)
+      })
+  }, [user])
+
+  const STATUS_COLORS = {
+    Received: { bg:'#fff8e1', color:'#f5a623', border:'#ffe082' },
+    Approved: { bg:'#e8f0fe', color:'#0a1f5d', border:'#c5d3f6' },
+    Printing: { bg:'#f3e5f5', color:'#9b59b6', border:'#e1bee7' },
+    Packed:   { bg:'#e8f5e9', color:'#00a86b', border:'#c8e6c9' },
+    Shipped:  { bg:'#fce4ec', color:'#c8102e', border:'#f8bbd0' },
+    Delivered:{ bg:'#e8f5e9', color:'#00a86b', border:'#c8e6c9' },
+  }
+  const STATUS_STEPS = ['Received','Approved','Printing','Packed','Shipped','Delivered']
+
+  // Order detail view
+  if (selected) {
+    const sc = STATUS_COLORS[selected.status] || STATUS_COLORS['Received']
+    const stepIdx = STATUS_STEPS.indexOf(selected.status)
+    const isConfirmed = ['Packed','Shipped','Delivered'].includes(selected.status)
+    return (
+      <div>
+        <div style={{ background:'linear-gradient(90deg,#0a1f5d,#1a0a2e)', padding:'24px 16px' }}>
+          <div style={{ maxWidth:600, margin:'0 auto' }}>
+            <button onClick={()=>setSelected(null)} style={{ background:'rgba(255,255,255,.1)', border:'1px solid rgba(255,255,255,.2)', color:'#fff', padding:'6px 14px', borderRadius:50, fontSize:12, cursor:'pointer', fontWeight:600, marginBottom:12 }}>← My Orders</button>
+            <span className="sec-label" style={{ color:'rgba(255,255,255,.6)' }}>Order Details</span>
+            <h1 className="sec-title" style={{ color:'#fff', fontSize:'clamp(22px,5vw,36px)' }}>#{selected.id?.slice(0,8).toUpperCase()}</h1>
+          </div>
+        </div>
+        <div style={{ maxWidth:600, margin:'0 auto', padding:'24px 16px' }}>
+
+          {/* ORDER CONFIRMED banner */}
+          {isConfirmed && (
+            <div style={{ background:'linear-gradient(135deg,#00a86b,#00c47a)', borderRadius:14, padding:'20px 20px', marginBottom:24, display:'flex', alignItems:'center', gap:14, boxShadow:'0 4px 20px rgba(0,168,107,.25)' }}>
+              <div style={{ fontSize:44, flexShrink:0 }}>✅</div>
+              <div>
+                <div style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:24, color:'#fff', letterSpacing:'.06em' }}>ORDER CONFIRMED!</div>
+                <div style={{ fontSize:13, color:'rgba(255,255,255,.85)', marginTop:2 }}>Your order is on its way. Thank you for shopping with DRYNN!</div>
+              </div>
+            </div>
+          )}
+
+          {/* Status badge */}
+          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:20 }}>
+            <span style={{ fontSize:12, color:'#888' }}>{selected.placed_at ? new Date(selected.placed_at).toLocaleDateString('en-IN',{day:'numeric',month:'long',year:'numeric'}) : '—'}</span>
+            <span style={{ fontSize:12, fontWeight:700, padding:'5px 14px', borderRadius:20, background:sc.bg, color:sc.color, border:`1px solid ${sc.border}` }}>{selected.status || 'Received'}</span>
+          </div>
+
+          {/* Order info card */}
+          <div style={{ border:'1px solid #f0f0f0', borderRadius:12, padding:'18px', marginBottom:24 }}>
+            <p style={{ fontSize:11, fontWeight:700, letterSpacing:'.12em', textTransform:'uppercase', color:'#aaa', marginBottom:14 }}>Order Summary</p>
+            {[
+              ['Item(s)', selected.garment || '—'],
+              ['Size',    selected.size    || '—'],
+              ['Qty',     selected.qty     || '—'],
+              ['Payment', 'UPI / Razorpay'],
+            ].map(([k,v]) => (
+              <div key={k} style={{ display:'flex', justifyContent:'space-between', padding:'8px 0', borderBottom:'1px solid #f8f8f8', fontSize:13 }}>
+                <span style={{ color:'#888' }}>{k}</span>
+                <span style={{ fontWeight:600, maxWidth:'60%', textAlign:'right' }}>{v}</span>
+              </div>
+            ))}
+          </div>
+
+          {/* Progress stepper */}
+          <p style={{ fontSize:11, fontWeight:700, letterSpacing:'.12em', textTransform:'uppercase', color:'#c8102e', marginBottom:18 }}>Order Progress</p>
+          <div style={{ display:'flex', flexDirection:'column', gap:0 }}>
+            {STATUS_STEPS.map((step, i) => {
+              const done   = i < stepIdx
+              const active = i === stepIdx
+              const pend   = i > stepIdx
+              const isLast = i === STATUS_STEPS.length - 1
+              return (
+                <div key={step} style={{ display:'flex', gap:14, alignItems:'flex-start' }}>
+                  <div style={{ display:'flex', flexDirection:'column', alignItems:'center', flexShrink:0 }}>
+                    <div style={{ width:18, height:18, borderRadius:'50%', background:done?'#00a86b':active?'#c8102e':'#e0e0e0', display:'flex', alignItems:'center', justifyContent:'center', marginTop:2, boxShadow:active?'0 0 0 4px rgba(200,16,46,.15)':'none', transition:'all .3s' }}>
+                      {done  && <svg width="9" height="9" viewBox="0 0 10 10" fill="none"><polyline points="1.5,5 4,7.5 8.5,2.5" stroke="#fff" strokeWidth="1.8" strokeLinecap="round"/></svg>}
+                      {active && <div style={{ width:6, height:6, borderRadius:'50%', background:'#fff' }} />}
+                    </div>
+                    {!isLast && <div style={{ width:2, height:34, background:done?'#00a86b':'#eeeeee', marginTop:2, transition:'background .3s' }} />}
+                  </div>
+                  <div style={{ paddingBottom: isLast?0:28 }}>
+                    <div style={{ fontSize:14, fontWeight:700, color:pend?'#ccc':active?'#c8102e':'#0a0a0a' }}>{step}</div>
+                    <div style={{ fontSize:11, color:done?'#00a86b':active?'#c8102e':'#ccc', fontWeight:600, marginTop:1 }}>
+                      {done?'✓ Completed':active?'● In Progress':'Pending'}
+                    </div>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+
+          <div style={{ background:'#f8f8f8', borderRadius:10, padding:'14px 16px', marginTop:24, fontSize:13, color:'#555', lineHeight:1.7 }}>
+            📲 WhatsApp updates sent at every stage. Need help? <strong>+91 99447 61306</strong>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div>
+      <div style={{ background:'linear-gradient(90deg,#0a1f5d,#1a0a2e)', padding:'32px 16px' }}>
+        <div style={{ maxWidth:600, margin:'0 auto' }}>
+          <button onClick={onBack} style={{ background:'rgba(255,255,255,.1)', border:'1px solid rgba(255,255,255,.2)', color:'#fff', padding:'6px 14px', borderRadius:50, fontSize:12, cursor:'pointer', fontWeight:600, marginBottom:12 }}>← Account</button>
+          <span className="sec-label" style={{ color:'rgba(255,255,255,.6)' }}>My Account</span>
+          <h1 className="sec-title" style={{ color:'#fff' }}>MY ORDERS</h1>
+        </div>
+      </div>
+      <div style={{ maxWidth:600, margin:'0 auto', padding:'24px 16px' }}>
+        {loading ? (
+          <div style={{ textAlign:'center', padding:'56px 0' }}>
+            <div style={{ width:36, height:36, border:'3px solid #f0f0f0', borderTopColor:'#c8102e', borderRadius:'50%', animation:'drynn-spin .7s linear infinite', margin:'0 auto 14px' }} />
+            <p style={{ fontSize:13, color:'#aaa' }}>Loading your orders…</p>
+          </div>
+        ) : orders.length === 0 ? (
+          <div style={{ textAlign:'center', padding:'64px 16px' }}>
+            <div style={{ fontSize:64, marginBottom:14 }}>📦</div>
+            <h2 style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:28, marginBottom:8 }}>NO ORDERS YET</h2>
+            <p style={{ color:'#aaa', fontSize:13, lineHeight:1.7 }}>You haven't placed any orders yet.<br/>Start shopping to see them here!</p>
+          </div>
+        ) : (
+          <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
+            {orders.map(order => {
+              const sc = STATUS_COLORS[order.status] || STATUS_COLORS['Received']
+              const isConfirmed = ['Packed','Shipped','Delivered'].includes(order.status)
+              return (
+                <div key={order.id} onClick={()=>setSelected(order)}
+                  style={{ border:'1px solid #f0f0f0', borderRadius:12, padding:'16px', cursor:'pointer', transition:'box-shadow .2s, transform .15s', position:'relative', overflow:'hidden' }}
+                  onMouseEnter={e=>{ e.currentTarget.style.boxShadow='0 6px 24px rgba(0,0,0,.10)'; e.currentTarget.style.transform='translateY(-1px)' }}
+                  onMouseLeave={e=>{ e.currentTarget.style.boxShadow='none'; e.currentTarget.style.transform='none' }}>
+
+                  {/* ORDER CONFIRMED ribbon */}
+                  {isConfirmed && (
+                    <div style={{ position:'absolute', top:0, right:0, background:'#00a86b', color:'#fff', fontSize:9, fontWeight:700, letterSpacing:'.1em', padding:'4px 12px', borderBottomLeftRadius:8 }}>
+                      ✓ ORDER CONFIRMED
+                    </div>
+                  )}
+
+                  <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:10 }}>
+                    <div>
+                      <p style={{ fontSize:13, fontWeight:700, marginBottom:3, maxWidth:180, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+                        {order.garment?.length > 35 ? order.garment.slice(0,35)+'…' : order.garment || 'Custom Order'}
+                      </p>
+                      <p style={{ fontSize:11, color:'#aaa' }}>
+                        {order.placed_at ? new Date(order.placed_at).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'}) : '—'}
+                      </p>
+                    </div>
+                    <span style={{ fontSize:11, fontWeight:700, padding:'4px 12px', borderRadius:20, background:sc.bg, color:sc.color, border:`1px solid ${sc.border}`, whiteSpace:'nowrap' }}>
+                      {order.status || 'Received'}
+                    </span>
+                  </div>
+                  <div style={{ display:'flex', gap:16, fontSize:12, color:'#888', marginBottom:10 }}>
+                    <span>Qty: <strong style={{ color:'#0a0a0a' }}>{order.qty || '—'}</strong></span>
+                    <span>Size: <strong style={{ color:'#0a0a0a' }}>{order.size || '—'}</strong></span>
+                  </div>
+                  <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+                    <span style={{ fontSize:11, color:'#c8102e', fontWeight:600 }}>View Details →</span>
+                    <span style={{ fontSize:11, color:'#aaa' }}>#{order.id?.slice(0,8).toUpperCase()}</span>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
 function AccountPage({ user, onLogout, onNav }) {
   const isAdmin = user?.email === 'gokulmaniraj2008@gmail.com'
   return (
@@ -1899,7 +1740,7 @@ function AccountPage({ user, onLogout, onNav }) {
       <div style={{ maxWidth:500, margin:'0 auto', padding:'32px 16px' }}>
         {[
           { icon:'📦', label:'My Orders',     sub:'Track and manage your orders',  page:'orders'  },
-          { icon:'💳', label:'Payments',      sub:'UPI, Razorpay, COD',            page:null       },
+          { icon:'💳', label:'Payments',      sub:'UPI, Razorpay',            page:null       },
           { icon:'📍', label:'Addresses',     sub:'Manage delivery addresses',     page:null       },
           { icon:'🔔', label:'Notifications', sub:'Order updates on WhatsApp',     page:null       },
           { icon:'🛡️', label:'Privacy',       sub:'Data & privacy settings',       page:'privacy'  },
@@ -1974,7 +1815,7 @@ function TermsPage({ onBack }) {
       <div style={{ maxWidth:640, margin:'0 auto', padding:'32px 16px 80px' }}>
         {[
           { num:'01', title:'Acceptance of Terms',     content:'By using DRYNN, you agree to these Terms of Service. DRYNN is operated from Tamil Nadu, India.' },
-          { num:'02', title:'Orders & Payments',       content:'All orders are subject to availability. Prices in INR. We accept UPI, Razorpay, and COD. Orders confirmed after payment.' },
+          { num:'02', title:'Orders & Payments',       content:'All orders are subject to availability. Prices in INR. We accept UPI and Razorpay. Orders confirmed after payment.' },
           { num:'03', title:'Custom Print Policy',     content:'You confirm you own rights to uploaded designs. DRYNN is not liable for copyright infringement. We reserve the right to reject offensive or illegal content.' },
           { num:'04', title:'Delivery & Returns',      content:'Standard delivery 5-7 working days. Replacements only for manufacturing defects. Custom printed items are non-returnable due to change of mind.' },
           { num:'05', title:'Intellectual Property',   content:'The DRYNN brand, logo, and website content are our intellectual property. Unauthorised reproduction is prohibited.' },
@@ -2904,7 +2745,7 @@ function MainSite({ user }) {
       <div style={{ background:'#0a0a0a', color:'#fff', padding:'10px 0', overflow:'hidden' }}>
         <div style={{ display:'flex', gap:0, whiteSpace:'nowrap', animation:'marquee 22s linear infinite' }}>
           {[...Array(2)].map((_,rep)=>(
-            ['FREE DELIVERY ABOVE ₹1,500','PREMIUM HEAT PRESS PRINT','GROUP ORDERS AVAILABLE','5-7 DAY DELIVERY','REAL-TIME ORDER TRACKING','COD AVAILABLE'].map((t,i)=>(
+            ['FREE DELIVERY ABOVE ₹1,500','PREMIUM HEAT PRESS PRINT','GROUP ORDERS AVAILABLE','5-7 DAY DELIVERY','REAL-TIME ORDER TRACKING','UPI & RAZORPAY ACCEPTED'].map((t,i)=>(
               <span key={`${rep}-${i}`} style={{ fontSize:10, fontWeight:700, letterSpacing:'.16em', padding:'0 28px', borderRight:'1px solid #333' }}>{t}</span>
             ))
           ))}
@@ -2919,11 +2760,12 @@ function MainSite({ user }) {
       {page==='contact'  && <ContactPage />}
       {page==='cart'     && <CartPage cart={cart} onRemove={i=>setCart(c=>c.filter((_,idx)=>idx!==i))} onClear={()=>setCart([])} user={user} />}
       {page==='account'  && <AccountPage user={user} onLogout={handleLogout} onNav={setPage} />}
+      {page==='orders'   && <OrdersPage  user={user} onBack={()=>setPage('account')} />}
       {page==='track'    && <OrderTrackingPage />}
       {page==='group'    && <GroupOrderPage user={user} />}
 
       {/* ── FOOTER (only on main pages) ── */}
-      {['home','about','contact','products','track','group'].includes(page) && (
+      {['home','about','contact','track','group'].includes(page) && (
         <footer style={{ background:'#0a0a0a', color:'#fff', padding:'48px 16px 80px' }}>
           <div style={{ maxWidth:1100, margin:'0 auto' }}>
             <div className="footer-cols" style={{ display:'grid', gridTemplateColumns:'2fr 1fr 1fr 1fr', gap:40, marginBottom:40 }}>
@@ -2949,7 +2791,7 @@ function MainSite({ user }) {
             </div>
             <div style={{ borderTop:'1px solid #1a1a1a', paddingTop:20, display:'flex', justifyContent:'space-between', flexWrap:'wrap', gap:10 }}>
               <p style={{ fontSize:11, color:'#444' }}>© 2025 DRYNN. All rights reserved. Tamil Nadu, India.</p>
-              <p style={{ fontSize:11, color:'#444' }}>UPI / Razorpay / COD Accepted</p>
+              <p style={{ fontSize:11, color:'#444' }}>UPI / Razorpay Accepted</p>
             </div>
           </div>
         </footer>

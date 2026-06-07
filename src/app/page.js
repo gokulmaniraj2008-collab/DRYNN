@@ -1576,7 +1576,7 @@ function StudioPage({ user, onNav }) {
                 </div>
               ))}
               <div style={{ background:'rgba(200,16,46,.04)', border:'1px solid rgba(200,16,46,.12)', borderRadius:8, padding:'12px 14px', fontSize:12, color:'#888', lineHeight:1.7, marginTop:8 }}>
-                The design is composited directly onto the garment shape using canvas - same technique used by Blinkstore and Qikink for their previews.
+                <span>The design is composited directly onto the garment shape using canvas - same technique used by Blinkstore and Qikink for their previews.</span>
               </div>
             </div>
           </div>

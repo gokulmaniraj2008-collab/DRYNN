@@ -477,17 +477,16 @@ function StudioPage({ user, onNav }) {
   const [custTab,    setCustTab]     = useState('position')
 
   // ── Step 5 (Preview): 3D ─────────────────────────────────
-  const [viewMode,  setViewMode]  = useState('flat')  // flat | 3d
+  const [viewMode,  setViewMode]  = useState('flat')
   const mountRef   = useRef(null)
   const threeRef   = useRef({})
   const animRef    = useRef(null)
   const [threeReady, setThreeReady] = useState(false)
   const [threeErr,   setThreeErr]   = useState('')
 
-  // Preload Three.js as soon as user hits step 4 (before they even tap 3D View)
+  // Preload Three.js at step 4 so it's ready by step 5
   useEffect(() => {
-    if (step < 4) return
-    if (window.THREE) return
+    if (step < 4 || window.THREE) return
     const s = document.createElement('script')
     s.src = 'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js'
     s.async = true
@@ -495,77 +494,124 @@ function StudioPage({ user, onNav }) {
   }, [step])
 
   useEffect(() => {
-    if (step !== 5 || viewMode !== '3d') return
-    let cancelled = false
-    const tryInit = () => { if (!cancelled) init3D() }
-    if (window.THREE) { tryInit(); return }
-    // Three.js still loading — poll until ready (max 8s)
-    let attempts = 0
-    const poll = setInterval(() => {
-      attempts++
-      if (window.THREE) { clearInterval(poll); tryInit() }
-      else if (attempts > 80) { clearInterval(poll); setThreeErr('Failed to load 3D engine.') }
-    }, 100)
-    return () => {
-      cancelled = true
-      clearInterval(poll)
+    if (step !== 5 || viewMode !== '3d') {
+      // cleanup when leaving 3D view
       cancelAnimationFrame(animRef.current)
       if (threeRef.current.renderer) {
         threeRef.current.renderer.dispose()
         try { mountRef.current?.removeChild(threeRef.current.renderer.domElement) } catch(_) {}
         threeRef.current = {}
       }
+      setThreeReady(false)
+      setThreeErr('')
+      return
     }
-  }, [step, viewMode])
 
-  const init3D = () => {
-    const THREE = window.THREE
-    if (!mountRef.current || threeRef.current.renderer) return
-    const W = mountRef.current.clientWidth || 340, H = 380
-    const isMobile = window.innerWidth < 768
-    const scene = new THREE.Scene(); scene.background = new THREE.Color(0x1a2744)
-    const camera = new THREE.PerspectiveCamera(45, W/H, 0.01, 100); camera.position.set(0,0,3.5)
-    // No antialias on mobile — big perf win
-    const renderer = new THREE.WebGLRenderer({ antialias: !isMobile, powerPreference: 'high-performance' })
-    renderer.setSize(W, H)
-    // Cap pixel ratio at 1 on mobile to halve GPU work
-    renderer.setPixelRatio(isMobile ? 1 : Math.min(window.devicePixelRatio, 1.5))
-    mountRef.current.appendChild(renderer.domElement)
-    scene.add(new THREE.AmbientLight(0xffffff, 0.7))
-    const dir = new THREE.DirectionalLight(0xffffff, 1.2); dir.position.set(3,4,3); scene.add(dir)
-    const c = new THREE.Color(color)
-    const mat = () => new THREE.MeshStandardMaterial({ color:c, roughness:0.78, metalness:0.02 })
-    const grp = new THREE.Group()
-    // Use fewer segments on mobile for faster geometry build
-    const seg = isMobile ? 16 : 32
-    grp.add(Object.assign(new THREE.Mesh(new THREE.CylinderGeometry(0.38,0.42,1.4,seg,4,true),mat()),{position:{x:0,y:-0.1,z:0}}))
-    const sho = new THREE.Mesh(new THREE.SphereGeometry(0.42,seg,16,0,Math.PI*2,0,Math.PI*0.45),mat()); sho.position.y=0.68; grp.add(sho)
-    const ls = new THREE.Mesh(new THREE.CylinderGeometry(0.13,0.15,0.52,12,2,true),mat()); ls.position.set(-0.54,0.55,0); ls.rotation.z=0.55; grp.add(ls)
-    const rs = ls.clone(); rs.position.set(0.54,0.55,0); rs.rotation.z=-0.55; grp.add(rs)
-    const col = new THREE.Mesh(new THREE.TorusGeometry(0.18,0.04,8,seg,Math.PI*1.8),mat()); col.position.y=0.72; grp.add(col)
-    scene.add(grp)
-    // Show scene immediately — add design texture after if available
-    threeRef.current = {scene,camera,renderer}; setThreeReady(true)
-    if (designImgSrc) {
-      const img = new Image(); img.crossOrigin='anonymous'; img.src = designImgSrc
-      img.onload = () => {
-        const tex = new THREE.Texture(img); tex.needsUpdate=true
-        const pr = new THREE.Mesh(new THREE.PlaneGeometry(0.55,0.55), new THREE.MeshStandardMaterial({ map:tex, transparent:true, roughness:0.8 }))
-        pr.position.set(0,0.08,0.39); grp.add(pr)
+    let cancelled = false
+
+    const boot = () => {
+      if (cancelled || !window.THREE || !mountRef.current) return
+      // Clean any previous canvas
+      cancelAnimationFrame(animRef.current)
+      if (threeRef.current.renderer) {
+        threeRef.current.renderer.dispose()
+        try { mountRef.current.removeChild(threeRef.current.renderer.domElement) } catch(_) {}
+        threeRef.current = {}
       }
-    }
-    let isDrag=false, prevX=0, rotY=0
-    const el = renderer.domElement
-    el.addEventListener('mousedown',  e=>{isDrag=true;prevX=e.clientX})
-    el.addEventListener('mousemove',  e=>{if(isDrag){rotY+=(e.clientX-prevX)*0.008;prevX=e.clientX}})
-    el.addEventListener('mouseup',    ()=>isDrag=false)
-    el.addEventListener('touchstart', e=>{isDrag=true;prevX=e.touches[0].clientX},{passive:true})
-    el.addEventListener('touchmove',  e=>{if(isDrag){rotY+=(e.touches[0].clientX-prevX)*0.008;prevX=e.touches[0].clientX}},{passive:true})
-    el.addEventListener('touchend',   ()=>isDrag=false)
-    const animate=()=>{ animRef.current=requestAnimationFrame(animate); rotY+=0.005; grp.rotation.y=rotY; renderer.render(scene,camera) }
-    animate()
-  }
 
+      const THREE = window.THREE
+      const isMobile = window.innerWidth < 768
+      const W = mountRef.current.clientWidth || 340, H = 380
+      const scene = new THREE.Scene()
+      scene.background = new THREE.Color(0x1a2744)
+      const camera = new THREE.PerspectiveCamera(45, W / H, 0.01, 100)
+      camera.position.set(0, 0, 3.5)
+      const renderer = new THREE.WebGLRenderer({ antialias: !isMobile, powerPreference: 'high-performance' })
+      renderer.setSize(W, H)
+      renderer.setPixelRatio(isMobile ? 1 : Math.min(window.devicePixelRatio, 1.5))
+      mountRef.current.appendChild(renderer.domElement)
+
+      scene.add(new THREE.AmbientLight(0xffffff, 0.7))
+      const dir = new THREE.DirectionalLight(0xffffff, 1.2)
+      dir.position.set(3, 4, 3); scene.add(dir)
+
+      const seg = isMobile ? 12 : 24
+      const c   = new THREE.Color(color)
+      const mat = new THREE.MeshStandardMaterial({ color: c, roughness: 0.78, metalness: 0.02 })
+      const grp = new THREE.Group()
+
+      const body = new THREE.Mesh(new THREE.CylinderGeometry(0.38, 0.42, 1.4, seg, 4, true), mat)
+      body.position.set(0, -0.1, 0); grp.add(body)
+
+      const shoulder = new THREE.Mesh(new THREE.SphereGeometry(0.42, seg, 12, 0, Math.PI*2, 0, Math.PI*0.45), mat)
+      shoulder.position.set(0, 0.68, 0); grp.add(shoulder)
+
+      const sleeveL = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.15, 0.52, 10, 2, true), mat)
+      sleeveL.position.set(-0.54, 0.55, 0); sleeveL.rotation.z = 0.55; grp.add(sleeveL)
+
+      const sleeveR = sleeveL.clone()
+      sleeveR.position.set(0.54, 0.55, 0); sleeveR.rotation.z = -0.55; grp.add(sleeveR)
+
+      const collar = new THREE.Mesh(new THREE.TorusGeometry(0.18, 0.04, 8, seg, Math.PI*1.8), mat)
+      collar.position.set(0, 0.72, 0); grp.add(collar)
+
+      scene.add(grp)
+
+      // Add design texture if available — loads async after scene is already spinning
+      if (designImgSrc) {
+        const img = new Image()
+        img.crossOrigin = 'anonymous'
+        img.onload = () => {
+          if (cancelled) return
+          const tex = new THREE.Texture(img); tex.needsUpdate = true
+          const printMesh = new THREE.Mesh(
+            new THREE.PlaneGeometry(0.55, 0.55),
+            new THREE.MeshStandardMaterial({ map: tex, transparent: true, roughness: 0.8 })
+          )
+          printMesh.position.set(0, 0.08, 0.39)
+          grp.add(printMesh)
+        }
+        img.src = designImgSrc
+      }
+
+      let isDrag = false, prevX = 0, rotY = 0
+      const el = renderer.domElement
+      el.addEventListener('mousedown',  e => { isDrag=true; prevX=e.clientX })
+      el.addEventListener('mousemove',  e => { if(isDrag){ rotY+=(e.clientX-prevX)*0.008; prevX=e.clientX }})
+      el.addEventListener('mouseup',    () => isDrag=false)
+      el.addEventListener('mouseleave', () => isDrag=false)
+      el.addEventListener('touchstart', e => { isDrag=true; prevX=e.touches[0].clientX }, {passive:true})
+      el.addEventListener('touchmove',  e => { if(isDrag){ rotY+=(e.touches[0].clientX-prevX)*0.008; prevX=e.touches[0].clientX }}, {passive:true})
+      el.addEventListener('touchend',   () => isDrag=false)
+
+      threeRef.current = { scene, camera, renderer }
+      if (!cancelled) setThreeReady(true)
+
+      const animate = () => {
+        if (cancelled) return
+        animRef.current = requestAnimationFrame(animate)
+        rotY += 0.005
+        grp.rotation.y = rotY
+        renderer.render(scene, camera)
+      }
+      animate()
+    }
+
+    if (window.THREE) {
+      requestAnimationFrame(boot)
+    } else {
+      let attempts = 0
+      const poll = setInterval(() => {
+        attempts++
+        if (window.THREE) { clearInterval(poll); requestAnimationFrame(boot) }
+        else if (attempts > 80) { clearInterval(poll); setThreeErr('3D engine failed to load.') }
+      }, 100)
+      return () => { cancelled = true; clearInterval(poll) }
+    }
+
+    return () => { cancelled = true }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step, viewMode, color, designImgSrc])
   // ── Step 6: Order ─────────────────────────────────────────
   const [size,       setSize]     = useState('M')
   const [form,       setForm]     = useState({ name:user?.user_metadata?.full_name||'', phone:'', qty:1, address:'' })

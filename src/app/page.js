@@ -2373,29 +2373,6 @@ function OrdersPage({ user, onBack, onNav }) {
 
   useEffect(() => { loadOrders() }, [user])
 
-  // History = Delivered. Active = everything else.
-  const HISTORY_STATUSES = ['Delivered']
-  const ACTIVE_STATUSES  = ['Received','Approved','Printing','Packed','Shipped']
-
-  const filteredOrders = orders.filter(o => {
-    const s = o.status || 'Received'
-    const matchTab =
-      histTab === 'all'     ? true :
-      histTab === 'history' ? HISTORY_STATUSES.includes(s) :
-                              ACTIVE_STATUSES.includes(s)   // 'active'
-    const matchSearch = !search.trim() ||
-      o.garment?.toLowerCase().includes(search.toLowerCase()) ||
-      o.id?.toLowerCase().includes(search.toLowerCase()) ||
-      o.name?.toLowerCase().includes(search.toLowerCase())
-    return matchTab && matchSearch
-  })
-
-  const counts = {
-    active:  orders.filter(o => ACTIVE_STATUSES.includes(o.status  || 'Received')).length,
-    history: orders.filter(o => HISTORY_STATUSES.includes(o.status || 'Received')).length,
-    all:     orders.length,
-  }
-
   const STATUS_COLORS = {
     Received: { bg:'#fff8e1', color:'#f5a623', border:'#ffe082' },
     Approved: { bg:'#e8f0fe', color:'#0a1f5d', border:'#c5d3f6' },

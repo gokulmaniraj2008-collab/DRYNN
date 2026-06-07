@@ -484,18 +484,31 @@ function StudioPage({ user, onNav }) {
   const [threeReady, setThreeReady] = useState(false)
   const [threeErr,   setThreeErr]   = useState('')
 
+  // Preload Three.js as soon as user hits step 4 (before they even tap 3D View)
+  useEffect(() => {
+    if (step < 4) return
+    if (window.THREE) return
+    const s = document.createElement('script')
+    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js'
+    s.async = true
+    document.head.appendChild(s)
+  }, [step])
+
   useEffect(() => {
     if (step !== 5 || viewMode !== '3d') return
     let cancelled = false
-    const boot = () => { if (!cancelled) init3D() }
-    if (window.THREE) { boot(); return }
-    const s = document.createElement('script')
-    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js'
-    s.onload = boot
-    s.onerror = () => setThreeErr('Failed to load 3D engine.')
-    document.head.appendChild(s)
+    const tryInit = () => { if (!cancelled) init3D() }
+    if (window.THREE) { tryInit(); return }
+    // Three.js still loading — poll until ready (max 8s)
+    let attempts = 0
+    const poll = setInterval(() => {
+      attempts++
+      if (window.THREE) { clearInterval(poll); tryInit() }
+      else if (attempts > 80) { clearInterval(poll); setThreeErr('Failed to load 3D engine.') }
+    }, 100)
     return () => {
       cancelled = true
+      clearInterval(poll)
       cancelAnimationFrame(animRef.current)
       if (threeRef.current.renderer) {
         threeRef.current.renderer.dispose()
@@ -509,21 +522,30 @@ function StudioPage({ user, onNav }) {
     const THREE = window.THREE
     if (!mountRef.current || threeRef.current.renderer) return
     const W = mountRef.current.clientWidth || 340, H = 380
+    const isMobile = window.innerWidth < 768
     const scene = new THREE.Scene(); scene.background = new THREE.Color(0x1a2744)
     const camera = new THREE.PerspectiveCamera(45, W/H, 0.01, 100); camera.position.set(0,0,3.5)
-    const renderer = new THREE.WebGLRenderer({ antialias:true })
-    renderer.setSize(W,H); renderer.setPixelRatio(Math.min(window.devicePixelRatio,2))
+    // No antialias on mobile — big perf win
+    const renderer = new THREE.WebGLRenderer({ antialias: !isMobile, powerPreference: 'high-performance' })
+    renderer.setSize(W, H)
+    // Cap pixel ratio at 1 on mobile to halve GPU work
+    renderer.setPixelRatio(isMobile ? 1 : Math.min(window.devicePixelRatio, 1.5))
     mountRef.current.appendChild(renderer.domElement)
-    scene.add(new THREE.AmbientLight(0xffffff,0.7))
-    const dir = new THREE.DirectionalLight(0xffffff,1.2); dir.position.set(3,4,3); scene.add(dir)
+    scene.add(new THREE.AmbientLight(0xffffff, 0.7))
+    const dir = new THREE.DirectionalLight(0xffffff, 1.2); dir.position.set(3,4,3); scene.add(dir)
     const c = new THREE.Color(color)
     const mat = () => new THREE.MeshStandardMaterial({ color:c, roughness:0.78, metalness:0.02 })
     const grp = new THREE.Group()
-    grp.add(Object.assign(new THREE.Mesh(new THREE.CylinderGeometry(0.38,0.42,1.4,32,4,true),mat()),{position:{x:0,y:-0.1,z:0}}))
-    const sho = new THREE.Mesh(new THREE.SphereGeometry(0.42,32,16,0,Math.PI*2,0,Math.PI*0.45),mat()); sho.position.y=0.68; grp.add(sho)
-    const ls = new THREE.Mesh(new THREE.CylinderGeometry(0.13,0.15,0.52,16,2,true),mat()); ls.position.set(-0.54,0.55,0); ls.rotation.z=0.55; grp.add(ls)
+    // Use fewer segments on mobile for faster geometry build
+    const seg = isMobile ? 16 : 32
+    grp.add(Object.assign(new THREE.Mesh(new THREE.CylinderGeometry(0.38,0.42,1.4,seg,4,true),mat()),{position:{x:0,y:-0.1,z:0}}))
+    const sho = new THREE.Mesh(new THREE.SphereGeometry(0.42,seg,16,0,Math.PI*2,0,Math.PI*0.45),mat()); sho.position.y=0.68; grp.add(sho)
+    const ls = new THREE.Mesh(new THREE.CylinderGeometry(0.13,0.15,0.52,12,2,true),mat()); ls.position.set(-0.54,0.55,0); ls.rotation.z=0.55; grp.add(ls)
     const rs = ls.clone(); rs.position.set(0.54,0.55,0); rs.rotation.z=-0.55; grp.add(rs)
-    const col = new THREE.Mesh(new THREE.TorusGeometry(0.18,0.04,12,32,Math.PI*1.8),mat()); col.position.y=0.72; grp.add(col)
+    const col = new THREE.Mesh(new THREE.TorusGeometry(0.18,0.04,8,seg,Math.PI*1.8),mat()); col.position.y=0.72; grp.add(col)
+    scene.add(grp)
+    // Show scene immediately — add design texture after if available
+    threeRef.current = {scene,camera,renderer}; setThreeReady(true)
     if (designImgSrc) {
       const img = new Image(); img.crossOrigin='anonymous'; img.src = designImgSrc
       img.onload = () => {
@@ -532,7 +554,6 @@ function StudioPage({ user, onNav }) {
         pr.position.set(0,0.08,0.39); grp.add(pr)
       }
     }
-    scene.add(grp)
     let isDrag=false, prevX=0, rotY=0
     const el = renderer.domElement
     el.addEventListener('mousedown',  e=>{isDrag=true;prevX=e.clientX})
@@ -541,7 +562,6 @@ function StudioPage({ user, onNav }) {
     el.addEventListener('touchstart', e=>{isDrag=true;prevX=e.touches[0].clientX},{passive:true})
     el.addEventListener('touchmove',  e=>{if(isDrag){rotY+=(e.touches[0].clientX-prevX)*0.008;prevX=e.touches[0].clientX}},{passive:true})
     el.addEventListener('touchend',   ()=>isDrag=false)
-    threeRef.current={scene,camera,renderer}; setThreeReady(true)
     const animate=()=>{ animRef.current=requestAnimationFrame(animate); rotY+=0.005; grp.rotation.y=rotY; renderer.render(scene,camera) }
     animate()
   }
@@ -1561,19 +1581,41 @@ function ProductsPage({ onAddToCart, onNav }) {
   )
 }
 
-const CLOUDINARY_CLOUD = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || 'dfhdyp4oq'
+const CLOUDINARY_CLOUD  = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME   || 'dfhdyp4oq'
 const CLOUDINARY_PRESET = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET || 'drynn_uploads'
 
 async function uploadToCloudinary(file, onProgress) {
-  // Upload to Supabase Storage (drynn-designs bucket)
   onProgress && onProgress(10)
-  const ext = file.name.split('.').pop()
-  const path = `designs/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
-  const { error } = await supabase.storage.from('drynn-designs').upload(path, file, { cacheControl:'3600', upsert:false })
-  if (error) throw new Error(error.message)
-  onProgress && onProgress(100)
-  const { data } = supabase.storage.from('drynn-designs').getPublicUrl(path)
-  return data?.publicUrl || path
+  const formData = new FormData()
+  formData.append('file', file)
+  formData.append('upload_preset', CLOUDINARY_PRESET)
+  formData.append('folder', 'drynn')
+
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest()
+    xhr.open('POST', `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD}/image/upload`)
+
+    xhr.upload.onprogress = (e) => {
+      if (e.lengthComputable && onProgress) {
+        onProgress(Math.round((e.loaded / e.total) * 90))
+      }
+    }
+
+    xhr.onload = () => {
+      if (xhr.status === 200) {
+        const res = JSON.parse(xhr.responseText)
+        onProgress && onProgress(100)
+        resolve(res.secure_url)
+      } else {
+        let msg = 'Cloudinary upload failed'
+        try { msg = JSON.parse(xhr.responseText)?.error?.message || msg } catch {}
+        reject(new Error(msg))
+      }
+    }
+
+    xhr.onerror = () => reject(new Error('Network error during upload'))
+    xhr.send(formData)
+  })
 }
 
 function AboutPage({ onNav }) {
@@ -2577,17 +2619,24 @@ function AdminPanel({ onBack }) {
   return (
     <div style={{ minHeight:'100vh', background:'#f4f4f4' }}>
       {/* Header */}
-      <div style={{ background:'#0a0a0a', padding:'0 20px', display:'flex', alignItems:'center', justifyContent:'space-between', height:56 }}>
-        <div style={{ display:'flex', alignItems:'center', gap:16 }}>
-          <span style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:22, letterSpacing:'.18em', color:'#fff' }}>DRYNN ADMIN</span>
-          <div style={{ width:8, height:8, borderRadius:'50%', background:'#00a86b', boxShadow:'0 0 6px #00a86b' }} />
+      <div style={{ background:'#0a0a0a', padding:'0 12px' }}>
+        {/* Top row: logo + exit */}
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', height:48 }}>
+          <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+            <span style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:22, letterSpacing:'.18em', color:'#fff' }}>DRYNN ADMIN</span>
+            <div style={{ width:8, height:8, borderRadius:'50%', background:'#00a86b', boxShadow:'0 0 6px #00a86b' }} />
+          </div>
+          <button onClick={onBack} style={{ padding:'7px 18px', borderRadius:6, border:'1.5px solid #c8102e', cursor:'pointer', background:'#c8102e', color:'#fff', fontSize:12, fontWeight:700, letterSpacing:'.04em', display:'flex', alignItems:'center', gap:6 }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
+            Exit
+          </button>
         </div>
-        <div style={{ display:'flex', gap:8 }}>
-          <button onClick={()=>{setTab('orders');loadOrders()}} style={{ padding:'6px 16px', borderRadius:4, border:'none', cursor:'pointer', background:tab==='orders'?'#c8102e':'#222', color:'#fff', fontSize:12, fontWeight:700 }}>Orders</button>
-          <button onClick={()=>{setTab('products');loadProducts()}} style={{ padding:'6px 16px', borderRadius:4, border:'none', cursor:'pointer', background:tab==='products'?'#c8102e':'#222', color:'#fff', fontSize:12, fontWeight:700 }}>Products</button>
-          <button onClick={()=>{setTab('samples');loadSamples()}} style={{ padding:'6px 16px', borderRadius:4, border:'none', cursor:'pointer', background:tab==='samples'?'#c8102e':'#222', color:'#fff', fontSize:12, fontWeight:700 }}>Samples</button>
-          <button onClick={()=>{setTab('uploads');loadOrders()}} style={{ padding:'6px 16px', borderRadius:4, border:'none', cursor:'pointer', background:tab==='uploads'?'#c8102e':'#222', color:'#fff', fontSize:12, fontWeight:700 }}>Uploads</button>
-          <button onClick={onBack} style={{ padding:'6px 16px', borderRadius:4, border:'1px solid #333', cursor:'pointer', background:'none', color:'#888', fontSize:12 }}>Exit</button>
+        {/* Bottom row: tabs */}
+        <div style={{ display:'flex', gap:6, overflowX:'auto', paddingBottom:8, WebkitOverflowScrolling:'touch', scrollbarWidth:'none' }}>
+          <button onClick={()=>{setTab('orders');loadOrders()}} style={{ flexShrink:0, padding:'6px 16px', borderRadius:4, border:'none', cursor:'pointer', background:tab==='orders'?'#c8102e':'#222', color:'#fff', fontSize:12, fontWeight:700 }}>Orders</button>
+          <button onClick={()=>{setTab('products');loadProducts()}} style={{ flexShrink:0, padding:'6px 16px', borderRadius:4, border:'none', cursor:'pointer', background:tab==='products'?'#c8102e':'#222', color:'#fff', fontSize:12, fontWeight:700 }}>Products</button>
+          <button onClick={()=>{setTab('samples');loadSamples()}} style={{ flexShrink:0, padding:'6px 16px', borderRadius:4, border:'none', cursor:'pointer', background:tab==='samples'?'#c8102e':'#222', color:'#fff', fontSize:12, fontWeight:700 }}>Samples</button>
+          <button onClick={()=>{setTab('uploads');loadOrders()}} style={{ flexShrink:0, padding:'6px 16px', borderRadius:4, border:'none', cursor:'pointer', background:tab==='uploads'?'#c8102e':'#222', color:'#fff', fontSize:12, fontWeight:700 }}>Uploads</button>
         </div>
       </div>
 

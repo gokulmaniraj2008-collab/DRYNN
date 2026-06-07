@@ -1616,7 +1616,7 @@ function StudioPage({ user, onNav }) {
             {/* Mini controls */}
             <div style={{ flex:'1 1 220px', maxWidth:280 }}>
               <p style={{ fontSize:12, fontWeight:700, color:'#333', marginBottom:10, letterSpacing:'.08em', textTransform:'uppercase' }}>How it works</p>
-              {[['1.','Go to Studio → choose a garment and colour above'],['2️⃣','Upload your design or pick a sample'],['3️⃣','See it appear on the fabric here instantly'],['4️⃣','Adjust position and scale in Position tab']].map(([e,t])=>(
+              {[['1.','Go to Studio - choose a garment and colour above'],['2.','Upload your design or pick a sample'],['3.','See it appear on the fabric here instantly'],['4.','Adjust position and scale in Position tab']].map(([e,t])=>(
                 <div key={e} style={{ display:'flex', gap:10, marginBottom:12, fontSize:13, color:'#555', lineHeight:1.6 }}>
                   <span style={{ flexShrink:0 }}>{e}</span><span>{t}</span>
                 </div>
@@ -3686,7 +3686,7 @@ function CreateGroupOrder({ user }) {
       </div>
       <div style={{ background:'linear-gradient(135deg,rgba(0,168,107,.06),rgba(10,31,93,.06))', border:'1px solid rgba(0,168,107,.2)', borderRadius:12, padding:'20px 24px' }}>
         <div style={{ fontSize:13, fontWeight:700, marginBottom:10 }}>How Group Orders Work</div>
-        {[['1️⃣','Create a group order with your event name and garment.'],['2️⃣','Share the unique link/code with your group.'],['3️⃣','Everyone selects their size and pays individually.'],['4️⃣','DRYNN prints and delivers all pieces together.']].map(([e,t])=>(
+        {[['1.','Create a group order with your event name and garment.'],['2.','Share the unique link/code with your group.'],['3.','Everyone selects their size and pays individually.'],['4.','DRYNN prints and delivers all pieces together.']].map(([e,t])=>(
           <div key={e} style={{ display:'flex', gap:10, marginBottom:8, fontSize:13, color:'#555' }}><span>{e}</span><span>{t}</span></div>
         ))}
       </div>

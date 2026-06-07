@@ -399,7 +399,7 @@ function LoginPage({ onBack }) {
         </div>
 
         <button onClick={onBack} style={{ display:'block', margin:'20px auto 0', background:'none', border:'none', color:'#888', fontSize:13, cursor:'pointer', textDecoration:'underline' }}>
-          ← Back to home
+          ← Back
         </button>
       </div>
     </div>

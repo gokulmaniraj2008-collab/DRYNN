@@ -22,6 +22,7 @@ const PRODUCTS = [
 const SWATCHES = ['#ffffff','#0a0a0a','#c8102e','#0a1f5d','#00a86b','#f5a623','#9b59b6','#888888']
 
 // Shared hook to load products from Supabase, fallback to hardcoded PRODUCTS
+// Returns all products. Use usePublicProducts() for store/home pages.
 function useProducts() {
   const [products, setProducts] = React.useState(PRODUCTS)
   React.useEffect(() => {
@@ -35,6 +36,16 @@ function useProducts() {
       })
   }, [])
   return products
+}
+
+// Only public (non-studio-only) products — used in ProductsPage and HomePage
+function usePublicProducts() {
+  return useProducts().filter(p => !p.studio_only)
+}
+
+// Only studio-only products — used in StudioPage
+function useStudioProducts() {
+  return useProducts().filter(p => p.studio_only)
 }
 const SIZES = ['S','M','L','XL','XXL']
 const GARMENTS = ['T-Shirt','Hoodie','Polo','Joggers']
@@ -400,38 +411,34 @@ function LoginPage({ onBack }) {
 // ══════════════════════════════════════════════════════════════
 // FULL 3D DESIGN STUDIO  -  CapCut motions · 360° · Supabase upload
 function MockupStudio() {
-  const mountRef = useRef(null)
-  const sceneRef = useRef({})
-  const animRef  = useRef(null)
+  // Garment base images — Cloudinary URLs (replace with your own uploads)
+  const GARMENT_IMGS = {
+    tshirt:  'https://res.cloudinary.com/dfhdyp4oq/image/upload/drynn/products/tshirt_white.png',
+    hoodie:  'https://res.cloudinary.com/dfhdyp4oq/image/upload/drynn/products/hoodie_navy.png',
+    polo:    'https://res.cloudinary.com/dfhdyp4oq/image/upload/drynn/products/polo_white.png',
+    joggers: 'https://res.cloudinary.com/dfhdyp4oq/image/upload/drynn/products/joggers_black.png',
+  }
 
   // Core
   const [garmentType, setGarmentType] = useState('tshirt')
   const [gColor,      setGColor]      = useState('#ffffff')
-  const [bgColor,     setBgColor]     = useState('#1a2744')
   const [tab,         setTab]         = useState('design')
-  const [threeReady,  setThreeReady]  = useState(false)
 
-  // Design
-  const [designImg,   setDesignImg]   = useState(null)
-  const [designPosY,  setDesignPosY]  = useState(0.08)
-  const [designPosX,  setDesignPosX]  = useState(0)
-  const [designScale, setDesignScale] = useState(0.55)
+  // Design overlay
+  const [designImg,   setDesignImg]   = useState(null)  // URL string
+  const [designPosY,  setDesignPosY]  = useState(38)    // % from top
+  const [designPosX,  setDesignPosX]  = useState(50)    // % from left
+  const [designScale, setDesignScale] = useState(38)    // % of container width
   const [designRot,   setDesignRot]   = useState(0)
 
   // Text
   const [textOn,      setTextOn]      = useState(false)
   const [textVal,     setTextVal]     = useState('YOUR TEXT')
   const [textFont,    setTextFont]    = useState('Bebas Neue')
-  const [textColor,   setTextColor]   = useState('#ffffff')
-  const [textSize,    setTextSize]    = useState(30)
-
-  // Motion
-  const [motion,      setMotion]      = useState('static')
-  const [speed,       setSpeed]       = useState(0.5)
-  const [autoSpin,    setAutoSpin]    = useState(false)
+  const [textColor,   setTextColor]   = useState('#000000')
+  const [textSize,    setTextSize]    = useState(24)
 
   // Effects
-  const [filter,      setFilter]      = useState('')
   const [brightness,  setBrightness]  = useState(100)
   const [contrast,    setContrast]    = useState(100)
   const [saturation,  setSaturation]  = useState(100)
@@ -442,11 +449,25 @@ function MockupStudio() {
   const [studioSampleCat,   setStudioSampleCat]   = useState('All')
 
   const loadStudioSamples = async () => {
-    if (studioSamples.length > 0) return // already loaded
+    if (studioSamples.length > 0) return
     setStudioSamplesLoad(true)
     const { data, error } = await supabase.from('drynn_samples').select('*').order('created_at', { ascending: false })
     if (!error) setStudioSamples(data || [])
     setStudioSamplesLoad(false)
+  }
+
+  // Studio-only products (admin picks shown only in Studio)
+  const [studioPicks,     setStudioPicks]     = useState([])
+  const [studioPicksLoad, setStudioPicksLoad] = useState(false)
+  const [studioPicksLoaded, setStudioPicksLoaded] = useState(false)
+
+  const loadStudioPicks = async () => {
+    if (studioPicksLoaded) return
+    setStudioPicksLoad(true)
+    const { data, error } = await supabase.from('drynn_products').select('*').eq('studio_only', true).order('id')
+    if (!error) setStudioPicks(data || [])
+    setStudioPicksLoad(false)
+    setStudioPicksLoaded(true)
   }
 
   // Customer Upload
@@ -464,180 +485,25 @@ function MockupStudio() {
     { key:'polo',   label:'Polo',    emoji:'👔' },
     { key:'joggers',label:'Joggers', emoji:'👖' },
   ]
-  const MOTIONS = [
-    { key:'static',     label:'Static',      icon:'⏸' },
-    { key:'breathe',    label:'Breathe',     icon:'🫁' },
-    { key:'walk',       label:'Walk',        icon:'🚶' },
-    { key:'confident',  label:'Bold Walk',   icon:'😎' },
-    { key:'run',        label:'Run',         icon:'🏃' },
-    { key:'lookaround', label:'Look Around', icon:'👀' },
-    { key:'bounce',     label:'Bounce',      icon:'⬆' },
-    { key:'sway',       label:'Sway',        icon:'↔' },
-  ]
-  const FILTERS = [
-    { label:'None',    value:'' },
-    { label:'Vivid',   value:'saturate(1.8) contrast(1.1)' },
-    { label:'Muted',   value:'saturate(0.5) brightness(1.1)' },
-    { label:'Cool',    value:'hue-rotate(30deg) saturate(1.2)' },
-    { label:'Warm',    value:'hue-rotate(-20deg) saturate(1.3)' },
-    { label:'B&W',     value:'grayscale(1)' },
-    { label:'Vintage', value:'sepia(0.5) contrast(1.1)' },
-    { label:'Drama',   value:'contrast(1.5) saturate(1.3) brightness(0.9)' },
-  ]
-  const TABS = [
-    { key:'design',  label:'Design',  icon:'🎨' },
-    { key:'colour',  label:'Colour',  icon:'🖌' },
-    { key:'text',    label:'Text',    icon:'T'  },
-    { key:'motion',  label:'Motion',  icon:'🎬' },
-    { key:'effects', label:'Effects', icon:'✨' },
-    { key:'camera',  label:'360°',    icon:'🔄' },
-    { key:'upload',  label:'Upload',  icon:'📤' },
-    { key:'samples', label:'Samples', icon:'🖼' },
-  ]
-  const BG_PRESETS = [
-    { label:'Navy',   value:'#1a2744' },
-    { label:'Dark',   value:'#0d0d0d' },
-    { label:'White',  value:'#f0f0f0' },
-    { label:'Carbon', value:'#1a1a1a' },
-    { label:'Forest', value:'#1a4a2e' },
-    { label:'Purple', value:'#2d1b4e' },
-  ]
-  const TEXT_FONTS = ['Bebas Neue','Arial Black','Georgia','Impact','Courier New']
 
-  const canvasFilter = [filter, `brightness(${brightness}%) contrast(${contrast}%) saturate(${saturation}%)`].filter(Boolean).join(' ')
-
-  // ── Three.js ──────────────────────────────────────────────────
-  useEffect(() => {
-    let destroyed = false
-    const container = mountRef.current
-    if (!container) return
-    const script = document.createElement('script')
-    script.type = 'text/javascript'
-    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js'
-    script.onload = () => {
-      if (destroyed) return
-      const THREE = window.THREE; if (!THREE) return
-      const W = container.clientWidth || 360, H = Math.min(W * 1.15, 460)
-      const renderer = new THREE.WebGLRenderer({ antialias:true, alpha:false, preserveDrawingBuffer:true })
-      renderer.setSize(W, H); renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)); renderer.shadowMap.enabled = true
-      container.appendChild(renderer.domElement)
-      const scene = new THREE.Scene()
-      scene.background = new THREE.Color(0x1a2744); scene.fog = new THREE.Fog(0x1a2744, 10, 22)
-      const camera = new THREE.PerspectiveCamera(45, W/H, 0.1, 100); camera.position.set(0, 0.5, 3.5)
-      scene.add(new THREE.AmbientLight(0xffffff, 0.7))
-      const dir = new THREE.DirectionalLight(0xffffff, 1.2); dir.position.set(3,5,3); dir.castShadow = true; scene.add(dir)
-      const fill = new THREE.DirectionalLight(0x4488ff, 0.45); fill.position.set(-3,2,-2); scene.add(fill)
-      const rim = new THREE.DirectionalLight(0xff4444, 0.25); rim.position.set(0,-2,-3); scene.add(rim)
-
-      const buildGarment = (type, color, texImg, py, ps, px, rot) => {
-        const old = scene.getObjectByName('garment_group'); if (old) scene.remove(old)
-        const group = new THREE.Group(); group.name = 'garment_group'
-        const c = new THREE.Color(color)
-        const mat = () => new THREE.MeshStandardMaterial({ color:c, roughness:0.78, metalness:0.02 })
-        if (type === 'tshirt' || type === 'polo') {
-          const body = new THREE.Mesh(new THREE.CylinderGeometry(0.38,0.42,1.4,32,4,true), mat()); body.position.y=-0.1; body.castShadow=true; group.add(body)
-          const sho = new THREE.Mesh(new THREE.SphereGeometry(0.42,32,16,0,Math.PI*2,0,Math.PI*0.45), mat()); sho.position.y=0.68; group.add(sho)
-          const ls = new THREE.Mesh(new THREE.CylinderGeometry(0.13,0.15,0.52,16,2,true), mat()); ls.position.set(-0.54,0.55,0); ls.rotation.z=0.55; ls.castShadow=true; group.add(ls)
-          const rs = ls.clone(); rs.position.set(0.54,0.55,0); rs.rotation.z=-0.55; group.add(rs)
-          const col = new THREE.Mesh(new THREE.TorusGeometry(0.18,0.04,12,32,Math.PI*1.8), mat()); col.position.y=0.72; col.rotation.x=-Math.PI*0.1; group.add(col)
-          if (type==='polo') { const pc=new THREE.Mesh(new THREE.BoxGeometry(0.08,0.28,0.06),mat()); pc.position.set(0,0.6,0.36); group.add(pc) }
-          if (texImg) { const tex=new THREE.Texture(texImg); tex.needsUpdate=true; const pr=new THREE.Mesh(new THREE.PlaneGeometry(ps,ps),new THREE.MeshStandardMaterial({map:tex,transparent:true,roughness:0.8})); pr.position.set(px||0,py,0.39); pr.rotation.z=rot||0; group.add(pr) }
-        } else if (type === 'hoodie') {
-          const body=new THREE.Mesh(new THREE.CylinderGeometry(0.41,0.45,1.5,32,4,true),mat()); body.position.y=-0.12; body.castShadow=true; group.add(body)
-          const hood=new THREE.Mesh(new THREE.SphereGeometry(0.32,32,24,0,Math.PI*2,0,Math.PI*0.7),mat()); hood.position.set(0,0.82,-0.08); group.add(hood)
-          const sho=new THREE.Mesh(new THREE.SphereGeometry(0.44,32,16,0,Math.PI*2,0,Math.PI*0.45),mat()); sho.position.y=0.68; group.add(sho)
-          const ls=new THREE.Mesh(new THREE.CylinderGeometry(0.15,0.17,0.58,16,2,true),mat()); ls.position.set(-0.56,0.5,0); ls.rotation.z=0.5; ls.castShadow=true; group.add(ls)
-          const rs=ls.clone(); rs.position.set(0.56,0.5,0); rs.rotation.z=-0.5; group.add(rs)
-          const pkt=new THREE.Mesh(new THREE.BoxGeometry(0.38,0.22,0.04),mat()); pkt.position.set(0,-0.42,0.41); group.add(pkt)
-          const zip=new THREE.Mesh(new THREE.BoxGeometry(0.025,0.9,0.05),new THREE.MeshStandardMaterial({color:0x888888,metalness:0.6,roughness:0.4})); zip.position.set(0,0.1,0.41); group.add(zip)
-          if (texImg) { const tex=new THREE.Texture(texImg); tex.needsUpdate=true; const pr=new THREE.Mesh(new THREE.PlaneGeometry(ps,ps),new THREE.MeshStandardMaterial({map:tex,transparent:true,roughness:0.8})); pr.position.set(px||0,py+0.1,0.42); pr.rotation.z=rot||0; group.add(pr) }
-        } else if (type === 'joggers') {
-          const wb=new THREE.Mesh(new THREE.CylinderGeometry(0.38,0.38,0.18,32),mat()); wb.position.y=0.58; group.add(wb)
-          const ll=new THREE.Mesh(new THREE.CylinderGeometry(0.19,0.14,1.32,20,3,true),mat()); ll.position.set(-0.2,-0.18,0); ll.castShadow=true; group.add(ll)
-          const rl=ll.clone(); rl.position.set(0.2,-0.18,0); group.add(rl)
-          const cr=new THREE.Mesh(new THREE.SphereGeometry(0.25,20,10,0,Math.PI*2,Math.PI*0.5,Math.PI*0.5),mat()); cr.position.y=0.12; group.add(cr)
-          const lc=new THREE.Mesh(new THREE.CylinderGeometry(0.15,0.15,0.12,20),mat()); lc.position.set(-0.2,-0.86,0); group.add(lc)
-          const rc=lc.clone(); rc.position.set(0.2,-0.86,0); group.add(rc)
-        }
-        scene.add(group); return group
-      }
-
-      let isDragging=false, prevX=0, prevY=0, autoRotY=0, autoRotX=0
-      const onPD=(e)=>{isDragging=true;const s=e.touches?e.touches[0]:e;prevX=s.clientX;prevY=s.clientY}
-      const onPM=(e)=>{if(!isDragging)return;const s=e.touches?e.touches[0]:e;autoRotY+=(s.clientX-prevX)*0.008;autoRotX+=(s.clientY-prevY)*0.004;autoRotX=Math.max(-0.4,Math.min(0.4,autoRotX));prevX=s.clientX;prevY=s.clientY}
-      const onPU=()=>{isDragging=false}
-      renderer.domElement.addEventListener('mousedown',onPD); renderer.domElement.addEventListener('mousemove',onPM); renderer.domElement.addEventListener('mouseup',onPU)
-      renderer.domElement.addEventListener('touchstart',onPD,{passive:true}); renderer.domElement.addEventListener('touchmove',onPM,{passive:true}); renderer.domElement.addEventListener('touchend',onPU)
-
-      sceneRef.current = { scene, camera, renderer, buildGarment, motionType:'static', motionSpeed:0.5, autoSpin:false }
-      buildGarment('tshirt','#ffffff',null,0.08,0.55,0,0)
-
-      let ft=0
-      const animate = () => {
-        animRef.current = requestAnimationFrame(animate); ft += 0.016
-        const g = scene.getObjectByName('garment_group')
-        if (g) {
-          const mt=sceneRef.current.motionType, sp=sceneRef.current.motionSpeed, t=ft*sp
-          if (sceneRef.current.autoSpin) autoRotY += 0.013
-          if (mt==='static') { if(!isDragging&&!sceneRef.current.autoSpin) autoRotY+=0.004 }
-          else if(mt==='breathe'){g.scale.y=1+Math.sin(t*1.2)*0.012;g.scale.x=1+Math.sin(t*1.2+Math.PI)*0.006;g.position.y=Math.sin(t*1.2)*0.008}
-          else if(mt==='walk'){g.rotation.y=Math.sin(t*2)*0.12;g.position.y=Math.abs(Math.sin(t*2))*0.04-0.02;g.rotation.z=Math.sin(t*2)*0.04}
-          else if(mt==='confident'){g.rotation.y=Math.sin(t*1.8)*0.18;g.position.y=Math.abs(Math.sin(t*1.8))*0.06-0.03;g.rotation.z=Math.sin(t*1.8)*0.06}
-          else if(mt==='run'){g.rotation.y=Math.sin(t*4)*0.22;g.position.y=Math.abs(Math.sin(t*4))*0.1-0.05;g.rotation.z=Math.sin(t*4)*0.08;g.rotation.x=-0.08+Math.sin(t*4)*0.04}
-          else if(mt==='lookaround'){g.rotation.y=Math.sin(t*0.8)*0.55;g.position.y=Math.sin(t*0.4)*0.015}
-          else if(mt==='bounce'){g.position.y=Math.abs(Math.sin(t*2.5))*0.15-0.05;g.scale.y=1-Math.abs(Math.sin(t*2.5))*0.04}
-          else if(mt==='sway'){g.rotation.z=Math.sin(t*1.4)*0.12;g.position.x=Math.sin(t*1.4)*0.05}
-          if(mt==='static'||mt==='breathe'||mt==='bounce'||mt==='sway'){g.rotation.y+=autoRotY*0.08;g.rotation.y*=0.92;g.rotation.x=autoRotX*0.5}
-          autoRotY*=0.95
-        }
-        renderer.render(scene, camera)
-      }
-      animate(); setThreeReady(true)
-
-      sceneRef.current.rebuild = (type,color,texImg,py,ps,px,rot,mtype,mspeed,spin) => {
-        buildGarment(type,color,texImg,py,ps,px,rot)
-        sceneRef.current.motionType=mtype; sceneRef.current.motionSpeed=mspeed; sceneRef.current.autoSpin=spin
-      }
-      const onResize=()=>{const W2=container.clientWidth||360,H2=Math.min(W2*1.15,460);camera.aspect=W2/H2;camera.updateProjectionMatrix();renderer.setSize(W2,H2)}
-      window.addEventListener('resize',onResize)
-      sceneRef.current.cleanup=()=>{
-        window.removeEventListener('resize',onResize); cancelAnimationFrame(animRef.current)
-        renderer.domElement.removeEventListener('mousedown',onPD); renderer.domElement.removeEventListener('mousemove',onPM); renderer.domElement.removeEventListener('mouseup',onPU)
-        renderer.domElement.removeEventListener('touchstart',onPD); renderer.domElement.removeEventListener('touchmove',onPM); renderer.domElement.removeEventListener('touchend',onPU)
-        renderer.dispose(); try{if(container.contains(renderer.domElement))container.removeChild(renderer.domElement)}catch(_){}
-      }
-    }
-    script.onerror=()=>console.error('[3D Studio] Failed to load Three.js')
-    document.head.appendChild(script)
-    return ()=>{destroyed=true;if(sceneRef.current.cleanup)sceneRef.current.cleanup()}
-  }, [])
-
-  // Sync all state → scene
-  useEffect(()=>{
-    const s=sceneRef.current; if(!s.rebuild) return
-    s.rebuild(garmentType,gColor,designImg,designPosY,designScale,designPosX,designRot*Math.PI/180,motion,speed,autoSpin)
-  },[garmentType,gColor,designImg,designPosY,designScale,designPosX,designRot,motion,speed,autoSpin])
-
-  // Sync background colour
-  useEffect(()=>{
-    const s=sceneRef.current; if(!s.scene||!window.THREE) return
-    s.scene.background=new window.THREE.Color(bgColor); s.scene.fog=new window.THREE.Fog(bgColor,10,22)
-  },[bgColor])
+  const canvasFilter = `brightness(${brightness}%) contrast(${contrast}%) saturate(${saturation}%)`
 
   const handleDesignUpload = e => {
-    const f=e.target.files[0]; if(!f) return
-    const url=URL.createObjectURL(f)
-    const img=new Image(); img.onload=()=>setDesignImg(img); img.src=url
+    const f = e.target.files[0]; if (!f) return
+    const url = URL.createObjectURL(f)
+    setDesignImg(url)
   }
+
   const handleDownload = () => {
-    const s=sceneRef.current; if(!s.renderer) return
-    s.renderer.render(s.scene,s.camera)
-    const a=document.createElement('a'); a.download='drynn-mockup.png'; a.href=s.renderer.domElement.toDataURL('image/png'); a.click()
+    // Simple: open mockup in new tab for screenshot
+    alert('Tip: Take a screenshot of the mockup above to save your design preview.')
   }
+
   const handleCustFile = e => {
-    const f=e.target.files[0]; if(!f) return
-    setCustFile(f); const r=new FileReader(); r.onload=ev=>setCustPreview(ev.target.result); r.readAsDataURL(f)
+    const f = e.target.files[0]; if (!f) return
+    setCustFile(f); const r = new FileReader(); r.onload = ev => setCustPreview(ev.target.result); r.readAsDataURL(f)
   }
+
   const handleCustomerUpload = async () => {
     if (!custFile||!custName||!custPhone) { alert('Please fill your name, phone, and upload a photo.'); return }
     setUploading(true); setUploadErr('')
@@ -658,22 +524,44 @@ function MockupStudio() {
   }
 
   const sliderStyle = { width:'100%', accentColor:'#c8102e' }
-  const rowStyle = { display:'flex', justifyContent:'space-between', marginBottom:6 }
-  const lblStyle = { fontSize:10, fontWeight:700, letterSpacing:'.12em', textTransform:'uppercase', color:'rgba(255,255,255,.4)' }
+  const rowStyle    = { display:'flex', justifyContent:'space-between', marginBottom:6 }
+  const lblStyle    = { fontSize:10, fontWeight:700, letterSpacing:'.12em', textTransform:'uppercase', color:'rgba(255,255,255,.4)' }
+
+  // Color tint: apply CSS filter to garment image
+  const colorToFilter = (hex) => {
+    if (hex === '#ffffff') return 'none'
+    if (hex === '#0a0a0a' || hex === '#000000') return 'brightness(0)'
+    if (hex === '#c8102e') return 'sepia(1) saturate(5) hue-rotate(320deg)'
+    if (hex === '#0a1f5d') return 'sepia(1) saturate(3) hue-rotate(195deg) brightness(0.6)'
+    if (hex === '#00a86b') return 'sepia(1) saturate(4) hue-rotate(110deg) brightness(0.8)'
+    if (hex === '#f5a623') return 'sepia(1) saturate(4) hue-rotate(10deg) brightness(1)'
+    if (hex === '#9b59b6') return 'sepia(1) saturate(3) hue-rotate(260deg)'
+    if (hex === '#888888') return 'brightness(0.55)'
+    return 'none'
+  }
+
+  const TABS = [
+    { key:'design',  icon:'🎨', label:'Design'  },
+    { key:'colour',  icon:'🎨', label:'Colour'  },
+    { key:'text',    icon:'✍️', label:'Text'    },
+    { key:'motion',  icon:'↔️', label:'Position' },
+    { key:'effects', icon:'✨', label:'Effects'  },
+    { key:'camera',  icon:'📷', label:'360°'    },
+    { key:'samples', icon:'🖼️', label:'Samples'  },
+    { key:'picks',   icon:'⭐', label:'Picks'    },
+    { key:'upload',  icon:'📤', label:'Upload'   },
+  ]
 
   return (
-    <div style={{ background:'#0d1b3e', position:'relative', overflow:'hidden' }}>
-      <div style={{ position:'absolute', top:'5%', left:'5%', width:200, height:200, background:'radial-gradient(circle,rgba(200,16,46,.14) 0%,transparent 70%)', pointerEvents:'none' }} />
-      <div style={{ position:'absolute', bottom:'10%', right:'5%', width:280, height:280, background:'radial-gradient(circle,rgba(59,130,246,.12) 0%,transparent 70%)', pointerEvents:'none' }} />
 
-      {/* Title row */}
+      {/* Title */}
       <div style={{ textAlign:'center', padding:'40px 16px 12px' }}>
-        <span className="sec-label" style={{ color:'#c8102e' }}>3D Design Studio</span>
-        <h2 className="sec-title" style={{ color:'#fff' }}>LIVE 3D MOCKUP</h2>
-        <p style={{ fontSize:13, color:'rgba(255,255,255,.4)', marginTop:6 }}>Drag to rotate · CapCut animations · 360° view · Export</p>
+        <span className="sec-label" style={{ color:'#c8102e' }}>Design Studio</span>
+        <h2 className="sec-title" style={{ color:'#fff' }}>LIVE MOCKUP</h2>
+        <p style={{ fontSize:13, color:'rgba(255,255,255,.4)', marginTop:6 }}>Upload design · Pick colour · See it live</p>
       </div>
 
-      {/* Garment switcher + export */}
+      {/* Garment switcher */}
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'0 16px 12px', maxWidth:900, margin:'0 auto', flexWrap:'wrap', gap:8 }}>
         <div style={{ display:'flex', gap:7, flexWrap:'wrap' }}>
           {GARMENT_TYPES.map(g=>(
@@ -683,45 +571,68 @@ function MockupStudio() {
             </button>
           ))}
         </div>
-        <div style={{ display:'flex', gap:8 }}>
-          <button onClick={()=>setAutoSpin(v=>!v)}
-            style={{ padding:'9px 14px', borderRadius:50, background:autoSpin?'rgba(200,16,46,.3)':'rgba(255,255,255,.08)', color:'#fff', border:autoSpin?'1px solid #c8102e':'1px solid rgba(255,255,255,.15)', fontSize:11, fontWeight:700, cursor:'pointer' }}>
-            {autoSpin?'⏸ Stop 360°':'▶ Auto 360°'}
-          </button>
-          <button onClick={handleDownload}
-            style={{ padding:'9px 16px', borderRadius:50, background:'linear-gradient(135deg,#c8102e,#0a1f5d)', color:'#fff', border:'none', fontSize:12, fontWeight:700, cursor:'pointer' }}>
-            📤 Export PNG
-          </button>
+        <button onClick={handleDownload}
+          style={{ padding:'9px 16px', borderRadius:50, background:'linear-gradient(135deg,#c8102e,#0a1f5d)', color:'#fff', border:'none', fontSize:12, fontWeight:700, cursor:'pointer' }}>
+          📸 Save Preview
+        </button>
+      </div>
+
+      {/* FLAT MOCKUP CANVAS */}
+      <div style={{ maxWidth:900, margin:'0 auto', padding:'0 16px' }}>
+        <div style={{ position:'relative', width:'100%', maxWidth:420, margin:'0 auto', borderRadius:16, overflow:'hidden', background:'#f8f8f8', filter:canvasFilter, userSelect:'none' }}>
+          {/* Garment base image */}
+          <img
+            src={GARMENT_IMGS[garmentType]}
+            alt={garmentType}
+            style={{ width:'100%', display:'block', filter: colorToFilter(gColor) }}
+            onError={e => { e.target.style.display='none' }}
+          />
+          {/* Fallback if image fails */}
+          <div style={{ position:'absolute', inset:0, display:'flex', alignItems:'center', justifyContent:'center', fontSize:120, opacity:0.08, pointerEvents:'none' }}>
+            {GARMENT_TYPES.find(g=>g.key===garmentType)?.emoji}
+          </div>
+          {/* Design overlay */}
+          {designImg && (
+            <img
+              src={typeof designImg === 'string' ? designImg : (designImg.src || '')}
+              alt="design"
+              style={{
+                position:'absolute',
+                top: `${designPosY}%`,
+                left: `${designPosX}%`,
+                transform: `translate(-50%, -50%) rotate(${designRot}deg)`,
+                width: `${designScale}%`,
+                pointerEvents:'none',
+                objectFit:'contain',
+              }}
+            />
+          )}
+          {/* Text overlay */}
+          {textOn && textVal && (
+            <div style={{
+              position:'absolute',
+              top:'60%', left:'50%',
+              transform:'translateX(-50%)',
+              fontFamily:textFont, fontSize:textSize,
+              color:textColor, fontWeight:700,
+              textShadow:'0 1px 4px rgba(0,0,0,.3)',
+              pointerEvents:'none', whiteSpace:'nowrap',
+            }}>
+              {textVal}
+            </div>
+          )}
         </div>
       </div>
 
-      {/* 3D Canvas */}
-      <div ref={mountRef} style={{ width:'100%', maxWidth:900, margin:'0 auto', minHeight:360, cursor:'grab', position:'relative', touchAction:'none', filter:canvasFilter }}>
-        {!threeReady && (
-          <div style={{ position:'absolute', inset:0, display:'flex', alignItems:'center', justifyContent:'center', flexDirection:'column', gap:12, background:'#1a2744', minHeight:360 }}>
-            <div style={{ width:36, height:36, border:'3px solid rgba(255,255,255,.15)', borderTopColor:'#c8102e', borderRadius:'50%', animation:'drynn-spin 0.8s linear infinite' }} />
-            <span style={{ fontSize:12, color:'rgba(255,255,255,.4)' }}>Loading 3D engine…</span>
-          </div>
-        )}
-        {autoSpin && (
-          <div style={{ position:'absolute', top:12, right:14, background:'rgba(200,16,46,.25)', border:'1px solid rgba(200,16,46,.5)', borderRadius:50, padding:'3px 10px', fontSize:9, fontWeight:700, color:'#c8102e', letterSpacing:'.1em', zIndex:10 }}>
-            ↻ 360° LIVE
-          </div>
-        )}
-      </div>
+            </div>
 
-      {/* Text overlay */}
-      {textOn && textVal && (
-        <div style={{ textAlign:'center', pointerEvents:'none', marginTop:-20, marginBottom:8, fontFamily:textFont, fontSize:textSize, color:textColor, fontWeight:700, textShadow:'0 2px 10px rgba(0,0,0,.7)' }}>
-          {textVal}
-        </div>
-      )}
+
 
       {/* Tab bar */}
       <div style={{ maxWidth:900, margin:'0 auto', borderTop:'1px solid rgba(255,255,255,.08)' }}>
         <div style={{ display:'flex', justifyContent:'space-around', background:'rgba(0,0,0,.3)', overflowX:'auto' }}>
           {TABS.map(t=>(
-            <button key={t.key} onClick={()=>{ setTab(t.key); if(t.key==='samples') loadStudioSamples() }}
+            <button key={t.key} onClick={()=>{ setTab(t.key); if(t.key==='samples') loadStudioSamples(); if(t.key==='picks') loadStudioPicks() }}
               style={{ flex:1, minWidth:54, padding:'11px 4px', background:'none', border:'none', cursor:'pointer', display:'flex', flexDirection:'column', alignItems:'center', gap:2, borderBottom:tab===t.key?'2px solid #c8102e':'2px solid transparent', transition:'all .15s', whiteSpace:'nowrap' }}>
               <span style={{ fontSize:18 }}>{t.icon}</span>
               <span style={{ fontSize:9, fontWeight:700, letterSpacing:'.07em', textTransform:'uppercase', color:tab===t.key?'#c8102e':'rgba(255,255,255,.4)' }}>{t.label}</span>
@@ -830,33 +741,30 @@ function MockupStudio() {
             </div>
           )}
 
-          {/* MOTION TAB */}
+          {/* MOTION TAB — Design Position */}
           {tab==='motion' && (
             <div>
-              <p style={{ ...lblStyle, marginBottom:12 }}>Animation Style — CapCut Moves</p>
-              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:9, marginBottom:20 }}>
-                {MOTIONS.map(m=>(
-                  <button key={m.key} onClick={()=>setMotion(m.key)}
-                    style={{ padding:'13px 8px', borderRadius:10, fontSize:12, fontWeight:600, cursor:'pointer', transition:'all .15s', background:motion===m.key?'#0a1f5d':'rgba(255,255,255,.06)', color:motion===m.key?'#fff':'rgba(255,255,255,.55)', border:motion===m.key?'1.5px solid #c8102e':'1.5px solid rgba(255,255,255,.1)', display:'flex', flexDirection:'column', alignItems:'center', gap:5 }}>
-                    <span style={{ fontSize:20 }}>{m.icon}</span>{m.label}
-                  </button>
-                ))}
-              </div>
-              <div style={rowStyle}><p style={lblStyle}>Speed</p><span style={{ fontSize:12, fontWeight:700, color:'#fff' }}>{speed.toFixed(1)}×</span></div>
-              <input type="range" min="0.1" max="3" step="0.05" value={speed} onChange={e=>setSpeed(parseFloat(e.target.value))} style={sliderStyle} />
-              <div style={{ display:'flex', gap:7, marginTop:10 }}>
-                {[0.5,1,1.5,2].map(v=>(
-                  <button key={v} onClick={()=>setSpeed(v)}
-                    style={{ flex:1, padding:'7px 0', borderRadius:6, fontSize:11, fontWeight:600, cursor:'pointer', background:speed===v?'#0a1f5d':'rgba(255,255,255,.06)', color:speed===v?'#fff':'rgba(255,255,255,.5)', border:speed===v?'1px solid #c8102e':'1px solid rgba(255,255,255,.1)' }}>
-                    {v}×
-                  </button>
-                ))}
-              </div>
-              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginTop:20 }}>
-                <p style={lblStyle}>Auto 360° Spin</p>
-                <button onClick={()=>setAutoSpin(v=>!v)}
-                  style={{ padding:'7px 16px', borderRadius:50, fontSize:11, fontWeight:700, cursor:'pointer', background:autoSpin?'#c8102e':'rgba(255,255,255,.08)', color:'#fff', border:'none' }}>
-                  {autoSpin?'⏸ Stop':'▶ Start'}
+              <p style={{ ...lblStyle, marginBottom:14 }}>Adjust Design Position</p>
+              <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
+                <div>
+                  <div style={rowStyle}><span style={lblStyle}>Move Up / Down</span><span style={{ fontSize:11, color:'#fff' }}>{designPosY}%</span></div>
+                  <input type="range" min="15" max="75" value={designPosY} onChange={e=>setDesignPosY(Number(e.target.value))} style={sliderStyle} />
+                </div>
+                <div>
+                  <div style={rowStyle}><span style={lblStyle}>Move Left / Right</span><span style={{ fontSize:11, color:'#fff' }}>{designPosX}%</span></div>
+                  <input type="range" min="20" max="80" value={designPosX} onChange={e=>setDesignPosX(Number(e.target.value))} style={sliderStyle} />
+                </div>
+                <div>
+                  <div style={rowStyle}><span style={lblStyle}>Design Size</span><span style={{ fontSize:11, color:'#fff' }}>{designScale}%</span></div>
+                  <input type="range" min="10" max="65" value={designScale} onChange={e=>setDesignScale(Number(e.target.value))} style={sliderStyle} />
+                </div>
+                <div>
+                  <div style={rowStyle}><span style={lblStyle}>Rotation</span><span style={{ fontSize:11, color:'#fff' }}>{designRot}°</span></div>
+                  <input type="range" min="-45" max="45" value={designRot} onChange={e=>setDesignRot(Number(e.target.value))} style={sliderStyle} />
+                </div>
+                <button onClick={()=>{setDesignPosY(38);setDesignPosX(50);setDesignScale(38);setDesignRot(0)}}
+                  style={{ padding:'9px', background:'rgba(255,255,255,.06)', border:'1px solid rgba(255,255,255,.14)', borderRadius:6, color:'rgba(255,255,255,.5)', fontSize:11, fontWeight:700, cursor:'pointer' }}>
+                  ↺ Reset Position
                 </button>
               </div>
             </div>
@@ -895,35 +803,21 @@ function MockupStudio() {
             </div>
           )}
 
-          {/* 360° CAMERA TAB */}
+          {/* 360° TAB — Garment angle views */}
           {tab==='camera' && (
             <div>
-              <p style={{ ...lblStyle, marginBottom:12 }}>360° Camera Angles</p>
-              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:10, marginBottom:16 }}>
-                {[
-                  {label:'Front',     pos:[0,0.5,3.5],    icon:'⬜'},
-                  {label:'Left',      pos:[-2.5,0.5,2.5], icon:'◀'},
-                  {label:'Right',     pos:[2.5,0.5,2.5],  icon:'▶'},
-                  {label:'Top',       pos:[0,3,2],        icon:'▲'},
-                  {label:'Back',      pos:[0,0.5,-3.5],   icon:'🔄'},
-                  {label:'Close-Up',  pos:[0,0.3,2],      icon:'🔍'},
-                  {label:'Low Angle', pos:[0,-0.8,3],     icon:'⬇'},
-                  {label:'Overhead',  pos:[0,4,0.5],      icon:'☝'},
-                ].map(cam=>(
-                  <button key={cam.label} onClick={()=>{const s=sceneRef.current;if(!s.camera)return;s.camera.position.set(...cam.pos);s.camera.lookAt(0,0,0)}}
-                    style={{ padding:'12px 4px', borderRadius:8, fontSize:11, fontWeight:600, cursor:'pointer', background:'rgba(255,255,255,.06)', color:'rgba(255,255,255,.65)', border:'1px solid rgba(255,255,255,.1)', display:'flex', flexDirection:'column', alignItems:'center', gap:3 }}>
-                    <span style={{ fontSize:18 }}>{cam.icon}</span>{cam.label}
+              <p style={{ ...lblStyle, marginBottom:12 }}>View Angle</p>
+              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
+                {[['⬜ Front','front'],['🔄 Back','back'],['◀ Left','left'],['▶ Right','right']].map(([label,val])=>(
+                  <button key={val}
+                    style={{ padding:'14px 8px', borderRadius:8, fontSize:12, fontWeight:600, cursor:'pointer', background:'rgba(255,255,255,.06)', color:'rgba(255,255,255,.65)', border:'1px solid rgba(255,255,255,.1)', textAlign:'center' }}>
+                    {label}
                   </button>
                 ))}
               </div>
-              <p style={{ fontSize:11, color:'rgba(255,255,255,.28)', textAlign:'center', marginBottom:16 }}>💡 Drag the 3D view to rotate freely in any direction</p>
-              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-                <p style={lblStyle}>Auto 360° Spin</p>
-                <button onClick={()=>setAutoSpin(v=>!v)}
-                  style={{ padding:'7px 16px', borderRadius:50, fontSize:11, fontWeight:700, cursor:'pointer', background:autoSpin?'#c8102e':'rgba(255,255,255,.08)', color:'#fff', border:'none' }}>
-                  {autoSpin?'⏸ Stop':'▶ Spin'}
-                </button>
-              </div>
+              <p style={{ fontSize:11, color:'rgba(255,255,255,.3)', textAlign:'center', marginTop:16, lineHeight:1.6 }}>
+                360° view coming soon. For now use the front view to preview your design.
+              </p>
             </div>
           )}
 
@@ -972,6 +866,46 @@ function MockupStudio() {
                         </div>
                       </div>
                     ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* STUDIO PICKS TAB — admin-curated products, shown only here */}
+          {tab==='picks' && (
+            <div>
+              <p style={{ fontSize:12, color:'rgba(255,255,255,.4)', marginBottom:14, lineHeight:1.65 }}>
+                Admin-curated garments exclusively for the Studio. Click one to select it as your base garment.
+              </p>
+              {studioPicksLoad ? (
+                <div style={{ textAlign:'center', padding:32, color:'rgba(255,255,255,.4)', fontSize:13 }}>Loading…</div>
+              ) : studioPicks.length === 0 ? (
+                <div style={{ textAlign:'center', padding:32, background:'rgba(255,255,255,.04)', borderRadius:10, color:'rgba(255,255,255,.35)', fontSize:13 }}>
+                  No Studio Picks yet. Admin will add exclusive products soon!
+                </div>
+              ) : (
+                <div style={{ display:'grid', gridTemplateColumns:'repeat(2,1fr)', gap:12 }}>
+                  {studioPicks.map(p => (
+                    <div key={p.id}
+                      onClick={()=>{ setGarmentType(p.category==='Hoodies'?'hoodie':p.category==='Polos'?'polo':p.category==='Joggers'?'joggers':'tshirt'); setTab('design') }}
+                      style={{ borderRadius:10, overflow:'hidden', border:'1.5px solid rgba(255,255,255,.12)', cursor:'pointer', background:'rgba(255,255,255,.05)', transition:'all .15s', position:'relative' }}
+                      onMouseEnter={e=>e.currentTarget.style.borderColor='#c8102e'}
+                      onMouseLeave={e=>e.currentTarget.style.borderColor='rgba(255,255,255,.12)'}>
+                      <div style={{ background:'#f8f8f8', height:120, display:'flex', alignItems:'center', justifyContent:'center', fontSize:60, position:'relative' }}>
+                        {p.image_url
+                          ? <img src={p.image_url} alt={p.name} style={{ width:'100%', height:'100%', objectFit:'contain' }} />
+                          : p.emoji}
+                        <span style={{ position:'absolute', top:6, left:6, background:'#c8102e', color:'#fff', fontSize:8, fontWeight:700, letterSpacing:'.08em', textTransform:'uppercase', padding:'2px 7px', borderRadius:2 }}>
+                          {p.tag || 'Studio'}
+                        </span>
+                      </div>
+                      <div style={{ padding:'8px 10px' }}>
+                        <div style={{ fontSize:12, fontWeight:700, color:'rgba(255,255,255,.9)', marginBottom:2, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{p.name}</div>
+                        <div style={{ fontSize:10, color:'rgba(255,255,255,.45)', marginBottom:4 }}>{p.category} · ₹{Number(p.price).toLocaleString()}</div>
+                        <div style={{ fontSize:9, fontWeight:700, color:'#c8102e', textTransform:'uppercase', letterSpacing:'.08em' }}>⭐ Studio Exclusive</div>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               )}
             </div>
@@ -1046,7 +980,7 @@ function MockupStudio() {
 
 
 function HomePage({ user, onNav, cart, onAddToCart }) {
-  const products = useProducts()
+  const products = usePublicProducts()
   return (
     <div>
       {/* Hero Banner */}
@@ -1285,7 +1219,7 @@ function ProductDetailPage({ product, onBack, onAddToCart }) {
 
 // ── Products Listing Page ─────────────────────────────────────
 function ProductsPage({ onAddToCart }) {
-  const products  = useProducts()
+  const products  = usePublicProducts()
   const [activeTab,    setActiveTab]    = useState('All')
   const [sort,         setSort]         = useState('popular')
   const [wishlist,     setWishlist]     = useState([])
@@ -2341,7 +2275,7 @@ function AdminPanel({ onBack }) {
   const [toast, setToast]         = useState('')
   // New product form state
   const [showAddProduct, setShowAddProduct] = useState(false)
-  const [newProduct, setNewProduct] = useState({ name:'', price:'', mrp:'', tag:'', category:'T-Shirts', emoji:'👕', rating:'4.5', reviews:'0' })
+  const [newProduct, setNewProduct] = useState({ name:'', price:'', mrp:'', tag:'', category:'T-Shirts', emoji:'👕', rating:'4.5', reviews:'0', studio_only: false })
   const [addingProduct, setAddingProduct] = useState(false)
   // Samples state
   const [samples, setSamples]         = useState([])
@@ -2448,7 +2382,8 @@ function AdminPanel({ onBack }) {
       tag: p.tag, tag_color: p.tagColor || p.tag_color,
       category: p.category, emoji: p.emoji,
       rating: Number(p.rating), reviews: Number(p.reviews),
-      image_url: p.image_url || null
+      image_url: p.image_url || null,
+      studio_only: p.studio_only || false,
     }, { onConflict: 'id' })
     if (error) {
       alert('Save failed: ' + error.message)
@@ -2474,11 +2409,12 @@ function AdminPanel({ onBack }) {
       emoji: newProduct.emoji,
       rating: Number(newProduct.rating) || 4.5,
       reviews: Number(newProduct.reviews) || 0,
+      studio_only: newProduct.studio_only || false,
     }
     const { error } = await supabase.from('drynn_products').insert(product)
     if (error) { alert('Failed to add product: ' + error.message); setAddingProduct(false); return }
     setProducts(ps => [...ps, product])
-    setNewProduct({ name:'', price:'', mrp:'', tag:'', category:'T-Shirts', emoji:'👕', rating:'4.5', reviews:'0' })
+    setNewProduct({ name:'', price:'', mrp:'', tag:'', category:'T-Shirts', emoji:'👕', rating:'4.5', reviews:'0', studio_only: false })
     setShowAddProduct(false)
     setAddingProduct(false)
     showToast('Product added ✓')
@@ -2657,6 +2593,16 @@ function AdminPanel({ onBack }) {
                     <label style={{ fontSize:10, fontWeight:700, letterSpacing:'.1em', color:'#888', textTransform:'uppercase', display:'block', marginBottom:4 }}>Reviews Count</label>
                     <input className="input-field" type="number" placeholder="0" value={newProduct.reviews} onChange={e=>setNewProduct({...newProduct,reviews:e.target.value})} style={{ padding:'8px 12px', fontSize:13 }} />
                   </div>
+                  <div style={{ gridColumn:'1/-1' }}>
+                    <label style={{ display:'flex', alignItems:'center', gap:10, cursor:'pointer', userSelect:'none', background: newProduct.studio_only ? 'rgba(200,16,46,.07)' : '#f8f8f8', border: `1.5px solid ${newProduct.studio_only ? '#c8102e' : '#e8e8e8'}`, borderRadius:8, padding:'12px 14px' }}>
+                      <input type="checkbox" checked={newProduct.studio_only} onChange={e=>setNewProduct({...newProduct,studio_only:e.target.checked})}
+                        style={{ width:18, height:18, accentColor:'#c8102e', cursor:'pointer', flexShrink:0 }} />
+                      <div>
+                        <div style={{ fontSize:13, fontWeight:700, color: newProduct.studio_only ? '#c8102e' : '#0a0a0a' }}>🎨 Studio Only</div>
+                        <div style={{ fontSize:11, color:'#888', marginTop:2 }}>Hide from Products page — visible only in Design Studio</div>
+                      </div>
+                    </label>
+                  </div>
                 </div>
                 <button className="btn-primary" style={{ padding:'10px 24px', fontSize:13, opacity:addingProduct?.6:1 }} onClick={addProduct} disabled={addingProduct}>
                   {addingProduct ? 'Adding…' : '+ Add Product'}
@@ -2678,7 +2624,10 @@ function AdminPanel({ onBack }) {
                           : <span style={{ fontSize:30 }}>{p.emoji}</span>}
                       </div>
                       <div style={{ flex:1 }}>
-                        <div style={{ fontSize:14, fontWeight:700 }}>{p.name}</div>
+                        <div style={{ fontSize:14, fontWeight:700, display:'flex', alignItems:'center', gap:8 }}>
+                          {p.name}
+                          {p.studio_only && <span style={{ fontSize:9, fontWeight:700, letterSpacing:'.1em', textTransform:'uppercase', background:'rgba(200,16,46,.1)', color:'#c8102e', border:'1px solid rgba(200,16,46,.25)', borderRadius:3, padding:'2px 7px' }}>🎨 Studio Only</span>}
+                        </div>
                         <div style={{ fontSize:12, color:'#888' }}>{p.category} · ₹{Number(p.price).toLocaleString()} (MRP ₹{Number(p.mrp).toLocaleString()})</div>
                         <div style={{ fontSize:11, color:'#aaa' }}>⭐ {p.rating} · {p.reviews} reviews · Tag: {p.tag}</div>
                       </div>
@@ -2785,7 +2734,7 @@ function OrderEditRow({ order, onSave, onCancel, statuses, colors }) {
 }
 
 function ProductEditRow({ product, onSave, onCancel }) {
-  const [p, setP]           = useState({...product})
+  const [p, setP]           = useState({...product, studio_only: product.studio_only || false})
   const [imgFile, setImgFile] = useState(null)
   const [imgPct, setImgPct]   = useState(0)
   const [imgSaving, setImgSaving] = useState(false)
@@ -2838,6 +2787,16 @@ function ProductEditRow({ product, onSave, onCancel }) {
           </div>
         )}
       </div>
+
+      {/* Studio Only toggle */}
+      <label style={{ display:'flex', alignItems:'center', gap:10, cursor:'pointer', userSelect:'none', background: p.studio_only ? 'rgba(200,16,46,.06)' : '#f8f8f8', border: `1.5px solid ${p.studio_only ? '#c8102e' : '#e8e8e8'}`, borderRadius:8, padding:'11px 14px' }}>
+        <input type="checkbox" checked={!!p.studio_only} onChange={e=>setP({...p,studio_only:e.target.checked})}
+          style={{ width:18, height:18, accentColor:'#c8102e', cursor:'pointer', flexShrink:0 }} />
+        <div>
+          <div style={{ fontSize:13, fontWeight:700, color: p.studio_only ? '#c8102e' : '#0a0a0a' }}>🎨 Studio Only</div>
+          <div style={{ fontSize:11, color:'#888', marginTop:1 }}>Hide from Products page — show only in Design Studio</div>
+        </div>
+      </label>
 
       <div style={{ display:'flex', gap:10 }}>
         <button className="btn-primary" style={{ padding:'8px 20px', fontSize:12, opacity:imgSaving?.6:1 }} onClick={handleImgUpload} disabled={imgSaving}>

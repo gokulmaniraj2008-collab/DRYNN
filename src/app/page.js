@@ -1027,8 +1027,11 @@ function StudioPage({ user }) {
         designUrl = selectedSample.image_url
       }
       setStatus('saving')
+      // Get live auth user ID — user prop can sometimes be stale
+      const { data: { user: authUser } } = await supabase.auth.getUser()
+      const uid = authUser?.id || user?.id || null
       const { error:dbErr } = await supabase.from('drynn_orders').insert({
-        id:orderId, user_id:user?.id||null, name:form.name, phone:form.phone,
+        id:orderId, user_id:uid, name:form.name, phone:form.phone,
         garment, color, size, qty:Number(form.qty), address:form.address,
         design_file: designUrl, placed_at:placedAt, status:'Received'
       })
@@ -1392,8 +1395,11 @@ function CartPage({ cart, onRemove, onClear, user }) {
       const orderId  = crypto.randomUUID()
       const placedAt = new Date().toISOString()
       const itemsSummary = cart.map(i => `${i.name} x${i.qty}`).join(', ')
+      // Get live auth user ID — user prop can sometimes be stale
+      const { data: { user: authUser } } = await supabase.auth.getUser()
+      const uid = authUser?.id || user?.id || null
       const { error: dbErr } = await supabase.from('drynn_orders').insert({
-        id: orderId, user_id: user?.id || null, name: form.name, phone: form.phone,
+        id: orderId, user_id: uid, name: form.name, phone: form.phone,
         address: `${form.address}, ${form.pincode}`, garment: itemsSummary,
         color: 'Various', size: 'Various', qty: cart.reduce((s,i) => s + i.qty, 0),
         design_file: 'catalog-order', placed_at: placedAt, status: 'Received',
@@ -1544,15 +1550,23 @@ function OrdersPage({ user, onBack }) {
   const [selected,setSelected]= useState(null)  // order to show detail
 
   useEffect(() => {
-    if (!user) { setLoading(false); return }
-    supabase.from('drynn_orders')
-      .select('*')
-      .eq('user_id', user.id)
-      .order('placed_at', { ascending: false })
-      .then(({ data, error }) => {
-        if (!error && data) setOrders(data)
-        setLoading(false)
-      })
+    const fetchOrders = async () => {
+      // Get the live auth user directly — don't rely on prop which may be stale
+      const { data: { user: authUser } } = await supabase.auth.getUser()
+      const uid = authUser?.id || user?.id
+      if (!uid) { setLoading(false); return }
+
+      const { data, error } = await supabase
+        .from('drynn_orders')
+        .select('*')
+        .eq('user_id', uid)
+        .order('placed_at', { ascending: false })
+
+      if (error) console.error('Orders fetch error:', error.message)
+      if (data) setOrders(data)
+      setLoading(false)
+    }
+    fetchOrders()
   }, [user])
 
   const STATUS_COLORS = {

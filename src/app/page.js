@@ -1616,7 +1616,7 @@ function StudioPage({ user, onNav }) {
             {/* Mini controls */}
             <div style={{ flex:'1 1 220px', maxWidth:280 }}>
               <p style={{ fontSize:12, fontWeight:700, color:'#333', marginBottom:10, letterSpacing:'.08em', textTransform:'uppercase' }}>How it works</p>
-              {[['1.','Go to Studio - choose a garment and colour above'],['2.','Upload your design or pick a sample'],['3.','See it appear on the fabric here instantly'],['4.','Adjust position and scale in Position tab']].map(([e,t])=>(
+              {[['1.','Go to Studio → choose a garment and colour above'],['2.','Upload your design or pick a sample'],['3.','See it appear on the fabric here instantly'],['4.','Adjust position and scale in Position tab']].map(([e,t])=>(
                 <div key={e} style={{ display:'flex', gap:10, marginBottom:12, fontSize:13, color:'#555', lineHeight:1.6 }}>
                   <span style={{ flexShrink:0 }}>{e}</span><span>{t}</span>
                 </div>

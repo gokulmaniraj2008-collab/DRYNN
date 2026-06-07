@@ -980,8 +980,6 @@ function MockupStudio() {
   )
 }
 
-}
-
 
 function HomePage({ user, onNav, cart, onAddToCart }) {
   const products = useProducts()

@@ -397,362 +397,589 @@ function LoginPage({ onBack }) {
 
 // ══════════════════════════════════════════════════════════════
 // CSS 3D MOCKUP  -  pure CSS transform + motion buttons
+// ══════════════════════════════════════════════════════════════
+// FULL 3D DESIGN STUDIO  -  CapCut motions · 360° · Supabase upload
 function MockupStudio() {
-  const mountRef  = useRef(null)
-  const sceneRef  = useRef({})
-  const animRef   = useRef(null)
+  const mountRef = useRef(null)
+  const sceneRef = useRef({})
+  const animRef  = useRef(null)
 
+  // Core
   const [garmentType, setGarmentType] = useState('tshirt')
   const [gColor,      setGColor]      = useState('#ffffff')
+  const [bgColor,     setBgColor]     = useState('#1a2744')
+  const [tab,         setTab]         = useState('design')
+  const [threeReady,  setThreeReady]  = useState(false)
+
+  // Design
+  const [designImg,   setDesignImg]   = useState(null)
+  const [designPosY,  setDesignPosY]  = useState(0.08)
+  const [designPosX,  setDesignPosX]  = useState(0)
+  const [designScale, setDesignScale] = useState(0.55)
+  const [designRot,   setDesignRot]   = useState(0)
+
+  // Text
+  const [textOn,      setTextOn]      = useState(false)
+  const [textVal,     setTextVal]     = useState('YOUR TEXT')
+  const [textFont,    setTextFont]    = useState('Bebas Neue')
+  const [textColor,   setTextColor]   = useState('#ffffff')
+  const [textSize,    setTextSize]    = useState(30)
+
+  // Motion
   const [motion,      setMotion]      = useState('static')
   const [speed,       setSpeed]       = useState(0.5)
-  const [tab,         setTab]         = useState('design')
-  const [designImg,   setDesignImg]   = useState(null)
-  const [threeReady,  setThreeReady]  = useState(false)
-  const [designPosY,  setDesignPosY]  = useState(0.08)
-  const [designScale, setDesignScale] = useState(0.55)
+  const [autoSpin,    setAutoSpin]    = useState(false)
+
+  // Effects
+  const [filter,      setFilter]      = useState('')
+  const [brightness,  setBrightness]  = useState(100)
+  const [contrast,    setContrast]    = useState(100)
+  const [saturation,  setSaturation]  = useState(100)
+
+  // Customer Upload
+  const [custFile,    setCustFile]    = useState(null)
+  const [custPreview, setCustPreview] = useState(null)
+  const [custName,    setCustName]    = useState('')
+  const [custPhone,   setCustPhone]   = useState('')
+  const [uploading,   setUploading]   = useState(false)
+  const [uploadDone,  setUploadDone]  = useState(false)
+  const [uploadErr,   setUploadErr]   = useState('')
 
   const GARMENT_TYPES = [
-    { key:'tshirt',  label:'T-Shirt',  emoji:'👕' },
-    { key:'hoodie',  label:'Hoodie',   emoji:'🧥' },
-    { key:'polo',    label:'Polo',     emoji:'👔' },
-    { key:'joggers', label:'Joggers',  emoji:'👖' },
+    { key:'tshirt', label:'T-Shirt', emoji:'👕' },
+    { key:'hoodie', label:'Hoodie',  emoji:'🧥' },
+    { key:'polo',   label:'Polo',    emoji:'👔' },
+    { key:'joggers',label:'Joggers', emoji:'👖' },
   ]
   const MOTIONS = [
-    { key:'static',     label:'Static'         },
-    { key:'breathe',    label:'Breathe'        },
-    { key:'walk',       label:'Walk'           },
-    { key:'confident',  label:'Confident Walk' },
-    { key:'run',        label:'Run'            },
-    { key:'lookaround', label:'Look Around'    },
+    { key:'static',     label:'Static',      icon:'⏸' },
+    { key:'breathe',    label:'Breathe',     icon:'🫁' },
+    { key:'walk',       label:'Walk',        icon:'🚶' },
+    { key:'confident',  label:'Bold Walk',   icon:'😎' },
+    { key:'run',        label:'Run',         icon:'🏃' },
+    { key:'lookaround', label:'Look Around', icon:'👀' },
+    { key:'bounce',     label:'Bounce',      icon:'⬆' },
+    { key:'sway',       label:'Sway',        icon:'↔' },
+  ]
+  const FILTERS = [
+    { label:'None',    value:'' },
+    { label:'Vivid',   value:'saturate(1.8) contrast(1.1)' },
+    { label:'Muted',   value:'saturate(0.5) brightness(1.1)' },
+    { label:'Cool',    value:'hue-rotate(30deg) saturate(1.2)' },
+    { label:'Warm',    value:'hue-rotate(-20deg) saturate(1.3)' },
+    { label:'B&W',     value:'grayscale(1)' },
+    { label:'Vintage', value:'sepia(0.5) contrast(1.1)' },
+    { label:'Drama',   value:'contrast(1.5) saturate(1.3) brightness(0.9)' },
   ]
   const TABS = [
-    { key:'design', label:'Upload', icon:'🖼' },
-    { key:'colour', label:'Colour', icon:'🎨' },
-    { key:'motion', label:'Motion', icon:'🏃' },
-    { key:'camera', label:'Camera', icon:'📷' },
+    { key:'design',  label:'Design',  icon:'🎨' },
+    { key:'colour',  label:'Colour',  icon:'🖌' },
+    { key:'text',    label:'Text',    icon:'T'  },
+    { key:'motion',  label:'Motion',  icon:'🎬' },
+    { key:'effects', label:'Effects', icon:'✨' },
+    { key:'camera',  label:'360°',    icon:'🔄' },
+    { key:'upload',  label:'Upload',  icon:'📤' },
   ]
+  const BG_PRESETS = [
+    { label:'Navy',   value:'#1a2744' },
+    { label:'Dark',   value:'#0d0d0d' },
+    { label:'White',  value:'#f0f0f0' },
+    { label:'Carbon', value:'#1a1a1a' },
+    { label:'Forest', value:'#1a4a2e' },
+    { label:'Purple', value:'#2d1b4e' },
+  ]
+  const TEXT_FONTS = ['Bebas Neue','Arial Black','Georgia','Impact','Courier New']
 
+  const canvasFilter = [filter, `brightness(${brightness}%) contrast(${contrast}%) saturate(${saturation}%)`].filter(Boolean).join(' ')
+
+  // ── Three.js ──────────────────────────────────────────────────
   useEffect(() => {
     let destroyed = false
     const container = mountRef.current
     if (!container) return
-
-    // Load Three.js as a classic script tag - NOT import()
     const script = document.createElement('script')
     script.type = 'text/javascript'
     script.src = 'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js'
     script.onload = () => {
       if (destroyed) return
-      const THREE = window.THREE
-      if (!THREE) return
-
-      const W = container.clientWidth || 360
-      const H = Math.min(W * 1.15, 460)
-
+      const THREE = window.THREE; if (!THREE) return
+      const W = container.clientWidth || 360, H = Math.min(W * 1.15, 460)
       const renderer = new THREE.WebGLRenderer({ antialias:true, alpha:false, preserveDrawingBuffer:true })
-      renderer.setSize(W, H)
-      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
-      renderer.shadowMap.enabled = true
+      renderer.setSize(W, H); renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)); renderer.shadowMap.enabled = true
       container.appendChild(renderer.domElement)
-
       const scene = new THREE.Scene()
-      scene.background = new THREE.Color(0x1a2744)
-      scene.fog = new THREE.Fog(0x1a2744, 10, 22)
-
-      const camera = new THREE.PerspectiveCamera(45, W/H, 0.1, 100)
-      camera.position.set(0, 0.5, 3.5)
-
+      scene.background = new THREE.Color(0x1a2744); scene.fog = new THREE.Fog(0x1a2744, 10, 22)
+      const camera = new THREE.PerspectiveCamera(45, W/H, 0.1, 100); camera.position.set(0, 0.5, 3.5)
       scene.add(new THREE.AmbientLight(0xffffff, 0.7))
-      const dir = new THREE.DirectionalLight(0xffffff, 1.2)
-      dir.position.set(3,5,3); dir.castShadow = true; scene.add(dir)
-      const fill = new THREE.DirectionalLight(0x4488ff, 0.45)
-      fill.position.set(-3,2,-2); scene.add(fill)
-      const rim = new THREE.DirectionalLight(0xff4444, 0.25)
-      rim.position.set(0,-2,-3); scene.add(rim)
+      const dir = new THREE.DirectionalLight(0xffffff, 1.2); dir.position.set(3,5,3); dir.castShadow = true; scene.add(dir)
+      const fill = new THREE.DirectionalLight(0x4488ff, 0.45); fill.position.set(-3,2,-2); scene.add(fill)
+      const rim = new THREE.DirectionalLight(0xff4444, 0.25); rim.position.set(0,-2,-3); scene.add(rim)
 
-      const buildGarment = (type, color, texImg, py, ps) => {
-        const old = scene.getObjectByName('garment_group')
-        if (old) scene.remove(old)
-        const group = new THREE.Group()
-        group.name = 'garment_group'
+      const buildGarment = (type, color, texImg, py, ps, px, rot) => {
+        const old = scene.getObjectByName('garment_group'); if (old) scene.remove(old)
+        const group = new THREE.Group(); group.name = 'garment_group'
         const c = new THREE.Color(color)
         const mat = () => new THREE.MeshStandardMaterial({ color:c, roughness:0.78, metalness:0.02 })
-
         if (type === 'tshirt' || type === 'polo') {
-          const body = new THREE.Mesh(new THREE.CylinderGeometry(0.38,0.42,1.4,32,4,true), mat())
-          body.position.y = -0.1; body.castShadow = true; group.add(body)
-          const sho = new THREE.Mesh(new THREE.SphereGeometry(0.42,32,16,0,Math.PI*2,0,Math.PI*0.45), mat())
-          sho.position.y = 0.68; group.add(sho)
-          const ls = new THREE.Mesh(new THREE.CylinderGeometry(0.13,0.15,0.52,16,2,true), mat())
-          ls.position.set(-0.54,0.55,0); ls.rotation.z = 0.55; ls.castShadow = true; group.add(ls)
-          const rs = ls.clone(); rs.position.set(0.54,0.55,0); rs.rotation.z = -0.55; group.add(rs)
-          const col = new THREE.Mesh(new THREE.TorusGeometry(0.18,0.04,12,32,Math.PI*1.8), mat())
-          col.position.y = 0.72; col.rotation.x = -Math.PI*0.1; group.add(col)
-          if (type === 'polo') {
-            const pc = new THREE.Mesh(new THREE.BoxGeometry(0.08,0.28,0.06), mat())
-            pc.position.set(0,0.6,0.36); group.add(pc)
-          }
-          if (texImg) {
-            const tex = new THREE.Texture(texImg); tex.needsUpdate = true
-            const pr = new THREE.Mesh(new THREE.PlaneGeometry(ps,ps), new THREE.MeshStandardMaterial({ map:tex, transparent:true, roughness:0.8 }))
-            pr.position.set(0, py, 0.39); group.add(pr)
-          }
+          const body = new THREE.Mesh(new THREE.CylinderGeometry(0.38,0.42,1.4,32,4,true), mat()); body.position.y=-0.1; body.castShadow=true; group.add(body)
+          const sho = new THREE.Mesh(new THREE.SphereGeometry(0.42,32,16,0,Math.PI*2,0,Math.PI*0.45), mat()); sho.position.y=0.68; group.add(sho)
+          const ls = new THREE.Mesh(new THREE.CylinderGeometry(0.13,0.15,0.52,16,2,true), mat()); ls.position.set(-0.54,0.55,0); ls.rotation.z=0.55; ls.castShadow=true; group.add(ls)
+          const rs = ls.clone(); rs.position.set(0.54,0.55,0); rs.rotation.z=-0.55; group.add(rs)
+          const col = new THREE.Mesh(new THREE.TorusGeometry(0.18,0.04,12,32,Math.PI*1.8), mat()); col.position.y=0.72; col.rotation.x=-Math.PI*0.1; group.add(col)
+          if (type==='polo') { const pc=new THREE.Mesh(new THREE.BoxGeometry(0.08,0.28,0.06),mat()); pc.position.set(0,0.6,0.36); group.add(pc) }
+          if (texImg) { const tex=new THREE.Texture(texImg); tex.needsUpdate=true; const pr=new THREE.Mesh(new THREE.PlaneGeometry(ps,ps),new THREE.MeshStandardMaterial({map:tex,transparent:true,roughness:0.8})); pr.position.set(px||0,py,0.39); pr.rotation.z=rot||0; group.add(pr) }
         } else if (type === 'hoodie') {
-          const body = new THREE.Mesh(new THREE.CylinderGeometry(0.41,0.45,1.5,32,4,true), mat())
-          body.position.y = -0.12; body.castShadow = true; group.add(body)
-          const hood = new THREE.Mesh(new THREE.SphereGeometry(0.32,32,24,0,Math.PI*2,0,Math.PI*0.7), mat())
-          hood.position.set(0,0.82,-0.08); group.add(hood)
-          const sho = new THREE.Mesh(new THREE.SphereGeometry(0.44,32,16,0,Math.PI*2,0,Math.PI*0.45), mat())
-          sho.position.y = 0.68; group.add(sho)
-          const ls = new THREE.Mesh(new THREE.CylinderGeometry(0.15,0.17,0.58,16,2,true), mat())
-          ls.position.set(-0.56,0.5,0); ls.rotation.z = 0.5; ls.castShadow = true; group.add(ls)
-          const rs = ls.clone(); rs.position.set(0.56,0.5,0); rs.rotation.z = -0.5; group.add(rs)
-          const pkt = new THREE.Mesh(new THREE.BoxGeometry(0.38,0.22,0.04), mat())
-          pkt.position.set(0,-0.42,0.41); group.add(pkt)
-          const zip = new THREE.Mesh(new THREE.BoxGeometry(0.025,0.9,0.05), new THREE.MeshStandardMaterial({color:0x888888,metalness:0.6,roughness:0.4}))
-          zip.position.set(0,0.1,0.41); group.add(zip)
-          if (texImg) {
-            const tex = new THREE.Texture(texImg); tex.needsUpdate = true
-            const pr = new THREE.Mesh(new THREE.PlaneGeometry(ps,ps), new THREE.MeshStandardMaterial({ map:tex, transparent:true, roughness:0.8 }))
-            pr.position.set(0, py+0.1, 0.42); group.add(pr)
-          }
+          const body=new THREE.Mesh(new THREE.CylinderGeometry(0.41,0.45,1.5,32,4,true),mat()); body.position.y=-0.12; body.castShadow=true; group.add(body)
+          const hood=new THREE.Mesh(new THREE.SphereGeometry(0.32,32,24,0,Math.PI*2,0,Math.PI*0.7),mat()); hood.position.set(0,0.82,-0.08); group.add(hood)
+          const sho=new THREE.Mesh(new THREE.SphereGeometry(0.44,32,16,0,Math.PI*2,0,Math.PI*0.45),mat()); sho.position.y=0.68; group.add(sho)
+          const ls=new THREE.Mesh(new THREE.CylinderGeometry(0.15,0.17,0.58,16,2,true),mat()); ls.position.set(-0.56,0.5,0); ls.rotation.z=0.5; ls.castShadow=true; group.add(ls)
+          const rs=ls.clone(); rs.position.set(0.56,0.5,0); rs.rotation.z=-0.5; group.add(rs)
+          const pkt=new THREE.Mesh(new THREE.BoxGeometry(0.38,0.22,0.04),mat()); pkt.position.set(0,-0.42,0.41); group.add(pkt)
+          const zip=new THREE.Mesh(new THREE.BoxGeometry(0.025,0.9,0.05),new THREE.MeshStandardMaterial({color:0x888888,metalness:0.6,roughness:0.4})); zip.position.set(0,0.1,0.41); group.add(zip)
+          if (texImg) { const tex=new THREE.Texture(texImg); tex.needsUpdate=true; const pr=new THREE.Mesh(new THREE.PlaneGeometry(ps,ps),new THREE.MeshStandardMaterial({map:tex,transparent:true,roughness:0.8})); pr.position.set(px||0,py+0.1,0.42); pr.rotation.z=rot||0; group.add(pr) }
         } else if (type === 'joggers') {
-          const wb = new THREE.Mesh(new THREE.CylinderGeometry(0.38,0.38,0.18,32), mat())
-          wb.position.y = 0.58; group.add(wb)
-          const ll = new THREE.Mesh(new THREE.CylinderGeometry(0.19,0.14,1.32,20,3,true), mat())
-          ll.position.set(-0.2,-0.18,0); ll.castShadow = true; group.add(ll)
-          const rl = ll.clone(); rl.position.set(0.2,-0.18,0); group.add(rl)
-          const cr = new THREE.Mesh(new THREE.SphereGeometry(0.25,20,10,0,Math.PI*2,Math.PI*0.5,Math.PI*0.5), mat())
-          cr.position.y = 0.12; group.add(cr)
-          const dc = new THREE.Mesh(new THREE.TorusGeometry(0.12,0.01,8,24,Math.PI), new THREE.MeshStandardMaterial({color:0xdddddd}))
-          dc.position.set(0,0.59,0.38); dc.rotation.x = -Math.PI*0.15; group.add(dc)
-          const lc = new THREE.Mesh(new THREE.CylinderGeometry(0.15,0.15,0.12,20), mat())
-          lc.position.set(-0.2,-0.86,0); group.add(lc)
-          const rc = lc.clone(); rc.position.set(0.2,-0.86,0); group.add(rc)
+          const wb=new THREE.Mesh(new THREE.CylinderGeometry(0.38,0.38,0.18,32),mat()); wb.position.y=0.58; group.add(wb)
+          const ll=new THREE.Mesh(new THREE.CylinderGeometry(0.19,0.14,1.32,20,3,true),mat()); ll.position.set(-0.2,-0.18,0); ll.castShadow=true; group.add(ll)
+          const rl=ll.clone(); rl.position.set(0.2,-0.18,0); group.add(rl)
+          const cr=new THREE.Mesh(new THREE.SphereGeometry(0.25,20,10,0,Math.PI*2,Math.PI*0.5,Math.PI*0.5),mat()); cr.position.y=0.12; group.add(cr)
+          const lc=new THREE.Mesh(new THREE.CylinderGeometry(0.15,0.15,0.12,20),mat()); lc.position.set(-0.2,-0.86,0); group.add(lc)
+          const rc=lc.clone(); rc.position.set(0.2,-0.86,0); group.add(rc)
         }
-        scene.add(group)
-        return group
+        scene.add(group); return group
       }
 
       let isDragging=false, prevX=0, prevY=0, autoRotY=0, autoRotX=0
       const onPD=(e)=>{isDragging=true;const s=e.touches?e.touches[0]:e;prevX=s.clientX;prevY=s.clientY}
       const onPM=(e)=>{if(!isDragging)return;const s=e.touches?e.touches[0]:e;autoRotY+=(s.clientX-prevX)*0.008;autoRotX+=(s.clientY-prevY)*0.004;autoRotX=Math.max(-0.4,Math.min(0.4,autoRotX));prevX=s.clientX;prevY=s.clientY}
       const onPU=()=>{isDragging=false}
-      renderer.domElement.addEventListener('mousedown',onPD)
-      renderer.domElement.addEventListener('mousemove',onPM)
-      renderer.domElement.addEventListener('mouseup',onPU)
-      renderer.domElement.addEventListener('touchstart',onPD,{passive:true})
-      renderer.domElement.addEventListener('touchmove',onPM,{passive:true})
-      renderer.domElement.addEventListener('touchend',onPU)
+      renderer.domElement.addEventListener('mousedown',onPD); renderer.domElement.addEventListener('mousemove',onPM); renderer.domElement.addEventListener('mouseup',onPU)
+      renderer.domElement.addEventListener('touchstart',onPD,{passive:true}); renderer.domElement.addEventListener('touchmove',onPM,{passive:true}); renderer.domElement.addEventListener('touchend',onPU)
 
-      sceneRef.current = { scene, camera, renderer, buildGarment, motionType:'static', motionSpeed:0.5 }
-      buildGarment('tshirt','#ffffff',null,0.08,0.55)
+      sceneRef.current = { scene, camera, renderer, buildGarment, motionType:'static', motionSpeed:0.5, autoSpin:false }
+      buildGarment('tshirt','#ffffff',null,0.08,0.55,0,0)
 
       let ft=0
       const animate = () => {
-        animRef.current = requestAnimationFrame(animate)
-        ft += 0.016
+        animRef.current = requestAnimationFrame(animate); ft += 0.016
         const g = scene.getObjectByName('garment_group')
         if (g) {
-          const mt = sceneRef.current.motionType
-          const sp = sceneRef.current.motionSpeed
-          const t = ft * sp
-          if (mt==='static') { if(!isDragging) autoRotY+=0.004 }
+          const mt=sceneRef.current.motionType, sp=sceneRef.current.motionSpeed, t=ft*sp
+          if (sceneRef.current.autoSpin) autoRotY += 0.013
+          if (mt==='static') { if(!isDragging&&!sceneRef.current.autoSpin) autoRotY+=0.004 }
           else if(mt==='breathe'){g.scale.y=1+Math.sin(t*1.2)*0.012;g.scale.x=1+Math.sin(t*1.2+Math.PI)*0.006;g.position.y=Math.sin(t*1.2)*0.008}
           else if(mt==='walk'){g.rotation.y=Math.sin(t*2)*0.12;g.position.y=Math.abs(Math.sin(t*2))*0.04-0.02;g.rotation.z=Math.sin(t*2)*0.04}
           else if(mt==='confident'){g.rotation.y=Math.sin(t*1.8)*0.18;g.position.y=Math.abs(Math.sin(t*1.8))*0.06-0.03;g.rotation.z=Math.sin(t*1.8)*0.06}
           else if(mt==='run'){g.rotation.y=Math.sin(t*4)*0.22;g.position.y=Math.abs(Math.sin(t*4))*0.1-0.05;g.rotation.z=Math.sin(t*4)*0.08;g.rotation.x=-0.08+Math.sin(t*4)*0.04}
           else if(mt==='lookaround'){g.rotation.y=Math.sin(t*0.8)*0.55;g.position.y=Math.sin(t*0.4)*0.015}
-          if(mt==='static'||mt==='breathe'){g.rotation.y+=autoRotY*0.08;g.rotation.y*=0.92;g.rotation.x=autoRotX*0.5}
+          else if(mt==='bounce'){g.position.y=Math.abs(Math.sin(t*2.5))*0.15-0.05;g.scale.y=1-Math.abs(Math.sin(t*2.5))*0.04}
+          else if(mt==='sway'){g.rotation.z=Math.sin(t*1.4)*0.12;g.position.x=Math.sin(t*1.4)*0.05}
+          if(mt==='static'||mt==='breathe'||mt==='bounce'||mt==='sway'){g.rotation.y+=autoRotY*0.08;g.rotation.y*=0.92;g.rotation.x=autoRotX*0.5}
           autoRotY*=0.95
         }
         renderer.render(scene, camera)
       }
-      animate()
-      setThreeReady(true)
+      animate(); setThreeReady(true)
 
-      sceneRef.current.rebuild = (type,color,texImg,py,ps,mtype,mspeed) => {
-        buildGarment(type,color,texImg,py,ps)
-        sceneRef.current.motionType=mtype
-        sceneRef.current.motionSpeed=mspeed
+      sceneRef.current.rebuild = (type,color,texImg,py,ps,px,rot,mtype,mspeed,spin) => {
+        buildGarment(type,color,texImg,py,ps,px,rot)
+        sceneRef.current.motionType=mtype; sceneRef.current.motionSpeed=mspeed; sceneRef.current.autoSpin=spin
       }
-
       const onResize=()=>{const W2=container.clientWidth||360,H2=Math.min(W2*1.15,460);camera.aspect=W2/H2;camera.updateProjectionMatrix();renderer.setSize(W2,H2)}
       window.addEventListener('resize',onResize)
-
       sceneRef.current.cleanup=()=>{
-        window.removeEventListener('resize',onResize)
-        cancelAnimationFrame(animRef.current)
-        renderer.domElement.removeEventListener('mousedown',onPD)
-        renderer.domElement.removeEventListener('mousemove',onPM)
-        renderer.domElement.removeEventListener('mouseup',onPU)
-        renderer.domElement.removeEventListener('touchstart',onPD)
-        renderer.domElement.removeEventListener('touchmove',onPM)
-        renderer.domElement.removeEventListener('touchend',onPU)
-        renderer.dispose()
-        try{if(container.contains(renderer.domElement))container.removeChild(renderer.domElement)}catch(_){}
+        window.removeEventListener('resize',onResize); cancelAnimationFrame(animRef.current)
+        renderer.domElement.removeEventListener('mousedown',onPD); renderer.domElement.removeEventListener('mousemove',onPM); renderer.domElement.removeEventListener('mouseup',onPU)
+        renderer.domElement.removeEventListener('touchstart',onPD); renderer.domElement.removeEventListener('touchmove',onPM); renderer.domElement.removeEventListener('touchend',onPU)
+        renderer.dispose(); try{if(container.contains(renderer.domElement))container.removeChild(renderer.domElement)}catch(_){}
       }
     }
-    script.onerror=()=>console.error('[3D Studio] Failed to load Three.js from CDN. Check your network connection.')
+    script.onerror=()=>console.error('[3D Studio] Failed to load Three.js')
     document.head.appendChild(script)
-
     return ()=>{destroyed=true;if(sceneRef.current.cleanup)sceneRef.current.cleanup()}
   }, [])
 
+  // Sync all state → scene
   useEffect(()=>{
-    const s=sceneRef.current
-    if(!s.rebuild) return
-    s.rebuild(garmentType,gColor,designImg,designPosY,designScale,motion,speed)
-  },[garmentType,gColor,designImg,designPosY,designScale,motion,speed])
+    const s=sceneRef.current; if(!s.rebuild) return
+    s.rebuild(garmentType,gColor,designImg,designPosY,designScale,designPosX,designRot*Math.PI/180,motion,speed,autoSpin)
+  },[garmentType,gColor,designImg,designPosY,designScale,designPosX,designRot,motion,speed,autoSpin])
 
-  const handleUpload=(e)=>{
-    const f=e.target.files[0];if(!f)return
+  // Sync background colour
+  useEffect(()=>{
+    const s=sceneRef.current; if(!s.scene||!window.THREE) return
+    s.scene.background=new window.THREE.Color(bgColor); s.scene.fog=new window.THREE.Fog(bgColor,10,22)
+  },[bgColor])
+
+  const handleDesignUpload = e => {
+    const f=e.target.files[0]; if(!f) return
     const url=URL.createObjectURL(f)
-    const img=new Image();img.onload=()=>setDesignImg(img);img.src=url
+    const img=new Image(); img.onload=()=>setDesignImg(img); img.src=url
+  }
+  const handleDownload = () => {
+    const s=sceneRef.current; if(!s.renderer) return
+    s.renderer.render(s.scene,s.camera)
+    const a=document.createElement('a'); a.download='drynn-mockup.png'; a.href=s.renderer.domElement.toDataURL('image/png'); a.click()
+  }
+  const handleCustFile = e => {
+    const f=e.target.files[0]; if(!f) return
+    setCustFile(f); const r=new FileReader(); r.onload=ev=>setCustPreview(ev.target.result); r.readAsDataURL(f)
+  }
+  const handleCustomerUpload = async () => {
+    if (!custFile||!custName||!custPhone) { alert('Please fill your name, phone, and upload a photo.'); return }
+    setUploading(true); setUploadErr('')
+    try {
+      const filePath = `customer-uploads/${Date.now()}-${custFile.name}`
+      const { error: storageErr } = await supabase.storage.from('uploads').upload(filePath, custFile)
+      if (storageErr) throw storageErr
+      const { error: dbErr } = await supabase.from('drynn_customer_uploads').insert({
+        name: custName, phone: custPhone, filename: custFile.name,
+        storage_path: filePath, garment: garmentType, color: gColor,
+      })
+      if (dbErr) throw dbErr
+      setUploadDone(true)
+    } catch(e) {
+      console.error('[Customer Upload]', e)
+      setUploadErr('Upload failed: ' + (e.message || 'Please try again.'))
+    } finally { setUploading(false) }
   }
 
-  const handleDownload=()=>{
-    const s=sceneRef.current;if(!s.renderer)return
-    s.renderer.render(s.scene,s.camera)
-    const a=document.createElement('a');a.download='drynn-mockup.png';a.href=s.renderer.domElement.toDataURL('image/png');a.click()
-  }
+  const sliderStyle = { width:'100%', accentColor:'#c8102e' }
+  const rowStyle = { display:'flex', justifyContent:'space-between', marginBottom:6 }
+  const lblStyle = { fontSize:10, fontWeight:700, letterSpacing:'.12em', textTransform:'uppercase', color:'rgba(255,255,255,.4)' }
 
   return (
     <div style={{ background:'#0d1b3e', position:'relative', overflow:'hidden' }}>
       <div style={{ position:'absolute', top:'5%', left:'5%', width:200, height:200, background:'radial-gradient(circle,rgba(200,16,46,.14) 0%,transparent 70%)', pointerEvents:'none' }} />
       <div style={{ position:'absolute', bottom:'10%', right:'5%', width:280, height:280, background:'radial-gradient(circle,rgba(59,130,246,.12) 0%,transparent 70%)', pointerEvents:'none' }} />
 
-      <div style={{ textAlign:'center', padding:'40px 16px 16px' }}>
+      {/* Title row */}
+      <div style={{ textAlign:'center', padding:'40px 16px 12px' }}>
         <span className="sec-label" style={{ color:'#c8102e' }}>3D Design Studio</span>
         <h2 className="sec-title" style={{ color:'#fff' }}>LIVE 3D MOCKUP</h2>
-        <p style={{ fontSize:13, color:'rgba(255,255,255,.45)', marginTop:6 }}>Drag to rotate · Upload design · Animate · Export</p>
+        <p style={{ fontSize:13, color:'rgba(255,255,255,.4)', marginTop:6 }}>Drag to rotate · CapCut animations · 360° view · Export</p>
       </div>
 
+      {/* Garment switcher + export */}
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'0 16px 12px', maxWidth:900, margin:'0 auto', flexWrap:'wrap', gap:8 }}>
-        <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
-          {GARMENT_TYPES.map(g => (
+        <div style={{ display:'flex', gap:7, flexWrap:'wrap' }}>
+          {GARMENT_TYPES.map(g=>(
             <button key={g.key} onClick={()=>setGarmentType(g.key)}
-              style={{ padding:'8px 14px', borderRadius:50, fontSize:12, fontWeight:600, cursor:'pointer', transition:'all .15s', background:garmentType===g.key?'#c8102e':'rgba(255,255,255,.08)', color:'#fff', border:garmentType===g.key?'1px solid #c8102e':'1px solid rgba(255,255,255,.15)' }}>
+              style={{ padding:'8px 13px', borderRadius:50, fontSize:12, fontWeight:600, cursor:'pointer', transition:'all .15s', background:garmentType===g.key?'#c8102e':'rgba(255,255,255,.08)', color:'#fff', border:garmentType===g.key?'1px solid #c8102e':'1px solid rgba(255,255,255,.15)' }}>
               {g.emoji} {g.label}
             </button>
           ))}
         </div>
-        <button onClick={handleDownload}
-          style={{ padding:'10px 18px', borderRadius:50, background:'linear-gradient(135deg,#c8102e,#0a1f5d)', color:'#fff', border:'none', fontSize:12, fontWeight:700, cursor:'pointer', display:'flex', alignItems:'center', gap:6 }}>
-          📤 Export PNG
-        </button>
+        <div style={{ display:'flex', gap:8 }}>
+          <button onClick={()=>setAutoSpin(v=>!v)}
+            style={{ padding:'9px 14px', borderRadius:50, background:autoSpin?'rgba(200,16,46,.3)':'rgba(255,255,255,.08)', color:'#fff', border:autoSpin?'1px solid #c8102e':'1px solid rgba(255,255,255,.15)', fontSize:11, fontWeight:700, cursor:'pointer' }}>
+            {autoSpin?'⏸ Stop 360°':'▶ Auto 360°'}
+          </button>
+          <button onClick={handleDownload}
+            style={{ padding:'9px 16px', borderRadius:50, background:'linear-gradient(135deg,#c8102e,#0a1f5d)', color:'#fff', border:'none', fontSize:12, fontWeight:700, cursor:'pointer' }}>
+            📤 Export PNG
+          </button>
+        </div>
       </div>
 
-      <div ref={mountRef} style={{ width:'100%', maxWidth:900, margin:'0 auto', minHeight:360, cursor:'grab', position:'relative', touchAction:'none' }}>
+      {/* 3D Canvas */}
+      <div ref={mountRef} style={{ width:'100%', maxWidth:900, margin:'0 auto', minHeight:360, cursor:'grab', position:'relative', touchAction:'none', filter:canvasFilter }}>
         {!threeReady && (
           <div style={{ position:'absolute', inset:0, display:'flex', alignItems:'center', justifyContent:'center', flexDirection:'column', gap:12, background:'#1a2744', minHeight:360 }}>
             <div style={{ width:36, height:36, border:'3px solid rgba(255,255,255,.15)', borderTopColor:'#c8102e', borderRadius:'50%', animation:'drynn-spin 0.8s linear infinite' }} />
-            <span style={{ fontSize:12, color:'rgba(255,255,255,.4)' }}>Loading 3D engine...</span>
+            <span style={{ fontSize:12, color:'rgba(255,255,255,.4)' }}>Loading 3D engine…</span>
+          </div>
+        )}
+        {autoSpin && (
+          <div style={{ position:'absolute', top:12, right:14, background:'rgba(200,16,46,.25)', border:'1px solid rgba(200,16,46,.5)', borderRadius:50, padding:'3px 10px', fontSize:9, fontWeight:700, color:'#c8102e', letterSpacing:'.1em', zIndex:10 }}>
+            ↻ 360° LIVE
           </div>
         )}
       </div>
 
-      <div style={{ maxWidth:900, margin:'0 auto', borderTop:'1px solid rgba(255,255,255,.08)', marginTop:4 }}>
-        <div style={{ display:'flex', justifyContent:'space-around', background:'rgba(0,0,0,.3)' }}>
-          {TABS.map(t => (
+      {/* Text overlay */}
+      {textOn && textVal && (
+        <div style={{ textAlign:'center', pointerEvents:'none', marginTop:-20, marginBottom:8, fontFamily:textFont, fontSize:textSize, color:textColor, fontWeight:700, textShadow:'0 2px 10px rgba(0,0,0,.7)' }}>
+          {textVal}
+        </div>
+      )}
+
+      {/* Tab bar */}
+      <div style={{ maxWidth:900, margin:'0 auto', borderTop:'1px solid rgba(255,255,255,.08)' }}>
+        <div style={{ display:'flex', justifyContent:'space-around', background:'rgba(0,0,0,.3)', overflowX:'auto' }}>
+          {TABS.map(t=>(
             <button key={t.key} onClick={()=>setTab(t.key)}
-              style={{ flex:1, padding:'12px 4px', background:'none', border:'none', cursor:'pointer', display:'flex', flexDirection:'column', alignItems:'center', gap:3, borderBottom:tab===t.key?'2px solid #c8102e':'2px solid transparent', transition:'all .15s' }}>
-              <span style={{ fontSize:20 }}>{t.icon}</span>
-              <span style={{ fontSize:9, fontWeight:700, letterSpacing:'.08em', textTransform:'uppercase', color:tab===t.key?'#c8102e':'rgba(255,255,255,.4)' }}>{t.label}</span>
+              style={{ flex:1, minWidth:54, padding:'11px 4px', background:'none', border:'none', cursor:'pointer', display:'flex', flexDirection:'column', alignItems:'center', gap:2, borderBottom:tab===t.key?'2px solid #c8102e':'2px solid transparent', transition:'all .15s', whiteSpace:'nowrap' }}>
+              <span style={{ fontSize:18 }}>{t.icon}</span>
+              <span style={{ fontSize:9, fontWeight:700, letterSpacing:'.07em', textTransform:'uppercase', color:tab===t.key?'#c8102e':'rgba(255,255,255,.4)' }}>{t.label}</span>
             </button>
           ))}
         </div>
 
-        <div style={{ padding:'20px 16px 32px' }}>
+        <div style={{ padding:'18px 16px 32px' }}>
+
+          {/* DESIGN TAB */}
           {tab==='design' && (
             <div>
-              <label style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:10, padding:'28px 16px', border:'1.5px dashed rgba(255,255,255,.2)', borderRadius:12, cursor:'pointer', background:'rgba(255,255,255,.03)' }}>
-                <input type="file" accept=".png,.jpg,.jpeg,.svg,.webp" style={{ display:'none' }} onChange={handleUpload} />
-                <span style={{ fontSize:36 }}>🖼</span>
-                <span style={{ fontSize:13, color:'rgba(255,255,255,.6)', fontWeight:600 }}>{designImg?'Loaded - tap to change':'Tap to upload your design'}</span>
-                <span style={{ fontSize:11, color:'rgba(255,255,255,.3)' }}>PNG · JPG · SVG · Min 300 DPI</span>
+              <label style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:8, padding:'24px 16px', border:'1.5px dashed rgba(255,255,255,.18)', borderRadius:10, cursor:'pointer', background:'rgba(255,255,255,.03)' }}>
+                <input type="file" accept=".png,.jpg,.jpeg,.svg,.webp" style={{ display:'none' }} onChange={handleDesignUpload} />
+                <span style={{ fontSize:32 }}>🎨</span>
+                <span style={{ fontSize:13, color:designImg?'#00a86b':'rgba(255,255,255,.55)', fontWeight:600 }}>{designImg?'✓ Loaded — tap to change':'Tap to upload your design'}</span>
+                <span style={{ fontSize:11, color:'rgba(255,255,255,.28)' }}>PNG · JPG · SVG · Min 300 DPI</span>
               </label>
-              {designImg && (
+              {designImg && (<>
+                <button onClick={()=>setDesignImg(null)} style={{ marginTop:10, width:'100%', padding:'8px', background:'rgba(255,255,255,.06)', border:'1px solid rgba(255,255,255,.14)', borderRadius:6, color:'rgba(255,255,255,.5)', fontSize:11, fontWeight:700, cursor:'pointer' }}>✕ Remove Design</button>
                 <div style={{ marginTop:16, display:'flex', flexDirection:'column', gap:14 }}>
                   <div>
-                    <div style={{ display:'flex', justifyContent:'space-between', marginBottom:6 }}>
-                      <p style={{ fontSize:10, fontWeight:700, letterSpacing:'.12em', textTransform:'uppercase', color:'rgba(255,255,255,.4)' }}>Print Position</p>
-                      <span style={{ fontSize:11, color:'#fff' }}>{designPosY.toFixed(2)}</span>
-                    </div>
-                    <input type="range" min="-0.3" max="0.4" step="0.01" value={designPosY} onChange={e=>setDesignPosY(parseFloat(e.target.value))} style={{ width:'100%', accentColor:'#c8102e' }} />
+                    <div style={rowStyle}><p style={lblStyle}>Print Position Y</p><span style={{ fontSize:11, color:'#fff' }}>{designPosY.toFixed(2)}</span></div>
+                    <input type="range" min="-0.3" max="0.4" step="0.01" value={designPosY} onChange={e=>setDesignPosY(parseFloat(e.target.value))} style={sliderStyle} />
                   </div>
                   <div>
-                    <div style={{ display:'flex', justifyContent:'space-between', marginBottom:6 }}>
-                      <p style={{ fontSize:10, fontWeight:700, letterSpacing:'.12em', textTransform:'uppercase', color:'rgba(255,255,255,.4)' }}>Print Size</p>
-                      <span style={{ fontSize:11, color:'#fff' }}>{designScale.toFixed(2)}</span>
+                    <div style={rowStyle}><p style={lblStyle}>Print Position X</p><span style={{ fontSize:11, color:'#fff' }}>{designPosX.toFixed(2)}</span></div>
+                    <input type="range" min="-0.3" max="0.3" step="0.01" value={designPosX} onChange={e=>setDesignPosX(parseFloat(e.target.value))} style={sliderStyle} />
+                  </div>
+                  <div>
+                    <div style={rowStyle}><p style={lblStyle}>Print Size</p><span style={{ fontSize:11, color:'#fff' }}>{Math.round(designScale*100)}%</span></div>
+                    <input type="range" min="0.2" max="0.9" step="0.01" value={designScale} onChange={e=>setDesignScale(parseFloat(e.target.value))} style={sliderStyle} />
+                  </div>
+                  <div>
+                    <div style={rowStyle}><p style={lblStyle}>Rotation</p><span style={{ fontSize:11, color:'#fff' }}>{designRot}°</span></div>
+                    <input type="range" min="-180" max="180" step="1" value={designRot} onChange={e=>setDesignRot(parseInt(e.target.value))} style={sliderStyle} />
+                    <div style={{ display:'flex', gap:7, marginTop:8 }}>
+                      {[0,90,180,-90].map(v=>(
+                        <button key={v} onClick={()=>setDesignRot(v)}
+                          style={{ flex:1, padding:'6px 0', borderRadius:6, fontSize:11, fontWeight:600, cursor:'pointer', background:designRot===v?'#0a1f5d':'rgba(255,255,255,.06)', color:designRot===v?'#fff':'rgba(255,255,255,.5)', border:designRot===v?'1px solid #c8102e':'1px solid rgba(255,255,255,.1)' }}>
+                          {v}°
+                        </button>
+                      ))}
                     </div>
-                    <input type="range" min="0.2" max="0.9" step="0.01" value={designScale} onChange={e=>setDesignScale(parseFloat(e.target.value))} style={{ width:'100%', accentColor:'#c8102e' }} />
                   </div>
                 </div>
-              )}
+              </>)}
             </div>
           )}
 
+          {/* COLOUR TAB */}
           {tab==='colour' && (
             <div>
-              <p style={{ fontSize:10, fontWeight:700, letterSpacing:'.14em', textTransform:'uppercase', color:'rgba(255,255,255,.4)', marginBottom:14 }}>Garment Colour</p>
-              <div style={{ display:'flex', gap:12, flexWrap:'wrap', marginBottom:20 }}>
+              <p style={lblStyle}>Cloth Colour</p>
+              <div style={{ display:'flex', gap:10, flexWrap:'wrap', marginBottom:18 }}>
                 {SWATCHES.map(c=>(
                   <div key={c} onClick={()=>setGColor(c)}
-                    style={{ width:40, height:40, borderRadius:'50%', background:c, cursor:'pointer', border:c==='#ffffff'?'2px solid rgba(255,255,255,.4)':'2px solid transparent', boxShadow:gColor===c?'0 0 0 3px #0d1b3e, 0 0 0 5px #c8102e':'none', transition:'box-shadow .15s' }} />
+                    style={{ width:38, height:38, borderRadius:'50%', background:c, cursor:'pointer', border:c==='#ffffff'?'2px solid rgba(255,255,255,.35)':'2px solid transparent', boxShadow:gColor===c?'0 0 0 3px #0d1b3e, 0 0 0 5px #c8102e':'none', transition:'box-shadow .15s' }} />
                 ))}
               </div>
-              <p style={{ fontSize:10, fontWeight:700, letterSpacing:'.14em', textTransform:'uppercase', color:'rgba(255,255,255,.4)', marginBottom:10 }}>Custom Colour</p>
-              <input type="color" value={gColor} onChange={e=>setGColor(e.target.value)} style={{ width:52, height:52, border:'none', borderRadius:8, cursor:'pointer', background:'none' }} />
+              <p style={lblStyle}>Custom Cloth Colour</p>
+              <input type="color" value={gColor} onChange={e=>setGColor(e.target.value)} style={{ width:52, height:52, border:'none', borderRadius:8, cursor:'pointer', background:'none', marginBottom:20 }} />
+              <p style={{ ...lblStyle, marginTop:4 }}>Background Colour</p>
+              <div style={{ display:'flex', gap:8, flexWrap:'wrap', marginBottom:14 }}>
+                {BG_PRESETS.map(p=>(
+                  <button key={p.label} onClick={()=>setBgColor(p.value)}
+                    style={{ padding:'7px 12px', borderRadius:50, fontSize:11, fontWeight:600, cursor:'pointer', background:bgColor===p.value?'rgba(200,16,46,.25)':'rgba(255,255,255,.07)', color:'#fff', border:bgColor===p.value?'1px solid #c8102e':'1px solid rgba(255,255,255,.14)' }}>
+                    {p.label}
+                  </button>
+                ))}
+              </div>
+              <input type="color" defaultValue="#1a2744" onChange={e=>setBgColor(e.target.value)} style={{ width:52, height:52, border:'none', borderRadius:8, cursor:'pointer', background:'none' }} />
             </div>
           )}
 
+          {/* TEXT TAB */}
+          {tab==='text' && (
+            <div>
+              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:14 }}>
+                <p style={lblStyle}>Text Overlay</p>
+                <button onClick={()=>setTextOn(v=>!v)}
+                  style={{ padding:'6px 14px', borderRadius:50, fontSize:11, fontWeight:700, cursor:'pointer', background:textOn?'#c8102e':'rgba(255,255,255,.08)', color:'#fff', border:'none' }}>
+                  {textOn?'ON':'OFF'}
+                </button>
+              </div>
+              {textOn && (<>
+                <input type="text" value={textVal} onChange={e=>setTextVal(e.target.value)} placeholder="Your custom text"
+                  style={{ width:'100%', background:'rgba(255,255,255,.08)', border:'1.5px solid rgba(255,255,255,.15)', borderRadius:8, padding:'9px 12px', fontSize:14, color:'#fff', outline:'none', marginBottom:12, fontFamily:'inherit' }} />
+                <p style={{ ...lblStyle, marginBottom:8 }}>Font</p>
+                <select value={textFont} onChange={e=>setTextFont(e.target.value)}
+                  style={{ width:'100%', background:'rgba(255,255,255,.08)', border:'1.5px solid rgba(255,255,255,.15)', borderRadius:8, padding:'8px 10px', fontSize:13, color:'#fff', outline:'none', marginBottom:14 }}>
+                  {TEXT_FONTS.map(f=><option key={f} value={f}>{f}</option>)}
+                </select>
+                <p style={{ ...lblStyle, marginBottom:8 }}>Text Colour</p>
+                <div style={{ display:'flex', gap:8, marginBottom:14, flexWrap:'wrap' }}>
+                  {['#ffffff','#0a0a0a','#c8102e','#0a1f5d','#f5a623','#00a86b'].map(c=>(
+                    <div key={c} onClick={()=>setTextColor(c)}
+                      style={{ width:30, height:30, borderRadius:'50%', background:c, cursor:'pointer', border:c==='#ffffff'?'2px solid rgba(255,255,255,.4)':'2px solid transparent', boxShadow:textColor===c?'0 0 0 3px #0d1b3e,0 0 0 5px #c8102e':'none' }} />
+                  ))}
+                  <input type="color" value={textColor} onChange={e=>setTextColor(e.target.value)} style={{ width:30, height:30, border:'none', borderRadius:'50%', cursor:'pointer', background:'none' }} />
+                </div>
+                <div style={rowStyle}><p style={lblStyle}>Font Size</p><span style={{ fontSize:11, color:'#fff' }}>{textSize}px</span></div>
+                <input type="range" min="14" max="72" step="2" value={textSize} onChange={e=>setTextSize(parseInt(e.target.value))} style={sliderStyle} />
+              </>)}
+              {!textOn && <p style={{ fontSize:12, color:'rgba(255,255,255,.3)', marginTop:8, lineHeight:1.65 }}>Enable to add custom text labels on the mockup preview.</p>}
+            </div>
+          )}
+
+          {/* MOTION TAB */}
           {tab==='motion' && (
             <div>
-              <p style={{ fontSize:10, fontWeight:700, letterSpacing:'.14em', textTransform:'uppercase', color:'rgba(255,255,255,.4)', marginBottom:14 }}>Animation Style</p>
-              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10, marginBottom:20 }}>
+              <p style={{ ...lblStyle, marginBottom:12 }}>Animation Style — CapCut Moves</p>
+              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:9, marginBottom:20 }}>
                 {MOTIONS.map(m=>(
                   <button key={m.key} onClick={()=>setMotion(m.key)}
-                    style={{ padding:'13px 8px', borderRadius:10, fontSize:13, fontWeight:600, cursor:'pointer', transition:'all .15s', background:motion===m.key?'#0a1f5d':'rgba(255,255,255,.06)', color:motion===m.key?'#fff':'rgba(255,255,255,.6)', border:motion===m.key?'1.5px solid #c8102e':'1.5px solid rgba(255,255,255,.1)' }}>
-                    {m.label}
+                    style={{ padding:'13px 8px', borderRadius:10, fontSize:12, fontWeight:600, cursor:'pointer', transition:'all .15s', background:motion===m.key?'#0a1f5d':'rgba(255,255,255,.06)', color:motion===m.key?'#fff':'rgba(255,255,255,.55)', border:motion===m.key?'1.5px solid #c8102e':'1.5px solid rgba(255,255,255,.1)', display:'flex', flexDirection:'column', alignItems:'center', gap:5 }}>
+                    <span style={{ fontSize:20 }}>{m.icon}</span>{m.label}
                   </button>
                 ))}
               </div>
-              <div style={{ display:'flex', justifyContent:'space-between', marginBottom:8 }}>
-                <p style={{ fontSize:10, fontWeight:700, letterSpacing:'.14em', textTransform:'uppercase', color:'rgba(255,255,255,.4)' }}>Speed</p>
-                <span style={{ fontSize:12, fontWeight:700, color:'#fff' }}>{speed.toFixed(2)}x</span>
+              <div style={rowStyle}><p style={lblStyle}>Speed</p><span style={{ fontSize:12, fontWeight:700, color:'#fff' }}>{speed.toFixed(1)}×</span></div>
+              <input type="range" min="0.1" max="3" step="0.05" value={speed} onChange={e=>setSpeed(parseFloat(e.target.value))} style={sliderStyle} />
+              <div style={{ display:'flex', gap:7, marginTop:10 }}>
+                {[0.5,1,1.5,2].map(v=>(
+                  <button key={v} onClick={()=>setSpeed(v)}
+                    style={{ flex:1, padding:'7px 0', borderRadius:6, fontSize:11, fontWeight:600, cursor:'pointer', background:speed===v?'#0a1f5d':'rgba(255,255,255,.06)', color:speed===v?'#fff':'rgba(255,255,255,.5)', border:speed===v?'1px solid #c8102e':'1px solid rgba(255,255,255,.1)' }}>
+                    {v}×
+                  </button>
+                ))}
               </div>
-              <input type="range" min="0.1" max="2" step="0.05" value={speed} onChange={e=>setSpeed(parseFloat(e.target.value))} style={{ width:'100%', accentColor:'#c8102e' }} />
+              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginTop:20 }}>
+                <p style={lblStyle}>Auto 360° Spin</p>
+                <button onClick={()=>setAutoSpin(v=>!v)}
+                  style={{ padding:'7px 16px', borderRadius:50, fontSize:11, fontWeight:700, cursor:'pointer', background:autoSpin?'#c8102e':'rgba(255,255,255,.08)', color:'#fff', border:'none' }}>
+                  {autoSpin?'⏸ Stop':'▶ Start'}
+                </button>
+              </div>
             </div>
           )}
 
-          {tab==='camera' && (
+          {/* EFFECTS TAB */}
+          {tab==='effects' && (
             <div>
-              <p style={{ fontSize:10, fontWeight:700, letterSpacing:'.14em', textTransform:'uppercase', color:'rgba(255,255,255,.4)', marginBottom:14 }}>Camera Angle</p>
-              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:10 }}>
-                {[
-                  {label:'Front',pos:[0,0.5,3.5],icon:'⬜'},
-                  {label:'Left', pos:[-2.5,0.5,2.5],icon:'◀'},
-                  {label:'Right',pos:[2.5,0.5,2.5],icon:'▶'},
-                  {label:'Top',  pos:[0,3,2],icon:'▲'},
-                  {label:'Back', pos:[0,0.5,-3.5],icon:'🔄'},
-                  {label:'Close',pos:[0,0.3,2],icon:'🔍'},
-                ].map(cam=>(
-                  <button key={cam.label} onClick={()=>{const s=sceneRef.current;if(!s.camera)return;s.camera.position.set(...cam.pos);s.camera.lookAt(0,0,0)}}
-                    style={{ padding:'12px 4px', borderRadius:8, fontSize:12, fontWeight:600, cursor:'pointer', background:'rgba(255,255,255,.06)', color:'rgba(255,255,255,.7)', border:'1px solid rgba(255,255,255,.1)', display:'flex', flexDirection:'column', alignItems:'center', gap:4 }}>
-                    <span style={{ fontSize:20 }}>{cam.icon}</span>
-                    {cam.label}
+              <p style={{ ...lblStyle, marginBottom:10 }}>Filter Presets</p>
+              <div style={{ display:'flex', flexWrap:'wrap', gap:7, marginBottom:18 }}>
+                {FILTERS.map(f=>(
+                  <button key={f.label} onClick={()=>setFilter(f.value)}
+                    style={{ padding:'6px 11px', borderRadius:50, fontSize:11, fontWeight:600, cursor:'pointer', background:filter===f.value?'#0a1f5d':'rgba(255,255,255,.07)', color:filter===f.value?'#fff':'rgba(255,255,255,.55)', border:filter===f.value?'1px solid #c8102e':'1px solid rgba(255,255,255,.12)' }}>
+                    {f.label}
                   </button>
                 ))}
               </div>
-              <p style={{ fontSize:11, color:'rgba(255,255,255,.3)', marginTop:14, textAlign:'center' }}>Drag the 3D view to rotate freely</p>
+              <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
+                <div>
+                  <div style={rowStyle}><p style={lblStyle}>Brightness</p><span style={{ fontSize:11, color:'#fff' }}>{brightness}%</span></div>
+                  <input type="range" min="50" max="160" step="1" value={brightness} onChange={e=>setBrightness(parseInt(e.target.value))} style={sliderStyle} />
+                </div>
+                <div>
+                  <div style={rowStyle}><p style={lblStyle}>Contrast</p><span style={{ fontSize:11, color:'#fff' }}>{contrast}%</span></div>
+                  <input type="range" min="50" max="200" step="1" value={contrast} onChange={e=>setContrast(parseInt(e.target.value))} style={sliderStyle} />
+                </div>
+                <div>
+                  <div style={rowStyle}><p style={lblStyle}>Saturation</p><span style={{ fontSize:11, color:'#fff' }}>{saturation}%</span></div>
+                  <input type="range" min="0" max="250" step="1" value={saturation} onChange={e=>setSaturation(parseInt(e.target.value))} style={sliderStyle} />
+                </div>
+              </div>
+              <button onClick={()=>{setBrightness(100);setContrast(100);setSaturation(100);setFilter('')}}
+                style={{ marginTop:14, width:'100%', padding:'9px', background:'rgba(255,255,255,.06)', border:'1px solid rgba(255,255,255,.14)', borderRadius:6, color:'rgba(255,255,255,.5)', fontSize:11, fontWeight:700, cursor:'pointer' }}>
+                ↺ Reset Effects
+              </button>
             </div>
           )}
+
+          {/* 360° CAMERA TAB */}
+          {tab==='camera' && (
+            <div>
+              <p style={{ ...lblStyle, marginBottom:12 }}>360° Camera Angles</p>
+              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:10, marginBottom:16 }}>
+                {[
+                  {label:'Front',     pos:[0,0.5,3.5],    icon:'⬜'},
+                  {label:'Left',      pos:[-2.5,0.5,2.5], icon:'◀'},
+                  {label:'Right',     pos:[2.5,0.5,2.5],  icon:'▶'},
+                  {label:'Top',       pos:[0,3,2],        icon:'▲'},
+                  {label:'Back',      pos:[0,0.5,-3.5],   icon:'🔄'},
+                  {label:'Close-Up',  pos:[0,0.3,2],      icon:'🔍'},
+                  {label:'Low Angle', pos:[0,-0.8,3],     icon:'⬇'},
+                  {label:'Overhead',  pos:[0,4,0.5],      icon:'☝'},
+                ].map(cam=>(
+                  <button key={cam.label} onClick={()=>{const s=sceneRef.current;if(!s.camera)return;s.camera.position.set(...cam.pos);s.camera.lookAt(0,0,0)}}
+                    style={{ padding:'12px 4px', borderRadius:8, fontSize:11, fontWeight:600, cursor:'pointer', background:'rgba(255,255,255,.06)', color:'rgba(255,255,255,.65)', border:'1px solid rgba(255,255,255,.1)', display:'flex', flexDirection:'column', alignItems:'center', gap:3 }}>
+                    <span style={{ fontSize:18 }}>{cam.icon}</span>{cam.label}
+                  </button>
+                ))}
+              </div>
+              <p style={{ fontSize:11, color:'rgba(255,255,255,.28)', textAlign:'center', marginBottom:16 }}>💡 Drag the 3D view to rotate freely in any direction</p>
+              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+                <p style={lblStyle}>Auto 360° Spin</p>
+                <button onClick={()=>setAutoSpin(v=>!v)}
+                  style={{ padding:'7px 16px', borderRadius:50, fontSize:11, fontWeight:700, cursor:'pointer', background:autoSpin?'#c8102e':'rgba(255,255,255,.08)', color:'#fff', border:'none' }}>
+                  {autoSpin?'⏸ Stop':'▶ Spin'}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* CUSTOMER UPLOAD TAB */}
+          {tab==='upload' && (
+            <div>
+              {uploadDone ? (
+                <div style={{ textAlign:'center', padding:'32px 0' }}>
+                  <div style={{ fontSize:52, marginBottom:12 }}>✅</div>
+                  <h3 style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:26, letterSpacing:'.1em', marginBottom:8, color:'#fff' }}>UPLOADED!</h3>
+                  <p style={{ fontSize:13, color:'rgba(255,255,255,.45)', lineHeight:1.7, marginBottom:20 }}>
+                    Your photo is saved. The DRYNN team will contact you on WhatsApp shortly.
+                  </p>
+                  <button onClick={()=>{setUploadDone(false);setCustFile(null);setCustPreview(null);setCustName('');setCustPhone('')}}
+                    style={{ width:'100%', padding:11, background:'rgba(255,255,255,.08)', border:'1px solid rgba(255,255,255,.18)', borderRadius:8, color:'#fff', fontSize:12, fontWeight:700, cursor:'pointer' }}>
+                    Upload Another Photo
+                  </button>
+                </div>
+              ) : (<>
+                <p style={{ fontSize:12, color:'rgba(255,255,255,.4)', marginBottom:16, lineHeight:1.65 }}>
+                  Upload your reference photo or measurement photo. Our team will contact you on WhatsApp.
+                </p>
+                <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
+                  <div>
+                    <p style={{ ...lblStyle, marginBottom:7 }}>Your Name *</p>
+                    <input type="text" placeholder="Full name" value={custName} onChange={e=>setCustName(e.target.value)}
+                      style={{ width:'100%', background:'rgba(255,255,255,.08)', border:'1.5px solid rgba(255,255,255,.15)', borderRadius:8, padding:'9px 12px', fontSize:13, color:'#fff', outline:'none', fontFamily:'inherit' }} />
+                  </div>
+                  <div>
+                    <p style={{ ...lblStyle, marginBottom:7 }}>WhatsApp Number *</p>
+                    <input type="text" placeholder="+91 00000 00000" value={custPhone} onChange={e=>setCustPhone(e.target.value)}
+                      style={{ width:'100%', background:'rgba(255,255,255,.08)', border:'1.5px solid rgba(255,255,255,.15)', borderRadius:8, padding:'9px 12px', fontSize:13, color:'#fff', outline:'none', fontFamily:'inherit' }} />
+                  </div>
+                  <div>
+                    <p style={{ ...lblStyle, marginBottom:7 }}>Upload Your Photo *</p>
+                    <label style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:8, padding:'20px 14px', border:'1.5px dashed rgba(255,255,255,.18)', borderRadius:10, cursor:'pointer', background:'rgba(255,255,255,.03)' }}>
+                      <input type="file" accept="image/*" style={{ display:'none' }} onChange={handleCustFile} />
+                      {custPreview ? (
+                        <img src={custPreview} alt="" style={{ width:80, height:80, objectFit:'cover', borderRadius:8, border:'1px solid rgba(255,255,255,.1)' }} />
+                      ) : (
+                        <span style={{ fontSize:32 }}>📸</span>
+                      )}
+                      <span style={{ fontSize:12, color:custFile?'#00a86b':'rgba(255,255,255,.5)', fontWeight:600 }}>
+                        {custFile ? `✓ ${custFile.name}` : 'Tap to upload photo'}
+                      </span>
+                    </label>
+                  </div>
+                  {uploadErr && (
+                    <div style={{ background:'rgba(200,16,46,.1)', border:'1px solid rgba(200,16,46,.3)', borderRadius:8, padding:'10px 12px', fontSize:12, color:'#c8102e' }}>
+                      {uploadErr}
+                    </div>
+                  )}
+                  <button onClick={handleCustomerUpload} disabled={uploading}
+                    style={{ padding:'13px', background:'#c8102e', border:'none', borderRadius:8, color:'#fff', fontSize:13, fontWeight:700, cursor:'pointer', opacity:uploading?.6:1, display:'flex', alignItems:'center', justifyContent:'center', gap:8 }}>
+                    {uploading ? (<><div style={{ width:14, height:14, border:'2px solid rgba(255,255,255,.3)', borderTopColor:'#fff', borderRadius:'50%', animation:'drynn-spin .7s linear infinite' }} />Uploading…</>) : '📤 Submit to DRYNN Team'}
+                  </button>
+                  <p style={{ fontSize:11, color:'rgba(255,255,255,.25)', textAlign:'center', lineHeight:1.65 }}>
+                    Stored securely in Supabase. Admin team sees it immediately.
+                  </p>
+                </div>
+              </>)}
+            </div>
+          )}
+
         </div>
       </div>
     </div>
   )
+}
+
 }
 
 

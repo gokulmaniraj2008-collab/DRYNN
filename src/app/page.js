@@ -379,533 +379,20 @@ function LoginPage({ onBack }) {
 
 // ══════════════════════════════════════════════════════════════
 // CSS 3D MOCKUP  -  pure CSS transform + motion buttons
-// ══════════════════════════════════════════════════════════════
-function CSS3DMockup() {
-  const [color, setColor]       = useState('#ffffff')
-  const [garment, setGarment]   = useState('tshirt')
-  const [motion, setMotion]     = useState('static')
-  const [rotY, setRotY]         = useState(0)
-  const [isDragging, setIsDragging] = useState(false)
-  const [dragStart, setDragStart]   = useState(0)
-  const [baseRot, setBaseRot]       = useState(0)
-  const [designImg, setDesignImg]   = useState(null)
-  const animRef = useRef(null)
-  const frameRef = useRef(null)
-
-  const MOTIONS = ['Static','Auto Rotate','Bounce','Swing','Pulse']
-  const GARMENT_TYPES = [
-    { key:'tshirt',  label:'T-Shirt' },
-    { key:'hoodie',  label:'Hoodie'  },
-    { key:'polo',    label:'Polo'    },
-    { key:'joggers', label:'Joggers' },
-  ]
-
-  // Auto-rotate animation
-  useEffect(() => {
-    cancelAnimationFrame(frameRef.current)
-    if (motion === 'Auto Rotate') {
-      let r = rotY
-      const tick = () => { r += 0.8; setRotY(r % 360); frameRef.current = requestAnimationFrame(tick) }
-      frameRef.current = requestAnimationFrame(tick)
-    }
-    return () => cancelAnimationFrame(frameRef.current)
-  }, [motion])
-
-  const onMouseDown = (e) => { setIsDragging(true); setDragStart(e.clientX); setBaseRot(rotY) }
-  const onMouseMove = (e) => { if (!isDragging) return; setRotY(baseRot + (e.clientX - dragStart) * 0.5) }
-  const onMouseUp   = () => setIsDragging(false)
-
-  const onFileUpload = (e) => {
-    const f = e.target.files[0]; if (!f) return
-    const url = URL.createObjectURL(f)
-    setDesignImg(url)
-  }
-
-  // Garment shape CSS (simplified 3D box shapes)
-  const bodyBg   = color
-  const bodyW    = garment === 'joggers' ? 100 : 120
-  const bodyH    = garment === 'joggers' ? 160 : 140
-  const sleeveW  = garment === 'joggers' ? 0   : 50
-  const sleeveH  = garment === 'joggers' ? 0   : 60
-
-  const motionStyle = {
-    'Static':      { animation: 'none' },
-    'Auto Rotate': { animation: 'none' },
-    'Bounce':      { animation: 'css3d-bounce 1.2s ease-in-out infinite' },
-    'Swing':       { animation: 'css3d-swing 1.5s ease-in-out infinite' },
-    'Pulse':       { animation: 'css3d-pulse 1.8s ease-in-out infinite' },
-  }
-
-  const css3dAnims = `
-    @keyframes css3d-bounce { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-18px)} }
-    @keyframes css3d-swing  { 0%,100%{transform:rotate(-8deg)} 50%{transform:rotate(8deg)} }
-    @keyframes css3d-pulse  { 0%,100%{transform:scale(1)} 50%{transform:scale(1.06)} }
-  `
-
-  return (
-    <div style={{ background:'linear-gradient(135deg,#0d1b3e 0%,#1a0a2e 100%)', padding:'56px 16px', position:'relative', overflow:'hidden' }}>
-      <style>{css3dAnims}</style>
-      <div style={{ position:'absolute', top:'15%', left:'5%', width:280, height:280, background:'radial-gradient(circle,rgba(200,16,46,.1) 0%,transparent 70%)', pointerEvents:'none' }} />
-      <div style={{ position:'absolute', bottom:'10%', right:'5%', width:340, height:340, background:'radial-gradient(circle,rgba(59,130,246,.08) 0%,transparent 70%)', pointerEvents:'none' }} />
-
-      <div style={{ maxWidth:960, margin:'0 auto', position:'relative', zIndex:1 }}>
-        <div style={{ textAlign:'center', marginBottom:36 }}>
-          <span className="sec-label" style={{ color:'#c8102e' }}>3D Preview Studio</span>
-          <h2 className="sec-title" style={{ color:'#fff' }}>CSS 3D MOCKUP</h2>
-          <p style={{ fontSize:13, color:'rgba(255,255,255,.45)', marginTop:6 }}>Drag to rotate · Pick motion · Upload your design</p>
-        </div>
-
-        <div style={{ display:'flex', gap:32, flexWrap:'wrap', justifyContent:'center', alignItems:'flex-start' }}>
-          {/* 3D Garment Display */}
-          <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:16 }}>
-            <div
-              style={{ width:280, height:300, perspective:600, cursor:isDragging?'grabbing':'grab', userSelect:'none' }}
-              onMouseDown={onMouseDown} onMouseMove={onMouseMove} onMouseUp={onMouseUp} onMouseLeave={onMouseUp}
-              onTouchStart={e=>{setIsDragging(true);setDragStart(e.touches[0].clientX);setBaseRot(rotY)}}
-              onTouchMove={e=>{if(!isDragging)return;setRotY(baseRot+(e.touches[0].clientX-dragStart)*0.5)}}
-              onTouchEnd={()=>setIsDragging(false)}
-            >
-              <div style={{ width:'100%', height:'100%', transformStyle:'preserve-3d', transform:`rotateY(${rotY}deg)`, transition:isDragging?'none':'transform 0.05s', ...motionStyle[motion] }}>
-                {/* Front face */}
-                <div style={{ position:'absolute', inset:0, display:'flex', justifyContent:'center', alignItems:'center', backfaceVisibility:'hidden', transform:'translateZ(20px)' }}>
-                  <div style={{ position:'relative', width:bodyW, height:bodyH, background:bodyBg, borderRadius:'8px 8px 4px 4px', boxShadow:`inset -8px 0 16px rgba(0,0,0,.15), inset 8px 0 16px rgba(255,255,255,.08), 0 20px 60px rgba(0,0,0,.5)`, border:color==='#ffffff'?'1px solid #ccc':'none' }}>
-                    {/* Collar */}
-                    <div style={{ position:'absolute', top:-8, left:'50%', transform:'translateX(-50%)', width:garment==='joggers'?0:40, height:16, background:`color-mix(in srgb, ${bodyBg} 80%, #000 20%)`, borderRadius:'0 0 20px 20px', zIndex:2 }} />
-                    {/* Hoodie pocket */}
-                    {garment==='hoodie' && <div style={{ position:'absolute', bottom:20, left:'50%', transform:'translateX(-50%)', width:60, height:28, background:`color-mix(in srgb, ${bodyBg} 70%, #000 30%)`, borderRadius:4 }} />}
-                    {/* Design overlay */}
-                    {designImg && <img src={designImg} alt="design" style={{ position:'absolute', top:'20%', left:'50%', transform:'translateX(-50%)', width:'60%', maxHeight:'45%', objectFit:'contain', opacity:.9 }} />}
-                    {!designImg && <div style={{ position:'absolute', top:'30%', left:'50%', transform:'translateX(-50%)', fontSize:11, color:'rgba(0,0,0,.2)', fontWeight:700, letterSpacing:'.1em', textTransform:'uppercase', textAlign:'center', whiteSpace:'nowrap' }}>Your Design</div>}
-                    {/* Jogger waistband */}
-                    {garment==='joggers' && <div style={{ position:'absolute', top:0, left:0, right:0, height:20, background:`color-mix(in srgb, ${bodyBg} 60%, #000 40%)`, borderRadius:'4px 4px 0 0' }} />}
-                    {/* Jogger cuffs */}
-                    {garment==='joggers' && <><div style={{ position:'absolute', bottom:0, left:0, width:'45%', height:12, background:`color-mix(in srgb, ${bodyBg} 60%, #000 40%)`, borderRadius:'0 0 4px 4px' }}/><div style={{ position:'absolute', bottom:0, right:0, width:'45%', height:12, background:`color-mix(in srgb, ${bodyBg} 60%, #000 40%)`, borderRadius:'0 0 4px 4px' }}/></>}
-                  </div>
-                  {/* Left sleeve */}
-                  {sleeveW > 0 && <div style={{ position:'absolute', left:50, top:30, width:sleeveW, height:sleeveH, background:`color-mix(in srgb, ${bodyBg} 85%, #000 15%)`, borderRadius:'4px 0 6px 6px', transformOrigin:'top right', transform:'rotate(-6deg)', boxShadow:'inset -4px 0 8px rgba(0,0,0,.1)' }} />}
-                  {/* Right sleeve */}
-                  {sleeveW > 0 && <div style={{ position:'absolute', right:50, top:30, width:sleeveW, height:sleeveH, background:`color-mix(in srgb, ${bodyBg} 85%, #000 15%)`, borderRadius:'0 4px 6px 6px', transformOrigin:'top left', transform:'rotate(6deg)', boxShadow:'inset 4px 0 8px rgba(0,0,0,.1)' }} />}
-                </div>
-                {/* Back face */}
-                <div style={{ position:'absolute', inset:0, display:'flex', justifyContent:'center', alignItems:'center', backfaceVisibility:'hidden', transform:'rotateY(180deg) translateZ(20px)' }}>
-                  <div style={{ width:bodyW, height:bodyH, background:`color-mix(in srgb, ${bodyBg} 90%, #000 10%)`, borderRadius:'8px 8px 4px 4px', boxShadow:'inset 0 0 30px rgba(0,0,0,.2)', border:color==='#ffffff'?'1px solid #ccc':'none', display:'flex', alignItems:'center', justifyContent:'center' }}>
-                    <span style={{ fontSize:10, color:'rgba(0,0,0,.2)', fontWeight:700, letterSpacing:'.1em' }}>BACK</span>
-                  </div>
-                </div>
-                {/* Side face */}
-                <div style={{ position:'absolute', top:0, left:'50%', width:40, height:'100%', background:`color-mix(in srgb, ${bodyBg} 70%, #000 30%)`, transformOrigin:'left', transform:'rotateY(90deg) translateZ(0px)', backfaceVisibility:'hidden' }} />
-              </div>
-            </div>
-            <p style={{ fontSize:11, color:'rgba(255,255,255,.3)', textAlign:'center' }}>Drag to rotate · Touch supported</p>
-          </div>
-
-          {/* Controls */}
-          <div style={{ flex:'1 1 260px', maxWidth:320, display:'flex', flexDirection:'column', gap:18 }}>
-            {/* Garment */}
-            <div>
-              <p style={{ fontSize:10, fontWeight:700, letterSpacing:'.14em', textTransform:'uppercase', color:'rgba(255,255,255,.45)', marginBottom:10 }}>Garment</p>
-              <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
-                {GARMENT_TYPES.map(g=>(
-                  <button key={g.key} onClick={()=>setGarment(g.key)}
-                    style={{ padding:'7px 14px', borderRadius:50, fontSize:12, fontWeight:600, cursor:'pointer', background:garment===g.key?'#c8102e':'rgba(255,255,255,.08)', color:'#fff', border:garment===g.key?'1px solid #c8102e':'1px solid rgba(255,255,255,.15)', fontFamily:'DM Sans,sans-serif' }}>
-                    {g.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-            {/* Colour */}
-            <div>
-              <p style={{ fontSize:10, fontWeight:700, letterSpacing:'.14em', textTransform:'uppercase', color:'rgba(255,255,255,.45)', marginBottom:10 }}>Colour</p>
-              <div style={{ display:'flex', gap:10, flexWrap:'wrap' }}>
-                {SWATCHES.map(c=>(
-                  <div key={c} onClick={()=>setColor(c)}
-                    style={{ width:32, height:32, borderRadius:'50%', background:c, cursor:'pointer', border:c==='#ffffff'?'2px solid rgba(255,255,255,.4)':'2px solid transparent', boxShadow:color===c?`0 0 0 3px #0d1b3e, 0 0 0 5px #c8102e`:'none', transition:'box-shadow .15s' }} />
-                ))}
-              </div>
-            </div>
-            {/* Motion */}
-            <div>
-              <p style={{ fontSize:10, fontWeight:700, letterSpacing:'.14em', textTransform:'uppercase', color:'rgba(255,255,255,.45)', marginBottom:10 }}>Motion</p>
-              <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
-                {MOTIONS.map(m=>(
-                  <button key={m} onClick={()=>setMotion(m)}
-                    style={{ padding:'7px 14px', borderRadius:50, fontSize:12, fontWeight:600, cursor:'pointer', background:motion===m?'#0a1f5d':'rgba(255,255,255,.08)', color:'#fff', border:motion===m?'1px solid #0a1f5d':'1px solid rgba(255,255,255,.15)', fontFamily:'DM Sans,sans-serif' }}>
-                    {m}
-                  </button>
-                ))}
-              </div>
-            </div>
-            {/* Upload design */}
-            <div>
-              <p style={{ fontSize:10, fontWeight:700, letterSpacing:'.14em', textTransform:'uppercase', color:'rgba(255,255,255,.45)', marginBottom:10 }}>Upload Design</p>
-              <label style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:8, padding:'18px 16px', border:'1.5px dashed rgba(255,255,255,.18)', borderRadius:10, cursor:'pointer', background:'rgba(255,255,255,.04)', transition:'border-color .15s' }}>
-                <input type="file" accept=".png,.jpg,.jpeg,.svg,.webp" style={{ display:'none' }} onChange={onFileUpload} />
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.35)" strokeWidth="1.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-                <span style={{ fontSize:12, color:'rgba(255,255,255,.4)', textAlign:'center' }}>{designImg?'✓ Design loaded - click to change':'Click to upload PNG/JPG/SVG'}</span>
-              </label>
-            </div>
-            {designImg && (
-              <button onClick={()=>setDesignImg(null)} style={{ padding:'8px', fontSize:12, background:'rgba(200,16,46,.12)', border:'1px solid rgba(200,16,46,.3)', color:'#c8102e', borderRadius:6, cursor:'pointer', fontWeight:600 }}>✕ Remove Design</button>
-            )}
-          </div>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-// ══════════════════════════════════════════════════════════════
-// THREE.JS 3D MOCKUP  -  real WebGL, geometric garment, motion
-// ══════════════════════════════════════════════════════════════
-function ThreeJSMockup() {
-  const mountRef    = useRef(null)
-  const sceneRef    = useRef(null)
-  const rendRef     = useRef(null)
-  const camRef      = useRef(null)
-  const garmentRef  = useRef(null)
-  const animIdRef   = useRef(null)
-  const motionRef   = useRef('Static')
-  const frameRef    = useRef(0)
-  const isDragRef   = useRef(false)
-  const prevMouseRef = useRef({ x:0, y:0 })
-  const rotRef      = useRef({ x:0.1, y:0 })
-  const colorRef    = useRef('#ffffff')
-
-  const [motion, setMotion]   = useState('Static')
-  const [color, setColor]     = useState('#ffffff')
-  const [garment, setGarment] = useState('tshirt')
-  const [loaded, setLoaded]   = useState(false)
-  const [error, setError]     = useState('')
-  const [designImg, setDesign] = useState(null)
-
-  const MOTIONS = [
-    { key:'Static',  label:'Static',   icon:'⬛' },
-    { key:'Walk',    label:'Walk',     icon:'🚶' },
-    { key:'Run',     label:'Run',      icon:'🏃' },
-    { key:'Spin',    label:'Spin',     icon:'🔄' },
-    { key:'Bounce',  label:'Bounce',   icon:'⬆️' },
-  ]
-
-  useEffect(() => {
-    let THREE
-    let cancelled = false
-
-    const init = async () => {
-      try {
-        // Dynamically import three
-        const threeModule = await import('https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js')
-        if (cancelled) return
-        THREE = threeModule
-
-        const W = mountRef.current.clientWidth || 400
-        const H = 420
-
-        // Scene
-        const scene = new THREE.Scene()
-        scene.background = new THREE.Color(0x0d1b3e)
-        scene.fog = new THREE.Fog(0x0d1b3e, 8, 20)
-        sceneRef.current = scene
-
-        // Camera
-        const cam = new THREE.PerspectiveCamera(45, W/H, 0.1, 100)
-        cam.position.set(0, 0.5, 3.5)
-        camRef.current = cam
-
-        // Renderer
-        const renderer = new THREE.WebGLRenderer({ antialias:true })
-        renderer.setSize(W, H)
-        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
-        renderer.shadowMap.enabled = true
-        mountRef.current.appendChild(renderer.domElement)
-        rendRef.current = renderer
-
-        // Lights
-        scene.add(new THREE.AmbientLight(0xffffff, 0.6))
-        const dir = new THREE.DirectionalLight(0xffffff, 0.9)
-        dir.position.set(3, 5, 3); dir.castShadow = true; scene.add(dir)
-        const fill = new THREE.DirectionalLight(0x4488ff, 0.3)
-        fill.position.set(-3, 2, -3); scene.add(fill)
-        const back = new THREE.PointLight(0xc8102e, 0.4, 10)
-        back.position.set(0, -1, -3); scene.add(back)
-
-        // Floor
-        const floor = new THREE.Mesh(
-          new THREE.PlaneGeometry(10, 10),
-          new THREE.MeshStandardMaterial({ color:0x0a0f1e, roughness:0.95 })
-        )
-        floor.rotation.x = -Math.PI/2; floor.position.y = -1.5; floor.receiveShadow = true
-        scene.add(floor)
-
-        // Build garment group
-        buildGarment(THREE, scene, garment, color)
-
-        setLoaded(true)
-
-        // Animate loop
-        const animate = () => {
-          animIdRef.current = requestAnimationFrame(animate)
-          frameRef.current++
-          const f = frameRef.current
-          const g = garmentRef.current
-          if (!g) { renderer.render(scene, cam); return }
-
-          const m = motionRef.current
-          if (m === 'Spin') {
-            g.rotation.y += 0.025
-          } else if (m === 'Walk') {
-            g.rotation.y = Math.sin(f * 0.04) * 0.3
-            g.position.y = Math.abs(Math.sin(f * 0.08)) * 0.12 - 0.05
-          } else if (m === 'Run') {
-            g.rotation.y = Math.sin(f * 0.09) * 0.5
-            g.position.y = Math.abs(Math.sin(f * 0.18)) * 0.22 - 0.05
-          } else if (m === 'Bounce') {
-            g.position.y = Math.abs(Math.sin(f * 0.06)) * 0.4 - 0.1
-          } else {
-            // Static - smooth idle sway
-            g.rotation.y += (rotRef.current.y - g.rotation.y) * 0.06
-            g.rotation.x += (rotRef.current.x - g.rotation.x) * 0.06
-            g.position.y  = Math.sin(f * 0.018) * 0.05
-          }
-
-          renderer.render(scene, cam)
-        }
-        animate()
-
-      } catch(e) {
-        if (!cancelled) setError('WebGL not supported or Three.js failed to load.')
-        console.error(e)
-      }
-    }
-
-    init()
-
-    return () => {
-      cancelled = true
-      cancelAnimationFrame(animIdRef.current)
-      if (rendRef.current) {
-        rendRef.current.dispose()
-        try { mountRef.current?.removeChild(rendRef.current.domElement) } catch(_) {}
-      }
-    }
-  }, [])
-
-  // Rebuild garment when type/color changes
-  useEffect(() => {
-    if (!sceneRef.current || !loaded) return
-    import('https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js').then(THREE => {
-      buildGarment(THREE, sceneRef.current, garment, color)
-    })
-  }, [garment, color, loaded])
-
-  // Sync motion ref
-  useEffect(() => { motionRef.current = motion }, [motion])
-
-  function buildGarment(THREE, scene, type, col) {
-    // Remove old garment
-    if (garmentRef.current) scene.remove(garmentRef.current)
-
-    const hex = parseInt(col.replace('#',''), 16)
-    const mat  = new THREE.MeshStandardMaterial({ color:hex, roughness:0.6, metalness:0.05 })
-    const dark = new THREE.MeshStandardMaterial({ color: new THREE.Color(col).multiplyScalar(0.65), roughness:0.75 })
-
-    const group = new THREE.Group()
-
-    if (type === 'joggers') {
-      // Waistband
-      const wb = new THREE.Mesh(new THREE.CylinderGeometry(0.38,0.38,0.12,16), dark)
-      wb.position.y = 0.54; group.add(wb)
-      // Left leg
-      const ll = new THREE.Mesh(new THREE.CylinderGeometry(0.18,0.14,1.0,12), mat)
-      ll.position.set(-0.2,-0.06,0); group.add(ll)
-      // Right leg
-      const rl = new THREE.Mesh(new THREE.CylinderGeometry(0.18,0.14,1.0,12), mat)
-      rl.position.set(0.2,-0.06,0); group.add(rl)
-      // Cuffs
-      ;[-0.2,0.2].forEach(x => {
-        const c = new THREE.Mesh(new THREE.CylinderGeometry(0.15,0.15,0.1,12), dark)
-        c.position.set(x,-0.6,0); group.add(c)
-      })
-    } else {
-      // Body
-      const body = new THREE.Mesh(new THREE.BoxGeometry(0.72, 0.9, 0.22), mat)
-      body.position.y = 0; group.add(body)
-
-      if (type !== 'polo') {
-        // Left sleeve
-        const ls = new THREE.Mesh(new THREE.BoxGeometry(0.28, type==='hoodie'?0.65:0.48, 0.18), mat)
-        ls.rotation.z = type==='hoodie' ? 0.15 : 0.1
-        ls.position.set(-0.52, type==='hoodie'?-0.12:0.02, 0); group.add(ls)
-        // Right sleeve
-        const rs = ls.clone()
-        rs.rotation.z = -(type==='hoodie' ? 0.15 : 0.1)
-        rs.position.x = 0.52; group.add(rs)
-      } else {
-        // Polo short sleeves
-        const ls = new THREE.Mesh(new THREE.BoxGeometry(0.24,0.28,0.16), mat)
-        ls.position.set(-0.50, 0.22, 0); group.add(ls)
-        const rs = ls.clone(); rs.position.x = 0.50; group.add(rs)
-      }
-
-      // Collar
-      const collar = new THREE.Mesh(
-        new THREE.TorusGeometry(0.14, 0.05, 8, 16, Math.PI),
-        dark
-      )
-      collar.rotation.x = Math.PI/2; collar.position.y = 0.47; group.add(collar)
-
-      // Hoodie extras
-      if (type === 'hoodie') {
-        // Hood
-        const hood = new THREE.Mesh(new THREE.SphereGeometry(0.28, 12, 8, 0, Math.PI*2, 0, Math.PI/2), dark)
-        hood.position.y = 0.52; group.add(hood)
-        // Front pocket
-        const pocket = new THREE.Mesh(new THREE.BoxGeometry(0.44, 0.24, 0.04), dark)
-        pocket.position.set(0,-0.28,0.13); group.add(pocket)
-        // Zipper line
-        const zip = new THREE.Mesh(new THREE.BoxGeometry(0.02,0.8,0.03), new THREE.MeshStandardMaterial({color:0x888888,metalness:.8,roughness:.2}))
-        zip.position.set(0,0,0.12); group.add(zip)
-      }
-
-      // Polo collar/placket
-      if (type === 'polo') {
-        const placket = new THREE.Mesh(new THREE.BoxGeometry(0.12,0.24,0.04), dark)
-        placket.position.set(0,0.36,0.12); group.add(placket)
-      }
-    }
-
-    group.position.y = -0.2
-    scene.add(group)
-    garmentRef.current = group
-    rotRef.current = { x: 0.1, y: 0 }
-  }
-
-  // Mouse drag
-  const onPointerDown = (e) => {
-    isDragRef.current = true
-    prevMouseRef.current = { x: e.clientX||e.touches?.[0]?.clientX, y: e.clientY||e.touches?.[0]?.clientY }
-  }
-  const onPointerMove = (e) => {
-    if (!isDragRef.current || motionRef.current !== 'Static') return
-    const cx = e.clientX||e.touches?.[0]?.clientX||0
-    const cy = e.clientY||e.touches?.[0]?.clientY||0
-    rotRef.current.y += (cx - prevMouseRef.current.x) * 0.012
-    rotRef.current.x += (cy - prevMouseRef.current.y) * 0.008
-    rotRef.current.x = Math.max(-0.6, Math.min(0.6, rotRef.current.x))
-    prevMouseRef.current = { x:cx, y:cy }
-  }
-  const onPointerUp = () => { isDragRef.current = false }
-
-  const onDesignUpload = (e) => { const f=e.target.files[0]; if(f) setDesign(URL.createObjectURL(f)) }
-
-  return (
-    <div style={{ background:'linear-gradient(180deg,#060c1f 0%,#0d1b3e 100%)', padding:'56px 16px', position:'relative', overflow:'hidden' }}>
-      <div style={{ position:'absolute', top:'10%', right:'8%', width:300, height:300, background:'radial-gradient(circle,rgba(200,16,46,.08) 0%,transparent 70%)', pointerEvents:'none' }} />
-
-      <div style={{ maxWidth:960, margin:'0 auto', position:'relative', zIndex:1 }}>
-        <div style={{ textAlign:'center', marginBottom:36 }}>
-          <span className="sec-label" style={{ color:'#c8102e' }}>WebGL Engine</span>
-          <h2 className="sec-title" style={{ color:'#fff' }}>THREE.JS 3D VIEWER</h2>
-          <p style={{ fontSize:13, color:'rgba(255,255,255,.4)', marginTop:6 }}>Real 3D · Drag to orbit · Motion animations</p>
-        </div>
-
-        <div style={{ display:'flex', gap:28, flexWrap:'wrap', justifyContent:'center', alignItems:'flex-start' }}>
-          {/* Canvas */}
-          <div style={{ position:'relative', borderRadius:16, overflow:'hidden', boxShadow:'0 24px 80px rgba(0,0,0,.7)', flex:'0 0 auto' }}>
-            <div ref={mountRef}
-              style={{ width:Math.min(400, typeof window!=='undefined'?window.innerWidth-40:400), height:420, cursor:'grab' }}
-              onMouseDown={onPointerDown} onMouseMove={onPointerMove} onMouseUp={onPointerUp} onMouseLeave={onPointerUp}
-              onTouchStart={onPointerDown} onTouchMove={onPointerMove} onTouchEnd={onPointerUp}
-            />
-            {!loaded && !error && (
-              <div style={{ position:'absolute', inset:0, display:'flex', alignItems:'center', justifyContent:'center', background:'rgba(6,12,31,.9)', flexDirection:'column', gap:12 }}>
-                <div style={{ width:32, height:32, border:'3px solid rgba(255,255,255,.1)', borderTopColor:'#c8102e', borderRadius:'50%', animation:'drynn-spin .8s linear infinite' }} />
-                <span style={{ fontSize:12, color:'rgba(255,255,255,.4)' }}>Loading 3D engine…</span>
-              </div>
-            )}
-            {error && (
-              <div style={{ position:'absolute', inset:0, display:'flex', alignItems:'center', justifyContent:'center', background:'rgba(6,12,31,.9)', flexDirection:'column', gap:8, padding:24 }}>
-                <span style={{ fontSize:24 }}>⚠️</span>
-                <span style={{ fontSize:13, color:'#f5a623', textAlign:'center' }}>{error}</span>
-              </div>
-            )}
-            {/* Overlay label */}
-            <div style={{ position:'absolute', bottom:10, left:0, right:0, textAlign:'center', fontSize:10, color:'rgba(255,255,255,.3)', pointerEvents:'none', letterSpacing:'.1em' }}>
-              DRAG TO ROTATE
-            </div>
-          </div>
-
-          {/* Controls */}
-          <div style={{ flex:'1 1 240px', maxWidth:300, display:'flex', flexDirection:'column', gap:18 }}>
-            {/* Garment */}
-            <div>
-              <p style={{ fontSize:10, fontWeight:700, letterSpacing:'.14em', textTransform:'uppercase', color:'rgba(255,255,255,.4)', marginBottom:10 }}>Garment</p>
-              <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
-                {['tshirt','hoodie','polo','joggers'].map(g=>(
-                  <button key={g} onClick={()=>setGarment(g)}
-                    style={{ padding:'7px 14px', borderRadius:50, fontSize:12, fontWeight:600, cursor:'pointer', background:garment===g?'#c8102e':'rgba(255,255,255,.07)', color:'#fff', border:garment===g?'1px solid #c8102e':'1px solid rgba(255,255,255,.12)', fontFamily:'DM Sans,sans-serif', textTransform:'capitalize' }}>
-                    {g === 'tshirt' ? 'T-Shirt' : g.charAt(0).toUpperCase()+g.slice(1)}
-                  </button>
-                ))}
-              </div>
-            </div>
-            {/* Colour */}
-            <div>
-              <p style={{ fontSize:10, fontWeight:700, letterSpacing:'.14em', textTransform:'uppercase', color:'rgba(255,255,255,.4)', marginBottom:10 }}>Colour</p>
-              <div style={{ display:'flex', gap:10, flexWrap:'wrap' }}>
-                {SWATCHES.map(c=>(
-                  <div key={c} onClick={()=>setColor(c)}
-                    style={{ width:32, height:32, borderRadius:'50%', background:c, cursor:'pointer', border:c==='#ffffff'?'2px solid rgba(255,255,255,.5)':'2px solid transparent', boxShadow:color===c?`0 0 0 3px #060c1f, 0 0 0 5px #c8102e`:'none', transition:'box-shadow .15s' }} />
-                ))}
-              </div>
-            </div>
-            {/* Motion */}
-            <div>
-              <p style={{ fontSize:10, fontWeight:700, letterSpacing:'.14em', textTransform:'uppercase', color:'rgba(255,255,255,.4)', marginBottom:10 }}>Motion</p>
-              <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
-                {MOTIONS.map(m=>(
-                  <button key={m.key} onClick={()=>setMotion(m.key)}
-                    style={{ display:'flex', alignItems:'center', gap:10, padding:'10px 16px', borderRadius:8, fontSize:13, fontWeight:600, cursor:'pointer',
-                      background:motion===m.key?'rgba(200,16,46,.2)':'rgba(255,255,255,.05)',
-                      color: motion===m.key ? '#fff' : 'rgba(255,255,255,.5)',
-                      border: motion===m.key ? '1.5px solid rgba(200,16,46,.5)' : '1.5px solid rgba(255,255,255,.08)',
-                      fontFamily:'DM Sans,sans-serif', transition:'all .15s', textAlign:'left'
-                    }}>
-                    <span style={{ fontSize:16 }}>{m.icon}</span>
-                    <span>{m.label}</span>
-                    {motion===m.key && <span style={{ marginLeft:'auto', width:6, height:6, borderRadius:'50%', background:'#c8102e', boxShadow:'0 0 6px #c8102e' }} />}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div style={{ background:'rgba(255,255,255,.04)', border:'1px solid rgba(255,255,255,.08)', borderRadius:8, padding:'12px 14px', fontSize:11, color:'rgba(255,255,255,.35)', lineHeight:1.7 }}>
-              <strong style={{ color:'rgba(255,255,255,.6)' }}>Note:</strong> Realistic garment models (like the VirtualThreads screenshot) require paid .glb files with skeleton rigging. This viewer uses geometric shapes built with Three.js.
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-// ══════════════════════════════════════════════════════════════
-// CANVAS MOCKUP STUDIO
-// ══════════════════════════════════════════════════════════════
-// 3D MOCKUP STUDIO — Three.js viewer + Animation controls
-// ══════════════════════════════════════════════════════════════
 function MockupStudio() {
-  const mountRef   = useRef(null)
-  const sceneRef   = useRef({})
-  const animRef    = useRef(null)
+  const mountRef  = useRef(null)
+  const sceneRef  = useRef({})
+  const animRef   = useRef(null)
 
-  const [garmentType, setGarmentType]   = useState('tshirt')
-  const [gColor,      setGColor]        = useState('#ffffff')
-  const [motion,      setMotion]        = useState('static')
-  const [speed,       setSpeed]         = useState(0.5)
-  const [tab,         setTab]           = useState('design')
-  const [designImg,   setDesignImg]     = useState(null)
-  const [threeReady,  setThreeReady]    = useState(false)
-  const [designPosY,  setDesignPosY]    = useState(0.08)
-  const [designScale, setDesignScale]   = useState(0.55)
+  const [garmentType, setGarmentType] = useState('tshirt')
+  const [gColor,      setGColor]      = useState('#ffffff')
+  const [motion,      setMotion]      = useState('static')
+  const [speed,       setSpeed]       = useState(0.5)
+  const [tab,         setTab]         = useState('design')
+  const [designImg,   setDesignImg]   = useState(null)
+  const [threeReady,  setThreeReady]  = useState(false)
+  const [designPosY,  setDesignPosY]  = useState(0.08)
+  const [designScale, setDesignScale] = useState(0.55)
 
   const GARMENT_TYPES = [
     { key:'tshirt',  label:'T-Shirt',  emoji:'👕' },
@@ -921,11 +408,11 @@ function MockupStudio() {
     { key:'run',        label:'Run'            },
     { key:'lookaround', label:'Look Around'    },
   ]
-  const BOTTOM_TABS = [
-    { key:'design',  label:'Upload', icon:'🖼' },
-    { key:'colour',  label:'Colour', icon:'🎨' },
-    { key:'motion',  label:'Motion', icon:'🏃' },
-    { key:'camera',  label:'Camera', icon:'📷' },
+  const TABS = [
+    { key:'design', label:'Upload', icon:'🖼' },
+    { key:'colour', label:'Colour', icon:'🎨' },
+    { key:'motion', label:'Motion', icon:'🏃' },
+    { key:'camera', label:'Camera', icon:'📷' },
   ]
 
   useEffect(() => {
@@ -933,15 +420,19 @@ function MockupStudio() {
     const container = mountRef.current
     if (!container) return
 
+    // Load Three.js as a classic script tag — NOT import()
     const script = document.createElement('script')
+    script.type = 'text/javascript'
     script.src = 'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js'
     script.onload = () => {
       if (destroyed) return
       const THREE = window.THREE
+      if (!THREE) return
+
       const W = container.clientWidth || 360
       const H = Math.min(W * 1.15, 460)
 
-      const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, preserveDrawingBuffer: true })
+      const renderer = new THREE.WebGLRenderer({ antialias:true, alpha:false, preserveDrawingBuffer:true })
       renderer.setSize(W, H)
       renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
       renderer.shadowMap.enabled = true
@@ -951,16 +442,16 @@ function MockupStudio() {
       scene.background = new THREE.Color(0x1a2744)
       scene.fog = new THREE.Fog(0x1a2744, 10, 22)
 
-      const camera = new THREE.PerspectiveCamera(45, W / H, 0.1, 100)
+      const camera = new THREE.PerspectiveCamera(45, W/H, 0.1, 100)
       camera.position.set(0, 0.5, 3.5)
 
       scene.add(new THREE.AmbientLight(0xffffff, 0.7))
       const dir = new THREE.DirectionalLight(0xffffff, 1.2)
-      dir.position.set(3, 5, 3); dir.castShadow = true; scene.add(dir)
+      dir.position.set(3,5,3); dir.castShadow = true; scene.add(dir)
       const fill = new THREE.DirectionalLight(0x4488ff, 0.45)
-      fill.position.set(-3, 2, -2); scene.add(fill)
+      fill.position.set(-3,2,-2); scene.add(fill)
       const rim = new THREE.DirectionalLight(0xff4444, 0.25)
-      rim.position.set(0, -2, -3); scene.add(rim)
+      rim.position.set(0,-2,-3); scene.add(rim)
 
       const buildGarment = (type, color, texImg, py, ps) => {
         const old = scene.getObjectByName('garment_group')
@@ -968,7 +459,7 @@ function MockupStudio() {
         const group = new THREE.Group()
         group.name = 'garment_group'
         const c = new THREE.Color(color)
-        const mat = () => new THREE.MeshStandardMaterial({ color: c, roughness: 0.78, metalness: 0.02 })
+        const mat = () => new THREE.MeshStandardMaterial({ color:c, roughness:0.78, metalness:0.02 })
 
         if (type === 'tshirt' || type === 'polo') {
           const body = new THREE.Mesh(new THREE.CylinderGeometry(0.38,0.42,1.4,32,4,true), mat())
@@ -1026,11 +517,10 @@ function MockupStudio() {
         return group
       }
 
-      let isDragging = false, prevX = 0, prevY = 0
-      let autoRotY = 0, autoRotX = 0
-      const onPD = (e) => { isDragging = true; const s = e.touches?e.touches[0]:e; prevX=s.clientX; prevY=s.clientY }
-      const onPM = (e) => { if(!isDragging) return; const s=e.touches?e.touches[0]:e; autoRotY+=(s.clientX-prevX)*0.008; autoRotX+=(s.clientY-prevY)*0.004; autoRotX=Math.max(-0.4,Math.min(0.4,autoRotX)); prevX=s.clientX; prevY=s.clientY }
-      const onPU = () => { isDragging = false }
+      let isDragging=false, prevX=0, prevY=0, autoRotY=0, autoRotX=0
+      const onPD=(e)=>{isDragging=true;const s=e.touches?e.touches[0]:e;prevX=s.clientX;prevY=s.clientY}
+      const onPM=(e)=>{if(!isDragging)return;const s=e.touches?e.touches[0]:e;autoRotY+=(s.clientX-prevX)*0.008;autoRotX+=(s.clientY-prevY)*0.004;autoRotX=Math.max(-0.4,Math.min(0.4,autoRotX));prevX=s.clientX;prevY=s.clientY}
+      const onPU=()=>{isDragging=false}
       renderer.domElement.addEventListener('mousedown',onPD)
       renderer.domElement.addEventListener('mousemove',onPM)
       renderer.domElement.addEventListener('mouseup',onPU)
@@ -1041,7 +531,7 @@ function MockupStudio() {
       sceneRef.current = { scene, camera, renderer, buildGarment, motionType:'static', motionSpeed:0.5 }
       buildGarment('tshirt','#ffffff',null,0.08,0.55)
 
-      let ft = 0
+      let ft=0
       const animate = () => {
         animRef.current = requestAnimationFrame(animate)
         ft += 0.016
@@ -1051,58 +541,63 @@ function MockupStudio() {
           const sp = sceneRef.current.motionSpeed
           const t = ft * sp
           if (mt==='static') { if(!isDragging) autoRotY+=0.004 }
-          else if (mt==='breathe') { g.scale.y=1+Math.sin(t*1.2)*0.012; g.scale.x=1+Math.sin(t*1.2+Math.PI)*0.006; g.position.y=Math.sin(t*1.2)*0.008 }
-          else if (mt==='walk') { g.rotation.y=Math.sin(t*2)*0.12; g.position.y=Math.abs(Math.sin(t*2))*0.04-0.02; g.rotation.z=Math.sin(t*2)*0.04 }
-          else if (mt==='confident') { g.rotation.y=Math.sin(t*1.8)*0.18; g.position.y=Math.abs(Math.sin(t*1.8))*0.06-0.03; g.rotation.z=Math.sin(t*1.8)*0.06 }
-          else if (mt==='run') { g.rotation.y=Math.sin(t*4)*0.22; g.position.y=Math.abs(Math.sin(t*4))*0.1-0.05; g.rotation.z=Math.sin(t*4)*0.08; g.rotation.x=-0.08+Math.sin(t*4)*0.04 }
-          else if (mt==='lookaround') { g.rotation.y=Math.sin(t*0.8)*0.55; g.position.y=Math.sin(t*0.4)*0.015 }
-          if (mt==='static' || mt==='breathe') { g.rotation.y += autoRotY*0.08; g.rotation.y*=0.92; g.rotation.x=autoRotX*0.5 }
-          autoRotY *= 0.95
+          else if(mt==='breathe'){g.scale.y=1+Math.sin(t*1.2)*0.012;g.scale.x=1+Math.sin(t*1.2+Math.PI)*0.006;g.position.y=Math.sin(t*1.2)*0.008}
+          else if(mt==='walk'){g.rotation.y=Math.sin(t*2)*0.12;g.position.y=Math.abs(Math.sin(t*2))*0.04-0.02;g.rotation.z=Math.sin(t*2)*0.04}
+          else if(mt==='confident'){g.rotation.y=Math.sin(t*1.8)*0.18;g.position.y=Math.abs(Math.sin(t*1.8))*0.06-0.03;g.rotation.z=Math.sin(t*1.8)*0.06}
+          else if(mt==='run'){g.rotation.y=Math.sin(t*4)*0.22;g.position.y=Math.abs(Math.sin(t*4))*0.1-0.05;g.rotation.z=Math.sin(t*4)*0.08;g.rotation.x=-0.08+Math.sin(t*4)*0.04}
+          else if(mt==='lookaround'){g.rotation.y=Math.sin(t*0.8)*0.55;g.position.y=Math.sin(t*0.4)*0.015}
+          if(mt==='static'||mt==='breathe'){g.rotation.y+=autoRotY*0.08;g.rotation.y*=0.92;g.rotation.x=autoRotX*0.5}
+          autoRotY*=0.95
         }
         renderer.render(scene, camera)
       }
       animate()
       setThreeReady(true)
 
-      sceneRef.current.rebuild = (type, color, texImg, py, ps, mtype, mspeed) => {
-        buildGarment(type, color, texImg, py, ps)
-        sceneRef.current.motionType = mtype
-        sceneRef.current.motionSpeed = mspeed
+      sceneRef.current.rebuild = (type,color,texImg,py,ps,mtype,mspeed) => {
+        buildGarment(type,color,texImg,py,ps)
+        sceneRef.current.motionType=mtype
+        sceneRef.current.motionSpeed=mspeed
       }
 
-      const onResize = () => {
-        const W2=container.clientWidth||360, H2=Math.min(W2*1.15,460)
-        camera.aspect=W2/H2; camera.updateProjectionMatrix(); renderer.setSize(W2,H2)
-      }
+      const onResize=()=>{const W2=container.clientWidth||360,H2=Math.min(W2*1.15,460);camera.aspect=W2/H2;camera.updateProjectionMatrix();renderer.setSize(W2,H2)}
       window.addEventListener('resize',onResize)
 
-      sceneRef.current.cleanup = () => {
+      sceneRef.current.cleanup=()=>{
         window.removeEventListener('resize',onResize)
         cancelAnimationFrame(animRef.current)
+        renderer.domElement.removeEventListener('mousedown',onPD)
+        renderer.domElement.removeEventListener('mousemove',onPM)
+        renderer.domElement.removeEventListener('mouseup',onPU)
+        renderer.domElement.removeEventListener('touchstart',onPD)
+        renderer.domElement.removeEventListener('touchmove',onPM)
+        renderer.domElement.removeEventListener('touchend',onPU)
         renderer.dispose()
-        if (container.contains(renderer.domElement)) container.removeChild(renderer.domElement)
+        try{if(container.contains(renderer.domElement))container.removeChild(renderer.domElement)}catch(_){}
       }
     }
+    script.onerror=()=>console.error('Failed to load Three.js')
     document.head.appendChild(script)
-    return () => { destroyed=true; if(sceneRef.current.cleanup) sceneRef.current.cleanup() }
+
+    return ()=>{destroyed=true;if(sceneRef.current.cleanup)sceneRef.current.cleanup()}
   }, [])
 
-  useEffect(() => {
-    const s = sceneRef.current
-    if (!s.rebuild) return
-    s.rebuild(garmentType, gColor, designImg, designPosY, designScale, motion, speed)
-  }, [garmentType, gColor, designImg, designPosY, designScale, motion, speed])
+  useEffect(()=>{
+    const s=sceneRef.current
+    if(!s.rebuild) return
+    s.rebuild(garmentType,gColor,designImg,designPosY,designScale,motion,speed)
+  },[garmentType,gColor,designImg,designPosY,designScale,motion,speed])
 
-  const handleUpload = (e) => {
-    const f = e.target.files[0]; if (!f) return
-    const url = URL.createObjectURL(f)
-    const img = new Image(); img.onload = () => setDesignImg(img); img.src = url
+  const handleUpload=(e)=>{
+    const f=e.target.files[0];if(!f)return
+    const url=URL.createObjectURL(f)
+    const img=new Image();img.onload=()=>setDesignImg(img);img.src=url
   }
 
-  const handleDownload = () => {
-    const s = sceneRef.current; if (!s.renderer) return
-    s.renderer.render(s.scene, s.camera)
-    const a = document.createElement('a'); a.download='drynn-mockup.png'; a.href=s.renderer.domElement.toDataURL('image/png'); a.click()
+  const handleDownload=()=>{
+    const s=sceneRef.current;if(!s.renderer)return
+    s.renderer.render(s.scene,s.camera)
+    const a=document.createElement('a');a.download='drynn-mockup.png';a.href=s.renderer.domElement.toDataURL('image/png');a.click()
   }
 
   return (
@@ -1119,8 +614,8 @@ function MockupStudio() {
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'0 16px 12px', maxWidth:900, margin:'0 auto', flexWrap:'wrap', gap:8 }}>
         <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
           {GARMENT_TYPES.map(g => (
-            <button key={g.key} onClick={() => setGarmentType(g.key)}
-              style={{ padding:'8px 14px', borderRadius:50, fontSize:12, fontWeight:600, cursor:'pointer', transition:'all .15s', background: garmentType===g.key?'#c8102e':'rgba(255,255,255,.08)', color:'#fff', border: garmentType===g.key?'1px solid #c8102e':'1px solid rgba(255,255,255,.15)' }}>
+            <button key={g.key} onClick={()=>setGarmentType(g.key)}
+              style={{ padding:'8px 14px', borderRadius:50, fontSize:12, fontWeight:600, cursor:'pointer', transition:'all .15s', background:garmentType===g.key?'#c8102e':'rgba(255,255,255,.08)', color:'#fff', border:garmentType===g.key?'1px solid #c8102e':'1px solid rgba(255,255,255,.15)' }}>
               {g.emoji} {g.label}
             </button>
           ))}
@@ -1142,22 +637,22 @@ function MockupStudio() {
 
       <div style={{ maxWidth:900, margin:'0 auto', borderTop:'1px solid rgba(255,255,255,.08)', marginTop:4 }}>
         <div style={{ display:'flex', justifyContent:'space-around', background:'rgba(0,0,0,.3)' }}>
-          {BOTTOM_TABS.map(t => (
-            <button key={t.key} onClick={() => setTab(t.key)}
-              style={{ flex:1, padding:'12px 4px', background:'none', border:'none', cursor:'pointer', display:'flex', flexDirection:'column', alignItems:'center', gap:3, borderBottom: tab===t.key?'2px solid #c8102e':'2px solid transparent', transition:'all .15s' }}>
+          {TABS.map(t => (
+            <button key={t.key} onClick={()=>setTab(t.key)}
+              style={{ flex:1, padding:'12px 4px', background:'none', border:'none', cursor:'pointer', display:'flex', flexDirection:'column', alignItems:'center', gap:3, borderBottom:tab===t.key?'2px solid #c8102e':'2px solid transparent', transition:'all .15s' }}>
               <span style={{ fontSize:20 }}>{t.icon}</span>
-              <span style={{ fontSize:9, fontWeight:700, letterSpacing:'.08em', textTransform:'uppercase', color: tab===t.key?'#c8102e':'rgba(255,255,255,.4)' }}>{t.label}</span>
+              <span style={{ fontSize:9, fontWeight:700, letterSpacing:'.08em', textTransform:'uppercase', color:tab===t.key?'#c8102e':'rgba(255,255,255,.4)' }}>{t.label}</span>
             </button>
           ))}
         </div>
 
         <div style={{ padding:'20px 16px 32px' }}>
-          {tab === 'design' && (
+          {tab==='design' && (
             <div>
               <label style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:10, padding:'28px 16px', border:'1.5px dashed rgba(255,255,255,.2)', borderRadius:12, cursor:'pointer', background:'rgba(255,255,255,.03)' }}>
                 <input type="file" accept=".png,.jpg,.jpeg,.svg,.webp" style={{ display:'none' }} onChange={handleUpload} />
                 <span style={{ fontSize:36 }}>🖼</span>
-                <span style={{ fontSize:13, color:'rgba(255,255,255,.6)', fontWeight:600 }}>{designImg ? '✓ Loaded - tap to change' : 'Tap to upload your design'}</span>
+                <span style={{ fontSize:13, color:'rgba(255,255,255,.6)', fontWeight:600 }}>{designImg?'Loaded - tap to change':'Tap to upload your design'}</span>
                 <span style={{ fontSize:11, color:'rgba(255,255,255,.3)' }}>PNG · JPG · SVG · Min 300 DPI</span>
               </label>
               {designImg && (
@@ -1167,46 +662,41 @@ function MockupStudio() {
                       <p style={{ fontSize:10, fontWeight:700, letterSpacing:'.12em', textTransform:'uppercase', color:'rgba(255,255,255,.4)' }}>Print Position</p>
                       <span style={{ fontSize:11, color:'#fff' }}>{designPosY.toFixed(2)}</span>
                     </div>
-                    <input type="range" min="-0.3" max="0.4" step="0.01" value={designPosY}
-                      onChange={e => setDesignPosY(parseFloat(e.target.value))}
-                      style={{ width:'100%', accentColor:'#c8102e' }} />
+                    <input type="range" min="-0.3" max="0.4" step="0.01" value={designPosY} onChange={e=>setDesignPosY(parseFloat(e.target.value))} style={{ width:'100%', accentColor:'#c8102e' }} />
                   </div>
                   <div>
                     <div style={{ display:'flex', justifyContent:'space-between', marginBottom:6 }}>
                       <p style={{ fontSize:10, fontWeight:700, letterSpacing:'.12em', textTransform:'uppercase', color:'rgba(255,255,255,.4)' }}>Print Size</p>
                       <span style={{ fontSize:11, color:'#fff' }}>{designScale.toFixed(2)}</span>
                     </div>
-                    <input type="range" min="0.2" max="0.9" step="0.01" value={designScale}
-                      onChange={e => setDesignScale(parseFloat(e.target.value))}
-                      style={{ width:'100%', accentColor:'#c8102e' }} />
+                    <input type="range" min="0.2" max="0.9" step="0.01" value={designScale} onChange={e=>setDesignScale(parseFloat(e.target.value))} style={{ width:'100%', accentColor:'#c8102e' }} />
                   </div>
                 </div>
               )}
             </div>
           )}
 
-          {tab === 'colour' && (
+          {tab==='colour' && (
             <div>
               <p style={{ fontSize:10, fontWeight:700, letterSpacing:'.14em', textTransform:'uppercase', color:'rgba(255,255,255,.4)', marginBottom:14 }}>Garment Colour</p>
               <div style={{ display:'flex', gap:12, flexWrap:'wrap', marginBottom:20 }}>
-                {SWATCHES.map(c => (
-                  <div key={c} onClick={() => setGColor(c)}
-                    style={{ width:40, height:40, borderRadius:'50%', background:c, cursor:'pointer', border: c==='#ffffff'?'2px solid rgba(255,255,255,.4)':'2px solid transparent', boxShadow: gColor===c?'0 0 0 3px #0d1b3e, 0 0 0 5px #c8102e':'none', transition:'box-shadow .15s' }} />
+                {SWATCHES.map(c=>(
+                  <div key={c} onClick={()=>setGColor(c)}
+                    style={{ width:40, height:40, borderRadius:'50%', background:c, cursor:'pointer', border:c==='#ffffff'?'2px solid rgba(255,255,255,.4)':'2px solid transparent', boxShadow:gColor===c?'0 0 0 3px #0d1b3e, 0 0 0 5px #c8102e':'none', transition:'box-shadow .15s' }} />
                 ))}
               </div>
               <p style={{ fontSize:10, fontWeight:700, letterSpacing:'.14em', textTransform:'uppercase', color:'rgba(255,255,255,.4)', marginBottom:10 }}>Custom Colour</p>
-              <input type="color" value={gColor} onChange={e => setGColor(e.target.value)}
-                style={{ width:52, height:52, border:'none', borderRadius:8, cursor:'pointer', background:'none' }} />
+              <input type="color" value={gColor} onChange={e=>setGColor(e.target.value)} style={{ width:52, height:52, border:'none', borderRadius:8, cursor:'pointer', background:'none' }} />
             </div>
           )}
 
-          {tab === 'motion' && (
+          {tab==='motion' && (
             <div>
               <p style={{ fontSize:10, fontWeight:700, letterSpacing:'.14em', textTransform:'uppercase', color:'rgba(255,255,255,.4)', marginBottom:14 }}>Animation Style</p>
               <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10, marginBottom:20 }}>
-                {MOTIONS.map(m => (
-                  <button key={m.key} onClick={() => setMotion(m.key)}
-                    style={{ padding:'13px 8px', borderRadius:10, fontSize:13, fontWeight:600, cursor:'pointer', transition:'all .15s', background: motion===m.key?'#0a1f5d':'rgba(255,255,255,.06)', color: motion===m.key?'#fff':'rgba(255,255,255,.6)', border: motion===m.key?'1.5px solid #c8102e':'1.5px solid rgba(255,255,255,.1)' }}>
+                {MOTIONS.map(m=>(
+                  <button key={m.key} onClick={()=>setMotion(m.key)}
+                    style={{ padding:'13px 8px', borderRadius:10, fontSize:13, fontWeight:600, cursor:'pointer', transition:'all .15s', background:motion===m.key?'#0a1f5d':'rgba(255,255,255,.06)', color:motion===m.key?'#fff':'rgba(255,255,255,.6)', border:motion===m.key?'1.5px solid #c8102e':'1.5px solid rgba(255,255,255,.1)' }}>
                     {m.label}
                   </button>
                 ))}
@@ -1215,30 +705,23 @@ function MockupStudio() {
                 <p style={{ fontSize:10, fontWeight:700, letterSpacing:'.14em', textTransform:'uppercase', color:'rgba(255,255,255,.4)' }}>Speed</p>
                 <span style={{ fontSize:12, fontWeight:700, color:'#fff' }}>{speed.toFixed(2)}x</span>
               </div>
-              <input type="range" min="0.1" max="2" step="0.05" value={speed}
-                onChange={e => setSpeed(parseFloat(e.target.value))}
-                style={{ width:'100%', accentColor:'#c8102e' }} />
+              <input type="range" min="0.1" max="2" step="0.05" value={speed} onChange={e=>setSpeed(parseFloat(e.target.value))} style={{ width:'100%', accentColor:'#c8102e' }} />
             </div>
           )}
 
-          {tab === 'camera' && (
+          {tab==='camera' && (
             <div>
               <p style={{ fontSize:10, fontWeight:700, letterSpacing:'.14em', textTransform:'uppercase', color:'rgba(255,255,255,.4)', marginBottom:14 }}>Camera Angle</p>
               <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:10 }}>
                 {[
-                  { label:'Front', pos:[0,0.5,3.5],   icon:'⬜' },
-                  { label:'Left',  pos:[-2.5,0.5,2.5], icon:'◀' },
-                  { label:'Right', pos:[2.5,0.5,2.5],  icon:'▶' },
-                  { label:'Top',   pos:[0,3,2],         icon:'▲' },
-                  { label:'Back',  pos:[0,0.5,-3.5],   icon:'🔄' },
-                  { label:'Close', pos:[0,0.3,2],       icon:'🔍' },
-                ].map(cam => (
-                  <button key={cam.label} onClick={() => {
-                    const s = sceneRef.current
-                    if (!s.camera) return
-                    s.camera.position.set(...cam.pos)
-                    s.camera.lookAt(0,0,0)
-                  }}
+                  {label:'Front',pos:[0,0.5,3.5],icon:'⬜'},
+                  {label:'Left', pos:[-2.5,0.5,2.5],icon:'◀'},
+                  {label:'Right',pos:[2.5,0.5,2.5],icon:'▶'},
+                  {label:'Top',  pos:[0,3,2],icon:'▲'},
+                  {label:'Back', pos:[0,0.5,-3.5],icon:'🔄'},
+                  {label:'Close',pos:[0,0.3,2],icon:'🔍'},
+                ].map(cam=>(
+                  <button key={cam.label} onClick={()=>{const s=sceneRef.current;if(!s.camera)return;s.camera.position.set(...cam.pos);s.camera.lookAt(0,0,0)}}
                     style={{ padding:'12px 4px', borderRadius:8, fontSize:12, fontWeight:600, cursor:'pointer', background:'rgba(255,255,255,.06)', color:'rgba(255,255,255,.7)', border:'1px solid rgba(255,255,255,.1)', display:'flex', flexDirection:'column', alignItems:'center', gap:4 }}>
                     <span style={{ fontSize:20 }}>{cam.icon}</span>
                     {cam.label}
@@ -1254,7 +737,6 @@ function MockupStudio() {
   )
 }
 
-// ══════════════════════════════════════════════════════════════
 
 function HomePage({ user, onNav, cart, onAddToCart }) {
   return (

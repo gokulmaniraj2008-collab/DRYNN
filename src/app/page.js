@@ -1041,12 +1041,12 @@ function StudioPage({ user, onNav, onAddToCart }) {
 
   // ── Step 6: Order ─────────────────────────────────────────
   const [size,       setSize]     = useState('M')
-  const [form,       setForm]     = useState({ name:user?.user_metadata?.full_name||'', phone:'', qty:1, address:'' })
+  const [form,       setForm]     = useState({ name:user?.user_metadata?.full_name||user?.email||'', phone:'', qty:1, address:'' })
   const [status,     setStatus]   = useState('')
   const [uploadPct,  setUploadPct]= useState(0)
 
   const handleSubmit = async () => {
-    if (!form.name||!form.phone||!form.address) { alert('Please fill all fields.'); return }
+
     setStatus('uploading')
     try {
       const designUrls = {}
@@ -1709,20 +1709,7 @@ function StudioPage({ user, onNav, onAddToCart }) {
                       ))}
                     </div>
                   </div>
-                  {/* Form fields */}
-                  {[
-                    ['name',    'Full Name *',          'Your full name',         false],
-                    ['phone',   'WhatsApp Number *',    '+91 00000 00000',         false],
-                    ['qty',     'Quantity',             '1',                       false],
-                    ['address', 'Delivery Address *',  'Full address with pincode', true],
-                  ].map(([k,lbl,ph,isArea])=>(
-                    <div key={k}>
-                      <span style={lblStyle}>{lbl}</span>
-                      {isArea
-                        ? <textarea rows={3} placeholder={ph} value={form[k]} onChange={e=>setForm({...form,[k]:e.target.value})} style={{ ...inputStyle, resize:'vertical' }} />
-                        : <input type={k==='qty'?'number':'text'} placeholder={ph} value={form[k]} onChange={e=>setForm({...form,[k]:e.target.value})} style={inputStyle} />}
-                    </div>
-                  ))}
+
 
                   {/* Upload progress */}
                   {status==='uploading' && (
@@ -2164,17 +2151,7 @@ function ProductsPage({ onAddToCart, onNav }) {
         )}
       </div>
 
-      {/* Group Order CTA */}
-      {onNav && (
-        <div style={{ margin:'0 20px 32px', background:'linear-gradient(135deg,#0a1f5d,#1a0a2e)', borderRadius:12, padding:'20px', display:'flex', alignItems:'center', gap:16, cursor:'pointer' }} onClick={()=>onNav('group')}>
-          <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#aaa" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
-          <div style={{ flex:1 }}>
-            <div style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:20, color:'#fff', letterSpacing:'.05em', marginBottom:2 }}>GROUP ORDER?</div>
-            <div style={{ fontSize:12, color:'rgba(255,255,255,.6)', lineHeight:1.5 }}>Bulk discount for 10+ pieces · Teams, colleges, events</div>
-          </div>
-          <span style={{ color:'#c8102e', fontSize:20, flexShrink:0 }}>›</span>
-        </div>
-      )}
+
     </div>
   )
 }
@@ -4284,14 +4261,23 @@ function OrderTrackingPage({ onNav }) {
 // ══════════════════════════════════════════════════════════════
 function GroupOrderPage({ user, onNav }) {
   const [tab, setTab] = useState('create') // create | join
-  const [groupId, setGroupId] = useState('')
+  const allProducts = usePublicProducts()
+  const [selectedProduct, setSelectedProduct] = useState(null)
+  const [productSearch, setProductSearch] = useState('')
+  const [step, setStep] = useState('pick') // pick | create
+
+  const filteredProducts = allProducts.filter(p =>
+    !productSearch.trim() ||
+    p.name.toLowerCase().includes(productSearch.toLowerCase()) ||
+    (p.category||'').toLowerCase().includes(productSearch.toLowerCase())
+  )
 
   return (
     <div>
       <div style={{ background:'linear-gradient(135deg,#00a86b,#0a1f5d)', padding:'48px 20px 56px', position:'relative', overflow:'hidden' }}>
         <div style={{ position:'absolute', inset:0, background:'radial-gradient(ellipse at 30% 60%,rgba(200,16,46,.12) 0%,transparent 55%)', pointerEvents:'none' }} />
         <div style={{ maxWidth:1100, margin:'0 auto', position:'relative', zIndex:1, padding:'0 4px' }}>
-          <button onClick={()=>onNav('home')} style={{ display:'inline-flex', alignItems:'center', gap:6, background:'rgba(255,255,255,.1)', border:'1px solid rgba(255,255,255,.2)', color:'#fff', padding:'6px 14px', borderRadius:50, fontSize:12, cursor:'pointer', fontWeight:600, marginBottom:12 }}>
+          <button onClick={()=>{ if(step==='create'&&tab==='create'){setStep('pick')}else{onNav('home')} }} style={{ display:'inline-flex', alignItems:'center', gap:6, background:'rgba(255,255,255,.1)', border:'1px solid rgba(255,255,255,.2)', color:'#fff', padding:'6px 14px', borderRadius:50, fontSize:12, cursor:'pointer', fontWeight:600, marginBottom:12 }}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg>Back
           </button>
           <span className="sec-label" style={{ color:'rgba(255,255,255,.6)' }}>For Teams & Events</span>
@@ -4302,38 +4288,99 @@ function GroupOrderPage({ user, onNav }) {
         </div>
       </div>
 
-      <div style={{ maxWidth:700, margin:'0 auto', padding:'32px 20px' }}>
+      <div style={{ maxWidth:900, margin:'0 auto', padding:'32px 20px' }}>
         {/* Tabs */}
         <div style={{ display:'flex', gap:0, marginBottom:28, border:'1px solid #e0e0e0', borderRadius:8, overflow:'hidden' }}>
           {[['create','Create Group Order'],['join','Join a Group Order']].map(([t,l])=>(
-            <button key={t} onClick={()=>setTab(t)}
+            <button key={t} onClick={()=>{setTab(t);setStep('pick');setSelectedProduct(null)}}
               style={{ flex:1, padding:'13px', border:'none', cursor:'pointer', fontSize:13, fontWeight:700, background:tab===t?'#c8102e':'#fff', color:tab===t?'#fff':'#888', transition:'all .15s' }}>{l}</button>
           ))}
         </div>
 
-        {tab==='create' ? <CreateGroupOrder user={user} /> : <JoinGroupOrder user={user} />}
+        {tab==='create' ? (
+          step==='pick' ? (
+            <div className="fade-in">
+              <div style={{ marginBottom:20 }}>
+                <span className="sec-label">Step 1 of 2</span>
+                <h2 style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:24, letterSpacing:'.04em', marginBottom:6 }}>PICK A PRODUCT</h2>
+                <p style={{ fontSize:13, color:'#888' }}>Choose the garment your group will be ordering.</p>
+              </div>
+              {/* Search */}
+              <div style={{ display:'flex', alignItems:'center', gap:8, border:'1.5px solid #e8e8e8', borderRadius:8, padding:'10px 14px', marginBottom:16, background:'#fafafa' }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#aaa" strokeWidth="2" strokeLinecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                <input value={productSearch} onChange={e=>setProductSearch(e.target.value)} placeholder="Search products…"
+                  style={{ flex:1, border:'none', outline:'none', fontSize:13, color:'#0a0a0a', fontFamily:'DM Sans,sans-serif', background:'none' }} />
+              </div>
+              {/* Product grid */}
+              <div className="products-grid" style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:14, marginBottom:24 }}>
+                {filteredProducts.map(p => {
+                  const isSelected = selectedProduct?.id === p.id
+                  return (
+                    <div key={p.id} onClick={()=>setSelectedProduct(isSelected?null:p)}
+                      className="product-card"
+                      style={{ border:`2px solid ${isSelected?'#c8102e':'#f0f0f0'}`, background: isSelected?'rgba(200,16,46,.03)':'#fff', cursor:'pointer', position:'relative', borderRadius:10, overflow:'hidden', transition:'all .15s' }}>
+                      <div style={{ background:'#f8f8f8', height:160, display:'flex', alignItems:'center', justifyContent:'center', position:'relative', overflow:'hidden' }}>
+                        {(p.img_front||p.image_url)
+                          ? <img src={p.img_front||p.image_url} alt={p.name} style={{ width:'100%', height:'100%', objectFit:'contain' }} />
+                          : <span style={{ fontSize:52 }}>{p.emoji||'👕'}</span>}
+                        <div style={{ position:'absolute', top:8, left:8, background:p.tagColor||p.tag_color||'#c8102e', color:'#fff', fontSize:8, fontWeight:700, letterSpacing:'.1em', textTransform:'uppercase', padding:'3px 8px', borderRadius:2 }}>{p.tag}</div>
+                        {isSelected && (
+                          <div style={{ position:'absolute', inset:0, background:'rgba(200,16,46,.12)', display:'flex', alignItems:'center', justifyContent:'center' }}>
+                            <div style={{ width:36, height:36, borderRadius:'50%', background:'#c8102e', display:'flex', alignItems:'center', justifyContent:'center', color:'#fff', fontSize:18, fontWeight:700 }}>✓</div>
+                          </div>
+                        )}
+                      </div>
+                      <div style={{ padding:'10px 12px' }}>
+                        <p style={{ fontSize:12, fontWeight:700, marginBottom:3, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{p.name}</p>
+                        <p style={{ fontSize:10, color:'#aaa', marginBottom:4 }}>{p.category}</p>
+                        <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+                          <span style={{ fontSize:14, fontWeight:700, color:'#c8102e' }}>₹{Number(p.price).toLocaleString()}</span>
+                          <span style={{ fontSize:11, color:'#bbb', textDecoration:'line-through' }}>₹{Number(p.mrp).toLocaleString()}</span>
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+              <button className="btn-primary" style={{ width:'100%', padding:14, fontSize:14, opacity:selectedProduct?1:.5 }}
+                onClick={()=>{ if(selectedProduct) setStep('create') }} disabled={!selectedProduct}>
+                {selectedProduct ? `Continue with ${selectedProduct.name} →` : 'Select a product to continue'}
+              </button>
+            </div>
+          ) : (
+            <CreateGroupOrder user={user} selectedProduct={selectedProduct} onChangeProduct={()=>setStep('pick')} />
+          )
+        ) : (
+          <JoinGroupOrder user={user} />
+        )}
       </div>
     </div>
   )
 }
 
-function CreateGroupOrder({ user }) {
-  const [form, setForm]         = useState({ title:'', garment:'T-Shirt', color:'#ffffff', deadline:'', organizer: user?.user_metadata?.full_name||'', phone:'' })
+function CreateGroupOrder({ user, selectedProduct, onChangeProduct }) {
+  const [form, setForm]         = useState({ title:'', color:'#ffffff', deadline:'', organizer: user?.user_metadata?.full_name||'', phone:'' })
   const [created, setCreated]   = useState(null)
   const [saving, setSaving]     = useState(false)
   // Design upload state
-  const [designFile, setDesignFile]   = useState(null)
-  const [designImg,  setDesignImg]    = useState(null)   // local preview URL
-  const [uploadPct,  setUploadPct]    = useState(0)
-  const [uploadErr,  setUploadErr]    = useState('')
+  const [designFile, setDesignFile] = useState(null)
+  const [designImg,  setDesignImg]  = useState(null)
+  const [uploadPct,  setUploadPct]  = useState(0)
+  const [uploadErr,  setUploadErr]  = useState('')
 
-  const GARMENTS_LIST = ['T-Shirt','Hoodie','Polo','Joggers']
   const GARMENT_DEFAULTS = {
-    'T-Shirt': 'https://res.cloudinary.com/dfhdyp4oq/image/upload/drynn/products/tshirt_white.png',
-    'Hoodie':  'https://res.cloudinary.com/dfhdyp4oq/image/upload/drynn/products/hoodie_navy.png',
-    'Polo':    'https://res.cloudinary.com/dfhdyp4oq/image/upload/drynn/products/polo_white.png',
-    'Joggers': 'https://res.cloudinary.com/dfhdyp4oq/image/upload/drynn/products/joggers_black.png',
+    'T-Shirts': 'https://res.cloudinary.com/dfhdyp4oq/image/upload/drynn/products/tshirt_white.png',
+    'Hoodies':  'https://res.cloudinary.com/dfhdyp4oq/image/upload/drynn/products/hoodie_navy.png',
+    'Polos':    'https://res.cloudinary.com/dfhdyp4oq/image/upload/drynn/products/polo_white.png',
+    'Joggers':  'https://res.cloudinary.com/dfhdyp4oq/image/upload/drynn/products/joggers_black.png',
   }
+
+  // Garment image to use in preview — prefer product's own image
+  const previewGarmentImg = selectedProduct
+    ? (selectedProduct.img_front || selectedProduct.image_url || GARMENT_DEFAULTS[selectedProduct.category] || GARMENT_DEFAULTS['T-Shirts'])
+    : GARMENT_DEFAULTS['T-Shirts']
+
+  const garmentLabel = selectedProduct ? selectedProduct.name : 'No product selected'
 
   const handleDesignFile = e => {
     const f = e.target.files[0]; if (!f) return
@@ -4349,7 +4396,6 @@ function CreateGroupOrder({ user }) {
     if (!form.title||!form.organizer||!form.phone) { alert('Fill all required fields'); return }
     setSaving(true)
     let designUrl = null
-    // Upload design to Cloudinary if provided
     if (designFile) {
       try {
         designUrl = await uploadToCloudinary(designFile, pct => setUploadPct(pct))
@@ -4359,90 +4405,125 @@ function CreateGroupOrder({ user }) {
         return
       }
     }
-    const id = crypto.randomUUID()
+    const id   = crypto.randomUUID()
     const code = Math.random().toString(36).slice(2,8).toUpperCase()
     const groupData = {
       id,
-      group_code: code,
-      title: form.title,
-      garment: form.garment,
-      color: form.color,
-      deadline: form.deadline || null,
-      organizer_name: form.organizer,
-      organizer_phone: form.phone,
-      organizer_user_id: user?.id || null,
-      design_url: designUrl,
-      created_at: new Date().toISOString(),
-      status: 'open',
+      group_code:          code,
+      title:               form.title,
+      garment:             selectedProduct ? selectedProduct.name : 'Custom Garment',
+      garment_category:    selectedProduct?.category || null,
+      product_id:          selectedProduct?.id || null,
+      product_image:       selectedProduct?.img_front || selectedProduct?.image_url || null,
+      product_price:       selectedProduct?.price || null,
+      color:               form.color,
+      deadline:            form.deadline || null,
+      organizer_name:      form.organizer,
+      organizer_phone:     form.phone,
+      organizer_user_id:   user?.id || null,
+      design_url:          designUrl,
+      created_at:          new Date().toISOString(),
+      status:              'open',
     }
     const { error } = await supabase.from('drynn_group_orders').insert(groupData).catch(()=>({ error:{message:'Table may not exist'} }))
     setSaving(false)
-    setCreated({ ...groupData, error: error?.message })
+    setCreated({ ...groupData, previewGarmentImg, error: error?.message })
   }
 
   const shareUrl = created ? `${typeof window!=='undefined'?window.location.origin:''}/group/${created.group_code}` : ''
   const copyLink = () => { navigator.clipboard.writeText(shareUrl).catch(()=>{}); alert('Link copied!') }
 
+  // ── Success screen ────────────────────────────────────────
   if (created) return (
     <div className="fade-in">
       <div style={{ background:'rgba(0,168,107,.08)', border:'1px solid rgba(0,168,107,.25)', borderRadius:12, padding:'24px', marginBottom:24, textAlign:'center' }}>
-        <div style={{ marginBottom:12, color:'#00a86b' }}><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="9 12 11 14 15 10"/></svg></div>
+        <div style={{ marginBottom:12, color:'#00a86b' }}>
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="9 12 11 14 15 10"/></svg>
+        </div>
         <h2 style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:28, marginBottom:8 }}>GROUP ORDER CREATED!</h2>
         <p style={{ fontSize:14, color:'#555', marginBottom:16 }}>Share this code or link with your team. They can join and select their size independently.</p>
-        {/* Design preview on success screen */}
-        {created.design_url && (
-          <div style={{ marginBottom:16 }}>
-            <div style={{ fontSize:11, fontWeight:700, letterSpacing:'.1em', textTransform:'uppercase', color:'#888', marginBottom:8 }}>Design Preview</div>
-            <div style={{ position:'relative', display:'inline-block', width:220, height:220 }}>
-              <img src={GARMENT_DEFAULTS[created.garment] || GARMENT_DEFAULTS['T-Shirt']} alt="garment"
-                style={{ width:220, height:220, objectFit:'contain', display:'block' }} />
+
+        {/* Product + design preview */}
+        <div style={{ marginBottom:16 }}>
+          <div style={{ fontSize:11, fontWeight:700, letterSpacing:'.1em', textTransform:'uppercase', color:'#888', marginBottom:8 }}>
+            {created.design_url ? 'Design Preview' : 'Selected Product'}
+          </div>
+          <div style={{ position:'relative', display:'inline-block', width:220, height:220 }}>
+            <img src={created.previewGarmentImg} alt="garment"
+              style={{ width:220, height:220, objectFit:'contain', display:'block' }} />
+            {created.design_url && (
               <img src={created.design_url} alt="design"
                 style={{ position:'absolute', top:'38%', left:'50%', transform:'translate(-50%,-50%)', width:'42%', objectFit:'contain', pointerEvents:'none' }} />
-            </div>
+            )}
           </div>
-        )}
+          <div style={{ fontSize:12, color:'#555', marginTop:6, fontWeight:600 }}>{created.garment}</div>
+        </div>
+
         <div style={{ background:'#fff', border:'2px solid #00a86b', borderRadius:8, padding:'16px 20px', marginBottom:16, display:'inline-block', minWidth:200 }}>
           <div style={{ fontSize:10, color:'#888', letterSpacing:'.16em', textTransform:'uppercase', marginBottom:6 }}>Group Code</div>
           <div style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:44, letterSpacing:'.12em', color:'#0a0a0a' }}>{created.group_code}</div>
         </div>
         <div style={{ display:'flex', gap:10, justifyContent:'center', flexWrap:'wrap' }}>
           <button className="btn-primary" style={{ padding:'12px 24px' }} onClick={copyLink}>Copy Join Link</button>
-          <a href={`https://wa.me/?text=Join%20our%20group%20T-shirt%20order%20on%20DRYNN!%20Code:%20${created.group_code}%20Link:%20${encodeURIComponent(shareUrl)}`}
-            target="_blank" rel="noreferrer" style={{ display:'inline-flex', alignItems:'center', gap:8, padding:'12px 24px', background:'#25D366', color:'#fff', borderRadius:4, fontSize:13, fontWeight:700, textDecoration:'none' }}>
+          <a href={`https://wa.me/?text=Join%20our%20group%20order%20on%20DRYNN!%20Code:%20${created.group_code}%20Link:%20${encodeURIComponent(shareUrl)}`}
+            target="_blank" rel="noreferrer"
+            style={{ display:'inline-flex', alignItems:'center', gap:8, padding:'12px 24px', background:'#25D366', color:'#fff', borderRadius:4, fontSize:13, fontWeight:700, textDecoration:'none' }}>
             Share on WhatsApp
           </a>
         </div>
-        {created.error && <p style={{ fontSize:11, color:'#f5a623', marginTop:12 }}>Note: DB save failed ({created.error}). Add design_url column to drynn_group_orders in Supabase.</p>}
+        {created.error && <p style={{ fontSize:11, color:'#f5a623', marginTop:12 }}>Note: DB save failed ({created.error}).</p>}
       </div>
       <button onClick={()=>setCreated(null)} style={{ background:'none', border:'none', color:'#888', cursor:'pointer', fontSize:13, textDecoration:'underline' }}>← Create another</button>
     </div>
   )
 
+  // ── Create form ───────────────────────────────────────────
   return (
-    <div style={{ display:'flex', flexDirection:'column', gap:18 }}>
+    <div style={{ display:'flex', flexDirection:'column', gap:18 }} className="fade-in">
+      <div style={{ marginBottom:4 }}>
+        <span className="sec-label">Step 2 of 2</span>
+        <h2 style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:24, letterSpacing:'.04em', marginBottom:4 }}>ORDER DETAILS</h2>
+        <p style={{ fontSize:13, color:'#888' }}>Fill in your group order info and upload your design.</p>
+      </div>
       <div style={{ background:'#fff', border:'1px solid #e8e8e8', borderRadius:12, padding:'24px', boxShadow:'0 4px 16px rgba(0,0,0,.05)' }}>
-        <div style={{ display:'flex', flexDirection:'column', gap:16 }}>
+        <div style={{ display:'flex', flexDirection:'column', gap:20 }}>
+
+          {/* Event name */}
           <div>
             <label style={{ fontSize:11, fontWeight:700, letterSpacing:'.12em', textTransform:'uppercase', color:'#555', display:'block', marginBottom:7 }}>Event / Order Name *</label>
             <input className="input-field" placeholder="e.g. CSE Batch 2025 Farewell Tees" value={form.title} onChange={e=>setForm({...form,title:e.target.value})} />
           </div>
-          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
-            <div>
-              <label style={{ fontSize:11, fontWeight:700, letterSpacing:'.12em', textTransform:'uppercase', color:'#555', display:'block', marginBottom:7 }}>Garment Type</label>
-              <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
-                {GARMENTS_LIST.map(g=><button key={g} className={`size-btn${form.garment===g?' active':''}`} onClick={()=>setForm({...form,garment:g})} style={{ fontSize:11 }}>{g}</button>)}
+
+          {/* ── Selected product summary ── */}
+          {selectedProduct && (
+            <div style={{ display:'flex', alignItems:'center', gap:14, background:'rgba(0,168,107,.06)', border:'1.5px solid rgba(0,168,107,.25)', borderRadius:10, padding:'12px 16px' }}>
+              <div style={{ width:56, height:56, background:'#fff', borderRadius:8, overflow:'hidden', flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center' }}>
+                {(selectedProduct.img_front||selectedProduct.image_url)
+                  ? <img src={selectedProduct.img_front||selectedProduct.image_url} alt={selectedProduct.name} style={{ width:'100%', height:'100%', objectFit:'contain' }} />
+                  : <span style={{ fontSize:28 }}>{selectedProduct.emoji||'👕'}</span>}
               </div>
+              <div style={{ flex:1, minWidth:0 }}>
+                <div style={{ fontSize:13, fontWeight:700, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{selectedProduct.name}</div>
+                <div style={{ fontSize:11, color:'#888' }}>{selectedProduct.category} · ₹{Number(selectedProduct.price).toLocaleString()}</div>
+              </div>
+              <button onClick={onChangeProduct} style={{ fontSize:11, fontWeight:700, color:'#c8102e', background:'none', border:'1px solid rgba(200,16,46,.3)', borderRadius:50, padding:'5px 12px', cursor:'pointer', whiteSpace:'nowrap', flexShrink:0 }}>Change ↩</button>
             </div>
-            <div>
-              <label style={{ fontSize:11, fontWeight:700, letterSpacing:'.12em', textTransform:'uppercase', color:'#555', display:'block', marginBottom:7 }}>Colour</label>
-              <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
-                {SWATCHES.slice(0,6).map(c=><div key={c} onClick={()=>setForm({...form,color:c})}
-                  style={{ width:26, height:26, borderRadius:'50%', background:c, cursor:'pointer', border:c==='#ffffff'?'2px solid #ccc':'2px solid transparent', boxShadow:form.color===c?'0 0 0 3px #c8102e':'none' }} />)}
-              </div>
+          )}
+
+          {/* Colour */}
+          <div>
+            <label style={{ fontSize:11, fontWeight:700, letterSpacing:'.12em', textTransform:'uppercase', color:'#555', display:'block', marginBottom:7 }}>Colour</label>
+            <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
+              {SWATCHES.slice(0,8).map(c=>(
+                <div key={c} onClick={()=>setForm({...form,color:c})}
+                  style={{ width:28, height:28, borderRadius:'50%', background:c, cursor:'pointer',
+                    border: c==='#ffffff' ? '2px solid #ccc' : '2px solid transparent',
+                    boxShadow: form.color===c ? '0 0 0 3px #c8102e' : 'none', transition:'box-shadow .15s' }} />
+              ))}
             </div>
           </div>
 
-          {/* ── Design Upload + Live Preview ── */}
+          {/* Design upload + live preview */}
           <div>
             <label style={{ fontSize:11, fontWeight:700, letterSpacing:'.12em', textTransform:'uppercase', color:'#555', display:'block', marginBottom:7 }}>Design / Logo (optional)</label>
             <div style={{ display:'flex', gap:16, alignItems:'flex-start', flexWrap:'wrap' }}>
@@ -4452,52 +4533,46 @@ function CreateGroupOrder({ user }) {
                 <div className="upload-zone" style={{ minHeight:80, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:6 }}>
                   {designImg
                     ? <img src={designImg} alt="design" style={{ maxHeight:60, maxWidth:'100%', objectFit:'contain', borderRadius:4 }} />
-                    : <>
-                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#aaa" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-                        <span style={{ fontSize:11, color:'#aaa' }}>Upload PNG / JPG / SVG</span>
-                      </>
-                  }
+                    : <><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#aaa" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg><span style={{ fontSize:11, color:'#aaa' }}>Upload PNG / JPG / SVG</span></>}
                 </div>
               </label>
-              {/* Live garment preview */}
+              {/* Live garment + design preview */}
               <div style={{ flex:'0 0 150px', textAlign:'center' }}>
                 <div style={{ fontSize:9, fontWeight:700, letterSpacing:'.1em', textTransform:'uppercase', color:'#aaa', marginBottom:4 }}>Preview</div>
                 <div style={{ position:'relative', width:140, height:140, margin:'0 auto' }}>
-                  <img src={GARMENT_DEFAULTS[form.garment] || GARMENT_DEFAULTS['T-Shirt']} alt="garment"
-                    style={{ width:140, height:140, objectFit:'contain', display:'block' }} />
+                  <img src={previewGarmentImg} alt="garment" style={{ width:140, height:140, objectFit:'contain', display:'block' }}
+                    onError={e=>e.target.style.opacity='0.1'} />
                   {designImg && (
                     <img src={designImg} alt="design overlay"
                       style={{ position:'absolute', top:'38%', left:'50%', transform:'translate(-50%,-50%)', width:'42%', objectFit:'contain', pointerEvents:'none' }} />
                   )}
                   {!designImg && (
-                    <div style={{ position:'absolute', inset:0, display:'flex', alignItems:'center', justifyContent:'center', fontSize:9, color:'#ccc', pointerEvents:'none' }}>
-                      design here
-                    </div>
+                    <div style={{ position:'absolute', inset:0, display:'flex', alignItems:'center', justifyContent:'center', fontSize:9, color:'#ccc', pointerEvents:'none' }}>design here</div>
                   )}
                 </div>
+                {selectedProduct && <div style={{ fontSize:10, color:'#888', marginTop:4, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{selectedProduct.name}</div>}
                 {designImg && (
                   <button onClick={()=>{setDesignFile(null);setDesignImg(null)}}
-                    style={{ marginTop:6, fontSize:10, color:'#c8102e', background:'none', border:'none', cursor:'pointer', textDecoration:'underline' }}>Remove</button>
+                    style={{ marginTop:4, fontSize:10, color:'#c8102e', background:'none', border:'none', cursor:'pointer', textDecoration:'underline' }}>Remove design</button>
                 )}
               </div>
             </div>
             {uploadErr && <p style={{ fontSize:11, color:'#c8102e', marginTop:6 }}>{uploadErr}</p>}
             {saving && designFile && (
               <div style={{ marginTop:8 }}>
-                <div style={{ display:'flex', justifyContent:'space-between', fontSize:11, color:'#888', marginBottom:4 }}>
-                  <span>Uploading design…</span><span>{uploadPct}%</span>
-                </div>
-                <div style={{ height:4, background:'#f0f0f0', borderRadius:2 }}>
-                  <div style={{ height:'100%', width:`${uploadPct}%`, background:'#c8102e', borderRadius:2, transition:'width .3s' }} />
-                </div>
+                <div style={{ display:'flex', justifyContent:'space-between', fontSize:11, color:'#888', marginBottom:4 }}><span>Uploading design…</span><span>{uploadPct}%</span></div>
+                <div style={{ height:4, background:'#f0f0f0', borderRadius:2 }}><div style={{ height:'100%', width:`${uploadPct}%`, background:'#c8102e', borderRadius:2, transition:'width .3s' }} /></div>
               </div>
             )}
           </div>
 
+          {/* Deadline */}
           <div>
             <label style={{ fontSize:11, fontWeight:700, letterSpacing:'.12em', textTransform:'uppercase', color:'#555', display:'block', marginBottom:7 }}>Order Deadline (optional)</label>
             <input className="input-field" type="date" value={form.deadline} onChange={e=>setForm({...form,deadline:e.target.value})} style={{ maxWidth:200 }} />
           </div>
+
+          {/* Organizer details */}
           <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
             <div>
               <label style={{ fontSize:11, fontWeight:700, letterSpacing:'.12em', textTransform:'uppercase', color:'#555', display:'block', marginBottom:7 }}>Organizer Name *</label>
@@ -4508,14 +4583,18 @@ function CreateGroupOrder({ user }) {
               <input className="input-field" placeholder="+91 00000 00000" value={form.phone} onChange={e=>setForm({...form,phone:e.target.value})} />
             </div>
           </div>
-          <button className="btn-primary" style={{ padding:14, fontSize:13, opacity:saving?.6:1 }} onClick={create} disabled={saving}>
-            {saving ? (designFile ? `Uploading… ${uploadPct}%` : 'Creating…') : 'Create Group Order'}
+
+          <button className="btn-primary" style={{ padding:14, fontSize:13, opacity:saving?.6:1 }}
+            onClick={create} disabled={saving}>
+            {saving ? (designFile ? `Uploading… ${uploadPct}%` : 'Creating…') : 'Create Group Order →'}
           </button>
         </div>
       </div>
+
+      {/* How it works */}
       <div style={{ background:'linear-gradient(135deg,rgba(0,168,107,.06),rgba(10,31,93,.06))', border:'1px solid rgba(0,168,107,.2)', borderRadius:12, padding:'20px 24px' }}>
         <div style={{ fontSize:13, fontWeight:700, marginBottom:10 }}>How Group Orders Work</div>
-        {[['1.','Create a group order with your event name, garment, and design.'],['2.','Share the unique link/code with your group.'],['3.','Everyone sees the design preview, selects their size, and pays individually.'],['4.','DRYNN prints and delivers all pieces together.']].map(([e,t])=>(
+        {[['1.','Pick a product from the shop and create a group order.'],['2.','Share the unique link/code with your group.'],['3.','Everyone sees the product preview, selects their size, and pays individually.'],['4.','DRYNN prints and delivers all pieces together.']].map(([e,t])=>(
           <div key={e} style={{ display:'flex', gap:10, marginBottom:8, fontSize:13, color:'#555' }}><span>{e}</span><span>{t}</span></div>
         ))}
       </div>
@@ -4589,22 +4668,31 @@ function JoinGroupOrder({ user }) {
           <div style={{ background:'linear-gradient(90deg,rgba(0,168,107,.08),rgba(10,31,93,.06))', borderRadius:8, padding:'14px 18px', marginBottom:20 }}>
             <div style={{ fontSize:16, fontWeight:700 }}>{group.title}</div>
             <div style={{ fontSize:12, color:'#888', marginTop:4 }}>{group.garment} · Organizer: {group.organizer_name} {group.deadline&&`· Deadline: ${new Date(group.deadline).toLocaleDateString('en-IN')}`}</div>
-            {/* Design preview for members */}
-            {group.design_url && (
+            {/* Design / product preview for members */}
+            {(group.design_url || group.product_image) && (
               <div style={{ marginTop:14, textAlign:'center' }}>
-                <div style={{ fontSize:10, fontWeight:700, letterSpacing:'.1em', textTransform:'uppercase', color:'#888', marginBottom:6 }}>Your Design Preview</div>
-                <div style={{ position:'relative', display:'inline-block', width:200, height:200 }}>
-                  <img src={{
-                    'T-Shirt': 'https://res.cloudinary.com/dfhdyp4oq/image/upload/drynn/products/tshirt_white.png',
-                    'Hoodie':  'https://res.cloudinary.com/dfhdyp4oq/image/upload/drynn/products/hoodie_navy.png',
-                    'Polo':    'https://res.cloudinary.com/dfhdyp4oq/image/upload/drynn/products/polo_white.png',
-                    'Joggers': 'https://res.cloudinary.com/dfhdyp4oq/image/upload/drynn/products/joggers_black.png',
-                  }[group.garment] || 'https://res.cloudinary.com/dfhdyp4oq/image/upload/drynn/products/tshirt_white.png'}
-                    alt="garment" style={{ width:200, height:200, objectFit:'contain', display:'block' }} />
-                  <img src={group.design_url} alt="design"
-                    style={{ position:'absolute', top:'38%', left:'50%', transform:'translate(-50%,-50%)', width:'42%', objectFit:'contain', pointerEvents:'none' }} />
+                <div style={{ fontSize:10, fontWeight:700, letterSpacing:'.1em', textTransform:'uppercase', color:'#888', marginBottom:6 }}>
+                  {group.design_url ? 'Your Design Preview' : 'Product'}
                 </div>
-                <div style={{ fontSize:11, color:'#00a86b', marginTop:6, fontWeight:600 }}>This is what will be printed on your {group.garment}</div>
+                <div style={{ position:'relative', display:'inline-block', width:200, height:200 }}>
+                  <img
+                    src={group.product_image || {
+                      'T-Shirt': 'https://res.cloudinary.com/dfhdyp4oq/image/upload/drynn/products/tshirt_white.png',
+                      'Hoodie':  'https://res.cloudinary.com/dfhdyp4oq/image/upload/drynn/products/hoodie_navy.png',
+                      'Polo':    'https://res.cloudinary.com/dfhdyp4oq/image/upload/drynn/products/polo_white.png',
+                      'Joggers': 'https://res.cloudinary.com/dfhdyp4oq/image/upload/drynn/products/joggers_black.png',
+                    }[group.garment] || 'https://res.cloudinary.com/dfhdyp4oq/image/upload/drynn/products/tshirt_white.png'}
+                    alt="garment" style={{ width:200, height:200, objectFit:'contain', display:'block' }}
+                    onError={e=>e.target.style.opacity='0.1'} />
+                  {group.design_url && (
+                    <img src={group.design_url} alt="design"
+                      style={{ position:'absolute', top:'38%', left:'50%', transform:'translate(-50%,-50%)', width:'42%', objectFit:'contain', pointerEvents:'none' }} />
+                  )}
+                </div>
+                {group.product_price && <div style={{ fontSize:13, fontWeight:700, color:'#c8102e', marginTop:4 }}>₹{Number(group.product_price).toLocaleString()} per piece</div>}
+                <div style={{ fontSize:11, color:'#00a86b', marginTop:4, fontWeight:600 }}>
+                  {group.design_url ? `This is what will be printed on your ${group.garment}` : group.garment}
+                </div>
               </div>
             )}
           </div>

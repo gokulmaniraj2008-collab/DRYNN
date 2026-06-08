@@ -495,10 +495,16 @@ function InteractiveMockup({ garmentImgSrc, designImgSrc, color, posX, posY, sca
         ctx.font = `bold ${textSize} ${textFont}`; ctx.fillStyle = textColor
         ctx.textAlign = 'center'; ctx.fillText(textVal, 400, 680)
       }
-      canvas.toBlob(blob => {
+      canvas.toBlob(async blob => {
+        // Download to device
         const url = URL.createObjectURL(blob)
         const a = document.createElement('a'); a.href=url; a.download='drynn-preview.png'
         a.click(); URL.revokeObjectURL(url)
+        // Upload to Cloudinary
+        try {
+          const file = new File([blob], 'drynn-preview.png', { type: 'image/png' })
+          await uploadToCloudinary(file, () => {})
+        } catch(uploadErr) { console.error('Cloudinary upload failed:', uploadErr) }
         setSaved(true); setTimeout(()=>setSaved(false), 2500)
       }, 'image/png')
     } catch(e) { console.error('Save failed:', e) }
@@ -602,10 +608,16 @@ function ProductImageViewer({ product, fallbackSrc, designImgSrc, posX, posY, sc
           ctx.drawImage(dImg, -dw/2, -dw/2, dw, dw); ctx.restore()
         }
       }
-      canvas.toBlob(blob => {
+      canvas.toBlob(async blob => {
+        // Download to device
         const url = URL.createObjectURL(blob)
         const a = document.createElement('a'); a.href=url; a.download='drynn-preview.png'
         a.click(); URL.revokeObjectURL(url)
+        // Upload to Cloudinary
+        try {
+          const file = new File([blob], 'drynn-preview.png', { type: 'image/png' })
+          await uploadToCloudinary(file, () => {})
+        } catch(uploadErr) { console.error('Cloudinary upload failed:', uploadErr) }
         setSaved(true); setTimeout(()=>setSaved(false),2500)
       }, 'image/png')
     } catch(e) { console.error('Save failed:',e) }

@@ -2276,6 +2276,7 @@ function CartPage({ cart, onRemove, onClear, user, onNav }) {
           design_right: item.isCustom ? (cd?.designUrls?.right || '') : '',
           design_sides: item.isCustom ? (cd?.sides || '') : '',
           custom_text:  item.isCustom ? (cd?.textOn ? cd?.textVal : '') : '',
+          side_pos:     item.isCustom ? (cd?.sidePos || null) : null,
           product_name: item.name,
           product_image: item.image_url || item.img_front || '',
           product_category: item.category || '',
@@ -3325,33 +3326,89 @@ function AdminPanel({ onBack }) {
                         </div>
 
                         <div style={{ padding:'14px 16px' }}>
+                          {/* 4-Panel Print Sheet for custom orders */}
+                          {isCustom && (
+                            <div style={{ marginBottom:14 }}>
+                              <div style={{ fontSize:9, fontWeight:700, letterSpacing:'.12em', textTransform:'uppercase', color:'#c8102e', marginBottom:8 }}>🖨️ Print Sheet — Design on Garment</div>
+                              <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:8 }}>
+                                {[
+                                  { key:'front', label:'Front',  url: o.design_file?.startsWith('http') ? o.design_file : null },
+                                  { key:'back',  label:'Back',   url: o.design_back?.startsWith('http')  ? o.design_back  : null },
+                                  { key:'left',  label:'Left',   url: o.design_left?.startsWith('http')  ? o.design_left  : null },
+                                  { key:'right', label:'Right',  url: o.design_right?.startsWith('http') ? o.design_right : null },
+                                ].map(side => {
+                                  const garmentKey = o.garment?.includes('Hoodie') ? 'Hoodie' : o.garment?.includes('Polo') ? 'Polo' : o.garment?.includes('Jogger') ? 'Joggers' : 'T-Shirt'
+                                  const ADMIN_GARMENT_IMGS = {
+                                    'T-Shirt': 'https://res.cloudinary.com/dfhdyp4oq/image/upload/drynn/products/tshirt_white.png',
+                                    'Hoodie':  'https://res.cloudinary.com/dfhdyp4oq/image/upload/drynn/products/hoodie_navy.png',
+                                    'Polo':    'https://res.cloudinary.com/dfhdyp4oq/image/upload/drynn/products/polo_white.png',
+                                    'Joggers': 'https://res.cloudinary.com/dfhdyp4oq/image/upload/drynn/products/joggers_black.png',
+                                  }
+                                  const garmentImg = ADMIN_GARMENT_IMGS[garmentKey]
+                                  const pos = o.side_pos ? o.side_pos[side.key] : null
+                                  const posY    = pos?.posY    ?? 38
+                                  const posX    = pos?.posX    ?? 50
+                                  const scale   = pos?.scale   ?? 38
+                                  const rotation = pos?.rotation ?? 0
+                                  return (
+                                    <div key={side.key} style={{ textAlign:'center' }}>
+                                      <div style={{ position:'relative', width:'100%', paddingBottom:'100%', background: side.url ? '#f0f0f0' : '#f8f8f8', borderRadius:8, overflow:'hidden', border: side.url ? '1.5px solid #e0e0e0' : '1.5px dashed #e0e0e0' }}>
+                                        {/* Garment mockup */}
+                                        <img src={garmentImg} alt={side.label}
+                                          style={{ position:'absolute', inset:0, width:'100%', height:'100%', objectFit:'contain' }}
+                                          onError={e=>e.target.style.opacity='0'} />
+                                        {/* Design overlay at saved position */}
+                                        {side.url && (
+                                          <a href={side.url} target="_blank" rel="noopener noreferrer">
+                                            <img src={side.url} alt={`design-${side.label}`}
+                                              style={{
+                                                position:'absolute',
+                                                top:`${posY}%`, left:`${posX}%`,
+                                                transform:`translate(-50%,-50%) rotate(${rotation}deg)`,
+                                                width:`${scale}%`,
+                                                objectFit:'contain',
+                                                cursor:'pointer',
+                                              }}
+                                              onError={e=>e.target.style.display='none'} />
+                                          </a>
+                                        )}
+                                        {/* No design label */}
+                                        {!side.url && (
+                                          <div style={{ position:'absolute', inset:0, display:'flex', alignItems:'center', justifyContent:'center' }}>
+                                            <span style={{ fontSize:9, color:'#ccc', fontWeight:600 }}>No design</span>
+                                          </div>
+                                        )}
+                                      </div>
+                                      {/* Side label + placement info */}
+                                      <div style={{ fontSize:9, fontWeight:700, color: side.url ? '#0a1f5d' : '#ccc', marginTop:4 }}>{side.label}</div>
+                                      {side.url && pos && (
+                                        <div style={{ fontSize:8, color:'#aaa', lineHeight:1.4 }}>
+                                          {Math.round(scale)}% · {rotation}°
+                                        </div>
+                                      )}
+                                    </div>
+                                  )
+                                })}
+                              </div>
+                            </div>
+                          )}
+
                           <div style={{ display:'flex', gap:14, flexWrap:'wrap' }}>
 
-                            {/* Design images for custom / Product image for catalog */}
-                            {isCustom && designSides.length > 0 ? (
-                              <div style={{ display:'flex', gap:8, flexShrink:0 }}>
-                                {designSides.map(s => (
-                                  <a key={s.label} href={s.url} target="_blank" rel="noopener noreferrer" style={{ textDecoration:'none' }}>
-                                    <div style={{ textAlign:'center' }}>
-                                      <img src={s.url} alt={s.label}
-                                        style={{ width:56, height:56, objectFit:'contain', borderRadius:8, border:'1.5px solid #e0e0e0', background:'#f8f8f8', display:'block' }}
-                                        onError={e=>e.target.style.display='none'} />
-                                      <div style={{ fontSize:9, color:'#888', marginTop:3, fontWeight:600 }}>{s.label}</div>
-                                    </div>
-                                  </a>
-                                ))}
-                              </div>
-                            ) : o.product_image ? (
-                              <div style={{ flexShrink:0, textAlign:'center' }}>
-                                <img src={o.product_image} alt={o.product_name}
-                                  style={{ width:72, height:72, objectFit:'contain', borderRadius:8, border:'1.5px solid #e0e0e0', background:'#f8f8f8', display:'block' }}
-                                  onError={e=>e.target.style.display='none'} />
-                                <div style={{ fontSize:9, color:'#888', marginTop:3, fontWeight:600 }}>{o.product_category||'Product'}</div>
-                              </div>
-                            ) : (
-                              <div style={{ width:72, height:72, borderRadius:8, border:'1.5px dashed #e0e0e0', background:'#f8f8f8', display:'flex', alignItems:'center', justifyContent:'center', fontSize:10, color:'#bbb', flexShrink:0, textAlign:'center' }}>
-                                Catalog
-                              </div>
+                            {/* Product image for catalog orders */}
+                            {!isCustom && (
+                              o.product_image ? (
+                                <div style={{ flexShrink:0, textAlign:'center' }}>
+                                  <img src={o.product_image} alt={o.product_name}
+                                    style={{ width:72, height:72, objectFit:'contain', borderRadius:8, border:'1.5px solid #e0e0e0', background:'#f8f8f8', display:'block' }}
+                                    onError={e=>e.target.style.display='none'} />
+                                  <div style={{ fontSize:9, color:'#888', marginTop:3, fontWeight:600 }}>{o.product_category||'Product'}</div>
+                                </div>
+                              ) : (
+                                <div style={{ width:72, height:72, borderRadius:8, border:'1.5px dashed #e0e0e0', background:'#f8f8f8', display:'flex', alignItems:'center', justifyContent:'center', fontSize:10, color:'#bbb', flexShrink:0, textAlign:'center' }}>
+                                  Catalog
+                                </div>
+                              )
                             )}
 
                             {/* Order details */}

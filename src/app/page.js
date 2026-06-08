@@ -1717,7 +1717,8 @@ function StudioPage({ user, onNav, onAddToCart }) {
 
         {/* ══ STEP 5: PREVIEW ══ */}
         {step === 5 && (
-          <div>
+          <div style={{ display:'flex', gap:24, flexWrap:'wrap' }}>
+            <div style={{ flex:'1 1 280px' }}>
             <h2 style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:28, color:'#fff', letterSpacing:'.06em', marginBottom:4 }}>STEP 5 — PREVIEW YOUR DESIGN</h2>
             <p style={{ fontSize:13, color:'rgba(255,255,255,.45)', marginBottom:20 }}>Swipe or tap thumbnails to see all angles. Your design appears on each uploaded side.</p>
 
@@ -1758,6 +1759,8 @@ function StudioPage({ user, onNav, onAddToCart }) {
               <button onClick={()=>setStep(4)} style={{ padding:'12px 20px', borderRadius:8, border:'1px solid rgba(255,255,255,.15)', background:'transparent', color:'rgba(255,255,255,.5)', fontSize:13, fontWeight:600, cursor:'pointer' }}>← Edit</button>
               <button onClick={()=>setStep(6)} className="btn-primary" style={{ padding:'13px 36px', fontSize:14 }}>Place Order →</button>
             </div>
+            </div>
+            <LivePreview />
           </div>
         )}
 

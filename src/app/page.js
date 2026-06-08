@@ -1585,14 +1585,16 @@ function StudioPage({ user, onNav, onAddToCart }) {
 
         {/* ══ STEP 4: CUSTOMISE ══ */}
         {step === 4 && (
-          <div style={{ display:'flex', gap:24, flexWrap:'wrap' }}>
-            <div style={{ flex:'1 1 280px' }}>
-              <h2 style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:28, color:'#fff', letterSpacing:'.06em', marginBottom:6 }}>STEP 4 — CUSTOMISE</h2>
+          <div style={{ display:'flex', flexDirection:'column', gap:16 }}>
+
+            {/* ── Card 1: Header + Side Selector + Sub-tabs ── */}
+            <div style={{ background:'rgba(255,255,255,.04)', border:'1px solid rgba(255,255,255,.09)', borderRadius:12, padding:'18px 16px' }}>
+              <h2 style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:28, color:'#fff', letterSpacing:'.06em', marginBottom:4 }}>STEP 4 — CUSTOMISE</h2>
               <p style={{ fontSize:13, color:'rgba(255,255,255,.45)', marginBottom:16 }}>Select a side to customise its position. Add text and effects below.</p>
 
               {/* Side selector — only sides with designs */}
               {SIDES.filter(s=>sideImgs[s]).length > 1 && (
-                <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:4, marginBottom:18 }}>
+                <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:4, marginBottom:16 }}>
                   {SIDES.filter(s=>sideImgs[s]).map(s=>(
                     <button key={s} onClick={()=>setCustSide(s)}
                       style={{ padding:'8px 4px', borderRadius:8, border:`2px solid ${custSide===s?'#c8102e':'rgba(255,255,255,.15)'}`,
@@ -1606,15 +1608,22 @@ function StudioPage({ user, onNav, onAddToCart }) {
               )}
 
               {/* Sub-tabs */}
-              <div style={{ display:'flex', overflowX:'auto', gap:0, background:'rgba(255,255,255,.05)', borderRadius:8, padding:3, marginBottom:20, scrollbarWidth:'none' }}>
+              <div style={{ display:'flex', overflowX:'auto', gap:0, background:'rgba(255,255,255,.05)', borderRadius:8, padding:3, scrollbarWidth:'none' }}>
                 {[['position','↔ Position'],['text','T Text'],['effects','✨ Effects']].map(([k,l])=>(
                   <button key={k} onClick={()=>setCustTab(k)}
-                    style={{ flex:'0 0 auto', padding:'9px 16px', borderRadius:6, border:'none', cursor:'pointer', fontSize:12, fontWeight:700, whiteSpace:'nowrap',
+                    style={{ flex:'1 1 0', padding:'9px 16px', borderRadius:6, border:'none', cursor:'pointer', fontSize:12, fontWeight:700, whiteSpace:'nowrap',
                       background:custTab===k?'#0a1f5d':'transparent', color:custTab===k?'#fff':'rgba(255,255,255,.45)', transition:'all .15s' }}>
                     {l}
                   </button>
                 ))}
               </div>
+            </div>
+
+            {/* ── Card 2: Live Preview (full width) ── */}
+            <LivePreview previewSide={custSide} />
+
+            {/* ── Card 3: Controls (sliders / text / effects based on active tab) ── */}
+            <div style={{ background:'rgba(255,255,255,.04)', border:'1px solid rgba(255,255,255,.09)', borderRadius:12, padding:'18px 16px' }}>
 
               {/* Position */}
               {custTab==='position' && (
@@ -1732,13 +1741,14 @@ function StudioPage({ user, onNav, onAddToCart }) {
                   </button>
                 </div>
               )}
-
-              <div style={{ display:'flex', gap:10, marginTop:24 }}>
-                <button onClick={()=>setStep(3)} style={{ padding:'12px 20px', borderRadius:8, border:'1px solid rgba(255,255,255,.15)', background:'transparent', color:'rgba(255,255,255,.5)', fontSize:13, fontWeight:600, cursor:'pointer' }}>← Back</button>
-                <button onClick={()=>setStep(5)} className="btn-primary" style={{ flex:1, padding:'13px', fontSize:14 }}>Preview →</button>
-              </div>
             </div>
-            <LivePreview previewSide={custSide} />
+
+            {/* ── Card 4: Back + Preview buttons ── */}
+            <div style={{ display:'flex', gap:10 }}>
+              <button onClick={()=>setStep(3)} style={{ padding:'12px 20px', borderRadius:8, border:'1px solid rgba(255,255,255,.15)', background:'transparent', color:'rgba(255,255,255,.5)', fontSize:13, fontWeight:600, cursor:'pointer' }}>← Back</button>
+              <button onClick={()=>setStep(5)} className="btn-primary" style={{ flex:1, padding:'13px', fontSize:14 }}>PREVIEW →</button>
+            </div>
+
           </div>
         )}
 

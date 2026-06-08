@@ -826,31 +826,48 @@ function colorToFilter(hex) {
   const h = hex.replace('#','').toLowerCase()
   if (h === 'ffffff') return 'none'
   if (h === '000000' || h === '0a0a0a') return 'brightness(0) saturate(1)'
+
   let r, g, b
   if (h.length === 3) {
     r = parseInt(h[0]+h[0],16); g = parseInt(h[1]+h[1],16); b = parseInt(h[2]+h[2],16)
   } else {
     r = parseInt(h.slice(0,2),16); g = parseInt(h.slice(2,4),16); b = parseInt(h.slice(4,6),16)
   }
+
   const rn = r/255, gn = g/255, bn = b/255
   const max = Math.max(rn,gn,bn), min = Math.min(rn,gn,bn)
   const l = (max + min) / 2
   const d = max - min
-  let h2 = 0, s = 0
-  if (d !== 0) {
-    s = d / (1 - Math.abs(2*l - 1))
-    if      (max === rn) h2 = ((gn - bn) / d + 6) % 6
-    else if (max === gn) h2 = (bn - rn) / d + 2
-    else                 h2 = (rn - gn) / d + 4
-    h2 = h2 * 60
-  }
-  if (l < 0.12) return `brightness(${Math.round(l * 6 * 100)}%) saturate(1)`
-  if (l > 0.92 && s < 0.15) return 'none'
-  if (s < 0.12) return `brightness(${Math.round(l * 100)}%) saturate(0.05)`
-  const hueRotate  = Math.round(h2 - 35)
-  const satMult    = Math.min(20, Math.round(s * 18 + 2))
-  const brightMult = Math.min(1.4, Math.max(0.35, l * 1.3 + 0.15)).toFixed(2)
-  return `sepia(1) saturate(${satMult}) hue-rotate(${hueRotate}deg) brightness(${brightMult})`
+
+  // Near-white
+  if (l > 0.92 && d < 0.08) return 'none'
+  // Near-black
+  if (l < 0.10) return `brightness(${Math.round(l * 700)}%) saturate(0.1)`
+  // Near-grey (desaturated)
+  if (d < 0.08) return `brightness(${Math.round(l * 100)}%) saturate(0.05)`
+
+  // Compute HSL hue (0-360)
+  let hue = 0
+  if (max === rn)      hue = (((gn - bn) / d) % 6 + 6) % 6 * 60
+  else if (max === gn) hue = ((bn - rn) / d + 2) * 60
+  else                 hue = ((rn - gn) / d + 4) * 60
+
+  // HSL saturation
+  const sat = d / (1 - Math.abs(2 * l - 1))
+
+  // sepia(1) produces roughly hue≈38°, sat≈0.74, lightness≈0.53
+  // We rotate from that base to our target hue.
+  // Use modulo to ensure shortest-path rotation is correct (handles red at 0/360).
+  const SEPIA_HUE = 38
+  const hueRotate = Math.round(((hue - SEPIA_HUE) % 360 + 360) % 360)
+
+  // Scale saturation: sepia base is ~0.74, target is `sat`
+  const satMult    = Math.min(25, Math.max(1, Math.round((sat / 0.74) * 10)))
+
+  // Scale brightness relative to lightness; sepia base brightness is ~0.53
+  const brightMult = Math.min(1.8, Math.max(0.25, (l / 0.53) * 0.95)).toFixed(2)
+
+  return `sepia(1) hue-rotate(${hueRotate}deg) saturate(${satMult}) brightness(${brightMult})`
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -1209,7 +1226,7 @@ function StudioPage({ user, onNav, onAddToCart }) {
       ? (selectedProduct[`img_${ps}`] || selectedProduct.image_url || GARMENT_DEFAULTS[garmentType])
       : GARMENT_DEFAULTS[garmentType]
     return (
-    <div style={{ position:'sticky', top:72, width:'100%', maxWidth:420, margin:'0 auto', display:'flex', flexDirection:'column', gap:10 }}>
+    <div style={{ position:'sticky', top:72, flex:'0 0 280px', maxWidth:280, display:'flex', flexDirection:'column', gap:10 }}>
       <div style={{ fontSize:10, fontWeight:700, letterSpacing:'.14em', textTransform:'uppercase', color:'rgba(255,255,255,.35)', textAlign:'center', marginBottom:4 }}>Live Preview — {SIDE_LABELS[ps]}</div>
       <div style={{ position:'relative', borderRadius:14, overflow:'hidden', background:bgColor, boxShadow:'0 8px 32px rgba(0,0,0,.5)', filter:canvasFilter }}>
         {/* Garment base — switches per selected side tab */}
@@ -1383,9 +1400,8 @@ function StudioPage({ user, onNav, onAddToCart }) {
 
         {/* ══ STEP 2: COLOUR ══ */}
         {step === 2 && (
-          <div style={{ display:'flex', flexDirection:'column', gap:24 }}>
-            <LivePreview />
-            <div>
+          <div style={{ display:'flex', gap:24, flexWrap:'wrap' }}>
+            <div style={{ flex:'1 1 280px' }}>
               <h2 style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:28, color:'#fff', letterSpacing:'.06em', marginBottom:6 }}>STEP 2 — CHOOSE COLOUR</h2>
               <p style={{ fontSize:13, color:'rgba(255,255,255,.45)', marginBottom:24 }}>Select the garment colour. The live preview updates instantly.</p>
 
@@ -1433,14 +1449,14 @@ function StudioPage({ user, onNav, onAddToCart }) {
                 <button onClick={()=>setStep(3)} className="btn-primary" style={{ flex:1, padding:'13px', fontSize:14 }}>Continue →</button>
               </div>
             </div>
+            <LivePreview />
           </div>
         )}
 
         {/* ══ STEP 3: DESIGN ══ */}
         {step === 3 && (
-          <div style={{ display:'flex', flexDirection:'column', gap:24 }}>
-            <LivePreview previewSide={activeSide} />
-            <div>
+          <div style={{ display:'flex', gap:24, flexWrap:'wrap' }}>
+            <div style={{ flex:'1 1 280px' }}>
               <h2 style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:28, color:'#fff', letterSpacing:'.06em', marginBottom:6 }}>STEP 3 — ADD YOUR DESIGN</h2>
               <p style={{ fontSize:13, color:'rgba(255,255,255,.45)', marginBottom:16 }}>Upload for Front (main) or add designs for other sides too — optional.</p>
 
@@ -1553,14 +1569,14 @@ function StudioPage({ user, onNav, onAddToCart }) {
                 </button>
               </div>
             </div>
+            <LivePreview previewSide={activeSide} />
           </div>
         )}
 
         {/* ══ STEP 4: CUSTOMISE ══ */}
         {step === 4 && (
-          <div style={{ display:'flex', flexDirection:'column', gap:24 }}>
-            <LivePreview previewSide={custSide} />
-            <div>
+          <div style={{ display:'flex', gap:24, flexWrap:'wrap' }}>
+            <div style={{ flex:'1 1 280px' }}>
               <h2 style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:28, color:'#fff', letterSpacing:'.06em', marginBottom:6 }}>STEP 4 — CUSTOMISE</h2>
               <p style={{ fontSize:13, color:'rgba(255,255,255,.45)', marginBottom:16 }}>Select a side to customise its position. Add text and effects below.</p>
 
@@ -1712,6 +1728,7 @@ function StudioPage({ user, onNav, onAddToCart }) {
                 <button onClick={()=>setStep(5)} className="btn-primary" style={{ flex:1, padding:'13px', fontSize:14 }}>Preview →</button>
               </div>
             </div>
+            <LivePreview previewSide={custSide} />
           </div>
         )}
 
@@ -1760,14 +1777,14 @@ function StudioPage({ user, onNav, onAddToCart }) {
               <button onClick={()=>setStep(6)} className="btn-primary" style={{ padding:'13px 36px', fontSize:14 }}>Place Order →</button>
             </div>
             </div>
+            <LivePreview />
           </div>
         )}
 
         {/* ══ STEP 6: ORDER ══ */}
         {step === 6 && (
-          <div style={{ display:'flex', flexDirection:'column', gap:24 }}>
-            <LivePreview />
-            <div>
+          <div style={{ display:'flex', gap:24, flexWrap:'wrap' }}>
+            <div style={{ flex:'1 1 280px' }}>
               <h2 style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:28, color:'#fff', letterSpacing:'.06em', marginBottom:6 }}>STEP 6 — PLACE YOUR ORDER</h2>
               <p style={{ fontSize:13, color:'rgba(255,255,255,.45)', marginBottom:24 }}>Fill your details. We'll WhatsApp you within 2 hours to confirm.</p>
 
@@ -1818,6 +1835,7 @@ function StudioPage({ user, onNav, onAddToCart }) {
                 </div>
               )}
             </div>
+            <LivePreview />
           </div>
         )}
 

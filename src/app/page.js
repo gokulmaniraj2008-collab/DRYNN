@@ -3059,62 +3059,90 @@ function TermsPage({ onBack }) {
 // ══════════════════════════════════════════════════════════════
 function AdminOrderPreview({ order }) {
   const o = order
-
   const GARMENT_DEFAULTS = {
     'T-Shirt': 'https://res.cloudinary.com/dfhdyp4oq/image/upload/drynn/products/tshirt_white.png',
     'Hoodie':  'https://res.cloudinary.com/dfhdyp4oq/image/upload/drynn/products/hoodie_navy.png',
     'Polo':    'https://res.cloudinary.com/dfhdyp4oq/image/upload/drynn/products/polo_white.png',
     'Joggers': 'https://res.cloudinary.com/dfhdyp4oq/image/upload/drynn/products/joggers_black.png',
   }
-
+  const SIDE_LABELS = { front:'Front', back:'Back', left:'Left', right:'Right' }
   const garmentKey = o.garment?.toLowerCase().includes('hoodie') ? 'Hoodie'
     : o.garment?.toLowerCase().includes('polo') ? 'Polo'
     : o.garment?.toLowerCase().includes('jogger') ? 'Joggers'
     : 'T-Shirt'
 
-  const [garmentImg, setGarmentImg] = React.useState(GARMENT_DEFAULTS[garmentKey])
+  const [garmentImgs, setGarmentImgs] = React.useState({
+    front: GARMENT_DEFAULTS[garmentKey], back: GARMENT_DEFAULTS[garmentKey],
+    left: GARMENT_DEFAULTS[garmentKey], right: GARMENT_DEFAULTS[garmentKey],
+  })
   React.useEffect(() => {
     if (!o.garment) return
     const keyword = o.garment.replace('Custom ','').split(' ').slice(0,3).join(' ')
-    supabase.from('drynn_products').select('img_front,image_url').ilike('name', '%' + keyword + '%').limit(1)
+    supabase.from('drynn_products').select('img_front,img_back,img_left,img_right,image_url').ilike('name', '%' + keyword + '%').limit(1)
       .then(({ data }) => {
         if (data && data[0]) {
-          const img = data[0].img_front || data[0].image_url
-          if (img) setGarmentImg(img)
+          const p = data[0]
+          setGarmentImgs({
+            front: p.img_front || p.image_url || GARMENT_DEFAULTS[garmentKey],
+            back:  p.img_back  || p.image_url || GARMENT_DEFAULTS[garmentKey],
+            left:  p.img_left  || p.image_url || GARMENT_DEFAULTS[garmentKey],
+            right: p.img_right || p.image_url || GARMENT_DEFAULTS[garmentKey],
+          })
         }
       })
   }, [o.garment])
 
-  const designUrl = o.design_file?.startsWith('http') ? o.design_file : null
-  if (!designUrl) return null
+  const designs = {
+    front: o.design_file?.startsWith('http') ? o.design_file : null,
+    back:  o.design_back?.startsWith('http')  ? o.design_back  : null,
+    left:  o.design_left?.startsWith('http')  ? o.design_left  : null,
+    right: o.design_right?.startsWith('http') ? o.design_right : null,
+  }
+  const activeSides = ['front','back','left','right'].filter(s => designs[s])
+  const [activeIdx, setActiveIdx] = React.useState(0)
 
+  if (activeSides.length === 0) return null
+  const activeSide = activeSides[activeIdx] || 'front'
   const color = o.color || '#ffffff'
 
   return (
     <div style={{ marginBottom:16 }}>
       <div style={{ fontSize:9, fontWeight:700, letterSpacing:'.12em', textTransform:'uppercase', color:'#c8102e', marginBottom:8 }}>
-        🎨 Customer Design Preview — Front
+        🎨 Customer Design Preview — {SIDE_LABELS[activeSide]}
       </div>
       <div style={{ position:'relative', borderRadius:12, overflow:'hidden', background:'#f5f5f5', border:'1.5px solid #e0e0e0', maxWidth:320, display:'inline-block' }}>
-        <img
-          src={garmentImg}
-          alt={garmentKey}
+        <img src={garmentImgs[activeSide]} alt={garmentKey}
           style={{ width:'100%', display:'block', filter:colorToFilter(color) }}
-          onError={e=>{ e.target.src = GARMENT_DEFAULTS[garmentKey] }}
-        />
-        <img
-          src={designUrl}
-          alt="design"
+          onError={e=>{ e.target.src = GARMENT_DEFAULTS[garmentKey] }} />
+        <img src={designs[activeSide]} alt="design"
           style={{ position:'absolute', top:'38%', left:'50%', transform:'translate(-50%,-50%)', width:'42%', objectFit:'contain', pointerEvents:'none' }}
-          onError={e=>{ e.target.style.display='none' }}
-        />
-        <div style={{ position:'absolute', top:8, right:8, display:'flex', alignItems:'center', gap:4, background:'rgba(255,255,255,.92)', borderRadius:20, padding:'3px 8px', fontSize:9, fontWeight:700, boxShadow:'0 1px 4px rgba(0,0,0,.1)' }}>
+          onError={e=>{ e.target.style.display='none' }} />
+        <div style={{ position:'absolute', top:8, right:8, display:'flex', alignItems:'center', gap:4, background:'rgba(255,255,255,.92)', borderRadius:20, padding:'3px 8px', fontSize:9, fontWeight:700 }}>
           <div style={{ width:10, height:10, borderRadius:'50%', background:color, border:'1px solid #ccc' }} />
           {color}
         </div>
       </div>
+      {activeSides.length > 1 && (
+        <div style={{ display:'flex', gap:6, marginTop:8 }}>
+          {activeSides.map((side, i) => (
+            <button key={side} onClick={()=>setActiveIdx(i)}
+              style={{ position:'relative', width:64, height:64, borderRadius:8, overflow:'hidden', border:'2px solid ' + (i===activeIdx?'#c8102e':'#e0e0e0'), background:'#f8f8f8', padding:0, cursor:'pointer', flexShrink:0 }}>
+              <img src={garmentImgs[side]} alt={side}
+                style={{ width:'100%', height:'100%', objectFit:'contain', filter:colorToFilter(color) }}
+                onError={e=>e.target.src=GARMENT_DEFAULTS[garmentKey]} />
+              <img src={designs[side]} alt="d"
+                style={{ position:'absolute', top:'38%', left:'50%', transform:'translate(-50%,-50%)', width:'42%', objectFit:'contain', pointerEvents:'none' }}
+                onError={e=>e.target.style.display='none'} />
+              <div style={{ position:'absolute', bottom:0, left:0, right:0, textAlign:'center', fontSize:8, fontWeight:700, color:i===activeIdx?'#c8102e':'#888', background:'rgba(255,255,255,.88)', padding:'2px 0' }}>
+                {SIDE_LABELS[side]}
+              </div>
+            </button>
+          ))}
+        </div>
+      )}
       <div style={{ marginTop:6 }}>
-        <a href={designUrl} target='_blank' rel='noopener noreferrer' style={{ fontSize:11, color:'#c8102e', fontWeight:700, textDecoration:'underline' }}>
+        <a href={designs[activeSide]} target="_blank" rel="noopener noreferrer"
+          style={{ fontSize:11, color:'#c8102e', fontWeight:700, textDecoration:'underline' }}>
           Open full design ↗
         </a>
       </div>

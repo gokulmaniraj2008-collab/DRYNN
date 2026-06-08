@@ -816,15 +816,15 @@ function StudioPage({ user, onNav }) {
   const [color, setColor] = useState('#ffffff')
 
   // ── Step 3: Design (per-side) ────────────────────────────
-  const SIDES = ['front']
+  const SIDES = ['front','back','left','right']
   const SIDE_LABELS = { front:'Front', back:'Back', left:'Left Side', right:'Right Side' }
   const [activeSide,    setActiveSide]    = useState('front')
   // sideFiles[side] = File object | null
-  const [sideFiles,     setSideFiles]     = useState({ front:null })
+  const [sideFiles,     setSideFiles]     = useState({ front:null, back:null, left:null, right:null })
   // sideSamples[side] = sample object | null
-  const [sideSamples,   setSideSamples]   = useState({ front:null })
+  const [sideSamples,   setSideSamples]   = useState({ front:null, back:null, left:null, right:null })
   // sideImgs[side] = preview URL | null
-  const [sideImgs,      setSideImgs]      = useState({ front:null })
+  const [sideImgs,      setSideImgs]      = useState({ front:null, back:null, left:null, right:null })
   const [uploadErr,     setUploadErr]     = useState('')
   const [samples,       setSamples]       = useState([])
   const [samplesLoading,setSamplesLoading]= useState(false)
@@ -863,7 +863,7 @@ function StudioPage({ user, onNav }) {
 
   // ── Step 4: Customise (per-side) ─────────────────────────
   const DEFAULT_POS = { posY:38, posX:50, scale:38, rotation:0 }
-  const [sidePos,    setSidePos]    = useState({ front:{...DEFAULT_POS} })
+  const [sidePos,    setSidePos]    = useState({ front:{...DEFAULT_POS}, back:{...DEFAULT_POS}, left:{...DEFAULT_POS}, right:{...DEFAULT_POS} })
   const [custSide,   setCustSide]   = useState('front')
   const custPos = sidePos[custSide]
   const posY = custPos.posY, posX = custPos.posX, scale = custPos.scale, rotation = custPos.rotation
@@ -1022,11 +1022,22 @@ function StudioPage({ user, onNav }) {
         )}
       </div>
 
+      {/* Side dots */}
+      {SIDES.some(s=>sideImgs[s]) && (
+        <div style={{ display:'flex', gap:6, justifyContent:'center' }}>
+          {SIDES.map(s=>(
+            <div key={s} style={{ width:8, height:8, borderRadius:'50%',
+              background: sideImgs[s] ? '#00a86b' : 'rgba(255,255,255,.12)',
+              transition:'background .2s' }} title={SIDE_LABELS[s]} />
+          ))}
+        </div>
+      )}
       {/* Quick info */}
       <div style={{ background:'rgba(255,255,255,.05)', borderRadius:8, padding:'10px 12px', fontSize:11, color:'rgba(255,255,255,.5)', lineHeight:1.7 }}>
         <div><span style={{ color:'rgba(255,255,255,.3)' }}>Garment: </span><strong style={{ color:'#fff' }}>{selectedProduct?.name || garmentType}</strong></div>
         <div><span style={{ color:'rgba(255,255,255,.3)' }}>Colour: </span><span style={{ display:'inline-block', width:10, height:10, borderRadius:'50%', background:color, border:'1px solid rgba(255,255,255,.3)', verticalAlign:'middle', marginRight:3 }} /><strong style={{ color:'#fff' }}>{color}</strong></div>
-        <div><span style={{ color:'rgba(255,255,255,.3)' }}>Design: </span><strong style={{ color: sideImgs.front?'#00a86b':'rgba(255,255,255,.4)' }}>{sideImgs.front ? '✓ Added' : '—'}</strong></div>
+        <div><span style={{ color:'rgba(255,255,255,.3)' }}>Design: </span><strong style={{ color: sideImgs.front?'#00a86b':'rgba(255,255,255,.4)' }}>{sideImgs.front ? '✓ Front' : '—'}</strong></div>
+        {SIDES.filter(s=>s!=='front'&&sideImgs[s]).length>0 && <div><span style={{ color:'rgba(255,255,255,.3)' }}>Extra sides: </span><strong style={{ color:'#00a86b' }}>{SIDES.filter(s=>s!=='front'&&sideImgs[s]).map(s=>SIDE_LABELS[s]).join(', ')}</strong></div>}
       </div>
     </div>
   )}
@@ -1189,7 +1200,24 @@ function StudioPage({ user, onNav }) {
           <div style={{ display:'flex', gap:24, flexWrap:'wrap' }}>
             <div style={{ flex:'1 1 280px' }}>
               <h2 style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:28, color:'#fff', letterSpacing:'.06em', marginBottom:6 }}>STEP 3 — ADD YOUR DESIGN</h2>
-              <p style={{ fontSize:13, color:'rgba(255,255,255,.45)', marginBottom:20 }}>Upload your artwork or pick from our ready-made sample designs.</p>
+              <p style={{ fontSize:13, color:'rgba(255,255,255,.45)', marginBottom:16 }}>Upload for Front (main) or add designs for other sides too — optional.</p>
+
+              {/* Side tabs */}
+              <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:6, marginBottom:18 }}>
+                {SIDES.map(s=>(
+                  <button key={s} onClick={()=>setActiveSide(s)}
+                    style={{ padding:'8px 4px', borderRadius:8, border:`2px solid ${activeSide===s?'#c8102e':sideImgs[s]?'#00a86b':'rgba(255,255,255,.12)'}`,
+                      background:activeSide===s?'rgba(200,16,46,.15)':sideImgs[s]?'rgba(0,168,107,.08)':'rgba(255,255,255,.04)',
+                      cursor:'pointer', display:'flex', flexDirection:'column', alignItems:'center', gap:2, transition:'all .15s', position:'relative' }}>
+                    <span style={{ fontSize:18 }}>{s==='front'?'👕':s==='back'?'🔙':s==='left'?'👈':'👉'}</span>
+                    <span style={{ fontSize:9, fontWeight:700, letterSpacing:'.06em', textTransform:'uppercase',
+                      color:activeSide===s?'#fff':sideImgs[s]?'#00a86b':'rgba(255,255,255,.4)' }}>
+                      {SIDE_LABELS[s]}
+                    </span>
+                    {sideImgs[s] && <span style={{ fontSize:8, color:'#00a86b', fontWeight:700 }}>✓</span>}
+                  </button>
+                ))}
+              </div>
 
               {/* Side selector tabs */}
               <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:4, marginBottom:20 }}>
@@ -1308,7 +1336,22 @@ function StudioPage({ user, onNav }) {
           <div style={{ display:'flex', gap:24, flexWrap:'wrap' }}>
             <div style={{ flex:'1 1 280px' }}>
               <h2 style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:28, color:'#fff', letterSpacing:'.06em', marginBottom:6 }}>STEP 4 — CUSTOMISE</h2>
-              <p style={{ fontSize:13, color:'rgba(255,255,255,.45)', marginBottom:20 }}>Adjust design position, add text, and apply effects. Watch the preview update live.</p>
+              <p style={{ fontSize:13, color:'rgba(255,255,255,.45)', marginBottom:16 }}>Select a side to customise its position. Add text and effects below.</p>
+
+              {/* Side selector — only sides with designs */}
+              {SIDES.filter(s=>sideImgs[s]).length > 1 && (
+                <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:4, marginBottom:18 }}>
+                  {SIDES.filter(s=>sideImgs[s]).map(s=>(
+                    <button key={s} onClick={()=>setCustSide(s)}
+                      style={{ padding:'8px 4px', borderRadius:8, border:`2px solid ${custSide===s?'#c8102e':'rgba(255,255,255,.15)'}`,
+                        background:custSide===s?'rgba(200,16,46,.18)':'rgba(255,255,255,.04)',
+                        cursor:'pointer', display:'flex', flexDirection:'column', alignItems:'center', gap:3, transition:'all .15s' }}>
+                      <img src={sideImgs[s]} alt={s} style={{ width:32, height:32, objectFit:'contain', borderRadius:4, background:'rgba(255,255,255,.1)' }} />
+                      <span style={{ fontSize:9, fontWeight:700, textTransform:'uppercase', color:custSide===s?'#fff':'rgba(255,255,255,.4)' }}>{SIDE_LABELS[s]}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
 
               {/* Sub-tabs */}
               <div style={{ display:'flex', overflowX:'auto', gap:0, background:'rgba(255,255,255,.05)', borderRadius:8, padding:3, marginBottom:20, scrollbarWidth:'none' }}>

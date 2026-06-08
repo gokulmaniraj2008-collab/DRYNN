@@ -408,222 +408,127 @@ function LoginPage({ onBack }) {
 
 
 // ══════════════════════════════════════════════════════════════
-// REAL 3D T-SHIRT VIEW using Three.js with fabric-shaped geometry
+// INTERACTIVE MOCKUP — pinch zoom, drag pan, save to photos
 // ══════════════════════════════════════════════════════════════
-function Css3DView({ garmentImgSrc, designImgSrc, color, posX, posY, scale, rotation,
-  textOn, textVal, textFont, textSize, textColor, colorToFilter }) {
-  const mountRef  = React.useRef(null)
-  const stateRef  = React.useRef({ animId:null, isDrag:false, prevX:0, prevY:0, rotY:0.3, rotX:0.15, spinning:true })
-  const [ready,   setReady]   = React.useState(false)
-  const [err,     setErr]     = React.useState('')
-  const [spinning, setSpinning] = React.useState(true)
+function InteractiveMockup({ garmentImgSrc, designImgSrc, color, posX, posY, scale,
+  rotation, textOn, textVal, textFont, textSize, textColor, colorToFilter, canvasFilter, garmentEmoji }) {
 
-  React.useEffect(() => {
-    let cancelled = false
-    const boot = () => {
-      if (cancelled || !mountRef.current || !window.THREE) return
-      const THREE = window.THREE
-      const W = mountRef.current.clientWidth || 340, H = 400
-      const isMobile = window.innerWidth < 768
+  const [zoom, setZoom]   = React.useState(1)
+  const [panX, setPanX]   = React.useState(0)
+  const [panY, setPanY]   = React.useState(0)
+  const [saved, setSaved] = React.useState(false)
+  const dragRef = React.useRef({ dragging:false, startX:0, startY:0, startPanX:0, startPanY:0, lastDist:0 })
+  const containerRef = React.useRef(null)
 
-      const renderer = new THREE.WebGLRenderer({ antialias: !isMobile, alpha: true })
-      renderer.setSize(W, H)
-      renderer.setPixelRatio(isMobile ? 1 : Math.min(window.devicePixelRatio, 1.5))
-      renderer.shadowMap.enabled = true
-      mountRef.current.appendChild(renderer.domElement)
+  const resetView = () => { setZoom(1); setPanX(0); setPanY(0) }
 
-      const scene = new THREE.Scene()
-      scene.background = new THREE.Color(0x1a2744)
+  // Touch pinch-zoom
+  const onTouchStart = e => {
+    if (e.touches.length === 2) {
+      const dx = e.touches[0].clientX - e.touches[1].clientX
+      const dy = e.touches[0].clientY - e.touches[1].clientY
+      dragRef.current.lastDist = Math.sqrt(dx*dx + dy*dy)
+    } else {
+      dragRef.current = { ...dragRef.current, dragging:true, startX:e.touches[0].clientX - panX, startY:e.touches[0].clientY - panY }
+    }
+  }
+  const onTouchMove = e => {
+    e.preventDefault()
+    if (e.touches.length === 2) {
+      const dx = e.touches[0].clientX - e.touches[1].clientX
+      const dy = e.touches[0].clientY - e.touches[1].clientY
+      const dist = Math.sqrt(dx*dx + dy*dy)
+      const delta = dist / dragRef.current.lastDist
+      setZoom(z => Math.max(1, Math.min(4, z * delta)))
+      dragRef.current.lastDist = dist
+    } else if (dragRef.current.dragging && zoom > 1) {
+      setPanX(e.touches[0].clientX - dragRef.current.startX)
+      setPanY(e.touches[0].clientY - dragRef.current.startY)
+    }
+  }
+  const onTouchEnd = () => { dragRef.current.dragging = false }
 
-      const camera = new THREE.PerspectiveCamera(42, W / H, 0.1, 100)
-      camera.position.set(0, 0.3, 3.8)
+  // Mouse drag
+  const onMouseDown = e => { dragRef.current = { ...dragRef.current, dragging:true, startX:e.clientX - panX, startY:e.clientY - panY } }
+  const onMouseMove = e => { if(!dragRef.current.dragging || zoom <= 1) return; setPanX(e.clientX - dragRef.current.startX); setPanY(e.clientY - dragRef.current.startY) }
+  const onMouseUp   = () => { dragRef.current.dragging = false }
 
-      // Lights
-      const amb = new THREE.AmbientLight(0xffffff, 0.6); scene.add(amb)
-      const key = new THREE.DirectionalLight(0xffffff, 1.4); key.position.set(2, 4, 3); scene.add(key)
-      const fill = new THREE.DirectionalLight(0xffffff, 0.5); fill.position.set(-3, 1, 2); scene.add(fill)
-      const back = new THREE.DirectionalLight(0xffffff, 0.3); back.position.set(0, -2, -3); scene.add(back)
+  // Wheel zoom
+  const onWheel = e => { e.preventDefault(); setZoom(z => Math.max(1, Math.min(4, z - e.deltaY * 0.002))) }
 
-      // Garment color
-      const hex = color.replace('#','')
-      const r = parseInt(hex.slice(0,2),16)/255, g = parseInt(hex.slice(2,4),16)/255, b = parseInt(hex.slice(4,6),16)/255
-      const garmentColor = new THREE.Color(r, g, b)
-
-      // Material factory
-      const fabric = (c=garmentColor) => new THREE.MeshStandardMaterial({
-        color: c, roughness: 0.85, metalness: 0.0, side: THREE.DoubleSide
-      })
-
-      const grp = new THREE.Group()
-
-      // ── Body (tapered box with curved shape) ──────────────────
-      const bodyGeo = new THREE.BoxGeometry(1.8, 2.2, 0.4, 4, 8, 2)
-      // Taper bottom slightly and add fabric sag
-      const bp = bodyGeo.attributes.position
-      for (let i = 0; i < bp.count; i++) {
-        const y = bp.getY(i)
-        const t = (y + 1.1) / 2.2 // 0 at bottom, 1 at top
-        // Taper sides toward bottom
-        bp.setX(i, bp.getX(i) * (0.82 + t * 0.18))
-        // Slight belly curve
-        const belly = Math.sin((t) * Math.PI) * 0.06
-        bp.setZ(i, bp.getZ(i) + belly)
-      }
-      bodyGeo.computeVertexNormals()
-      const body = new THREE.Mesh(bodyGeo, fabric())
-      body.position.set(0, -0.1, 0)
-      grp.add(body)
-
-      // ── Sleeves ───────────────────────────────────────────────
-      const sleeveGeo = (side) => {
-        const geo = new THREE.CylinderGeometry(0.28, 0.22, 0.85, 10, 4, true)
-        const p = geo.attributes.position
-        for (let i = 0; i < p.count; i++) {
-          const y = p.getY(i)
-          // Flatten into oval cross section
-          p.setX(i, p.getX(i) * 1.3)
-          p.setZ(i, p.getZ(i) * 0.7)
-          // Droop at end
-          if (y < -0.2) p.setY(i, y - Math.abs(p.getX(i)) * 0.1)
-        }
-        geo.computeVertexNormals()
-        return geo
-      }
-      const sleeveL = new THREE.Mesh(sleeveGeo(-1), fabric())
-      sleeveL.rotation.z = -1.1
-      sleeveL.rotation.x = 0.15
-      sleeveL.position.set(-1.32, 0.72, 0.0)
-      grp.add(sleeveL)
-
-      const sleeveR = new THREE.Mesh(sleeveGeo(1), fabric())
-      sleeveR.rotation.z = 1.1
-      sleeveR.rotation.x = 0.15
-      sleeveR.position.set(1.32, 0.72, 0.0)
-      grp.add(sleeveR)
-
-      // ── Collar ────────────────────────────────────────────────
-      const collarGeo = new THREE.TorusGeometry(0.3, 0.07, 8, 24, Math.PI * 1.85)
-      const collar = new THREE.Mesh(collarGeo, fabric(new THREE.Color(
-        Math.max(0, r - 0.06), Math.max(0, g - 0.06), Math.max(0, b - 0.06)
-      )))
-      collar.rotation.x = -0.35
-      collar.position.set(0, 1.15, 0.12)
-      grp.add(collar)
-
-      // ── Collar fill (back of neck) ────────────────────────────
-      const neckGeo = new THREE.CylinderGeometry(0.28, 0.3, 0.18, 16, 1, true, 0, Math.PI * 1.85)
-      const neck = new THREE.Mesh(neckGeo, fabric())
-      neck.rotation.x = -0.35
-      neck.position.set(0, 1.15, 0.1)
-      grp.add(neck)
-
-      // ── Shoulder bumps ────────────────────────────────────────
-      const shouGeo = new THREE.SphereGeometry(0.38, 12, 8, 0, Math.PI * 2, 0, Math.PI * 0.5)
-      const shouL = new THREE.Mesh(shouGeo, fabric()); shouL.position.set(-0.82, 0.92, 0); grp.add(shouL)
-      const shouR = shouL.clone(); shouR.position.set(0.82, 0.92, 0); grp.add(shouR)
-
-      // ── Design decal on front ─────────────────────────────────
+  // Save preview as image
+  const savePreview = async () => {
+    try {
+      const canvas = document.createElement('canvas')
+      canvas.width = 800; canvas.height = 900
+      const ctx = canvas.getContext('2d')
+      ctx.fillStyle = '#ffffff'; ctx.fillRect(0,0,800,900)
+      const loadImg = src => new Promise(res => { const i = new Image(); i.crossOrigin='anonymous'; i.onload=()=>res(i); i.onerror=()=>res(null); i.src=src })
+      const gImg = await loadImg(garmentImgSrc)
+      if (gImg) ctx.drawImage(gImg, 0, 50, 800, 800)
       if (designImgSrc) {
-        const img = new Image(); img.crossOrigin = 'anonymous'
-        img.onload = () => {
-          if (cancelled) return
-          const tex = new THREE.Texture(img); tex.needsUpdate = true
-          const decalGeo = new THREE.PlaneGeometry(0.85, 0.85)
-          const decalMat = new THREE.MeshStandardMaterial({ map: tex, transparent: true, roughness: 0.8, depthWrite: false })
-          const decal = new THREE.Mesh(decalGeo, decalMat)
-          decal.position.set(0, 0.1, 0.22)
-          grp.add(decal)
+        const dImg = await loadImg(designImgSrc)
+        if (dImg) {
+          const dw = (scale/100) * 800
+          const dx = (posX/100) * 800 - dw/2
+          const dy = (posY/100) * 800 - dw/2 + 50
+          ctx.save(); ctx.translate(dx+dw/2, dy+dw/2); ctx.rotate(rotation*Math.PI/180)
+          ctx.drawImage(dImg, -dw/2, -dw/2, dw, dw); ctx.restore()
         }
-        img.src = designImgSrc
       }
-
-      // ── Floor shadow ellipse ──────────────────────────────────
-      const shadowGeo = new THREE.CircleGeometry(1, 32)
-      const shadowMat = new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.22 })
-      const shadow = new THREE.Mesh(shadowGeo, shadowMat)
-      shadow.rotation.x = -Math.PI / 2
-      shadow.position.set(0, -1.45, 0)
-      scene.add(shadow)
-
-      scene.add(grp)
-      grp.position.set(0, -0.1, 0)
-
-      if (!cancelled) setReady(true)
-
-      // Drag interaction
-      const el = renderer.domElement
-      const s = stateRef.current
-      const getPos = e => ({ x: e.clientX ?? e.touches?.[0]?.clientX ?? 0, y: e.clientY ?? e.touches?.[0]?.clientY ?? 0 })
-      el.addEventListener('mousedown',  e => { s.isDrag=true; const p=getPos(e); s.prevX=p.x; s.prevY=p.y; s.spinning=false; setSpinning(false) })
-      el.addEventListener('mousemove',  e => { if(!s.isDrag) return; const p=getPos(e); s.rotY+=(p.x-s.prevX)*0.007; s.rotX=Math.max(-0.5,Math.min(0.5,s.rotX-(p.y-s.prevY)*0.005)); s.prevX=p.x; s.prevY=p.y })
-      el.addEventListener('mouseup',    () => { s.isDrag=false; s.spinning=true; setSpinning(true) })
-      el.addEventListener('mouseleave', () => { s.isDrag=false; s.spinning=true; setSpinning(true) })
-      el.addEventListener('touchstart', e => { s.isDrag=true; const p=getPos(e); s.prevX=p.x; s.prevY=p.y; s.spinning=false; setSpinning(false) }, {passive:true})
-      el.addEventListener('touchmove',  e => { if(!s.isDrag) return; const p=getPos(e); s.rotY+=(p.x-s.prevX)*0.007; s.rotX=Math.max(-0.5,Math.min(0.5,s.rotX-(p.y-s.prevY)*0.005)); s.prevX=p.x; s.prevY=p.y }, {passive:true})
-      el.addEventListener('touchend',   () => { s.isDrag=false; s.spinning=true; setSpinning(true) })
-
-      // Animate
-      let t = 0
-      const animate = () => {
-        if (cancelled) return
-        s.animId = requestAnimationFrame(animate)
-        if (s.spinning && !s.isDrag) {
-          t += 0.008
-          s.rotY = Math.sin(t) * 0.55  // sway ±31°
-        }
-        grp.rotation.y = s.rotY
-        grp.rotation.x = s.rotX
-        renderer.render(scene, camera)
+      if (textOn && textVal) {
+        ctx.font = `bold ${textSize} ${textFont}`; ctx.fillStyle = textColor
+        ctx.textAlign = 'center'; ctx.fillText(textVal, 400, 680)
       }
-      animate()
-
-      // Store for cleanup
-      stateRef.current._renderer = renderer
-      stateRef.current._mountRef = mountRef.current
-    }
-
-    if (window.THREE) { requestAnimationFrame(boot) }
-    else {
-      const s = document.createElement('script')
-      s.src = 'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js'
-      s.onload = () => requestAnimationFrame(boot)
-      s.onerror = () => setErr('Failed to load 3D engine.')
-      document.head.appendChild(s)
-    }
-
-    return () => {
-      cancelled = true
-      cancelAnimationFrame(stateRef.current.animId)
-      if (stateRef.current._renderer) {
-        stateRef.current._renderer.dispose()
-        try { stateRef.current._mountRef?.removeChild(stateRef.current._renderer.domElement) } catch(_) {}
-      }
-      setReady(false)
-    }
-  }, [color, designImgSrc])
+      canvas.toBlob(blob => {
+        const url = URL.createObjectURL(blob)
+        const a = document.createElement('a'); a.href=url; a.download='drynn-preview.png'
+        a.click(); URL.revokeObjectURL(url)
+        setSaved(true); setTimeout(()=>setSaved(false), 2500)
+      }, 'image/png')
+    } catch(e) { console.error('Save failed:', e) }
+  }
 
   return (
-    <div style={{ maxWidth:420, margin:'0 auto', userSelect:'none' }}>
-      <div ref={mountRef} style={{ width:'100%', height:400, borderRadius:16, overflow:'hidden', background:'#1a2744', boxShadow:'0 8px 40px rgba(0,0,0,.5)', cursor:'grab', position:'relative' }}>
-        {!ready && !err && (
-          <div style={{ position:'absolute', inset:0, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:12 }}>
-            <div style={{ width:32, height:32, border:'3px solid rgba(255,255,255,.15)', borderTopColor:'#c8102e', borderRadius:'50%', animation:'drynn-spin 0.8s linear infinite' }} />
-            <span style={{ fontSize:12, color:'rgba(255,255,255,.4)' }}>Building 3D shirt…</span>
+    <div style={{ maxWidth:420, margin:'0 auto' }}>
+      {/* Mockup container */}
+      <div ref={containerRef}
+        onMouseDown={onMouseDown} onMouseMove={onMouseMove} onMouseUp={onMouseUp} onMouseLeave={onMouseUp}
+        onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}
+        onWheel={onWheel}
+        style={{ position:'relative', borderRadius:18, overflow:'hidden', background:'#fff', boxShadow:'0 12px 48px rgba(0,0,0,.5)', cursor:zoom>1?'grab':'default', touchAction:'none', userSelect:'none' }}>
+        <div style={{ transform:`scale(${zoom}) translate(${panX/zoom}px,${panY/zoom}px)`, transformOrigin:'center center', transition:dragRef.current.dragging?'none':'transform 0.1s', filter:canvasFilter }}>
+          <img src={garmentImgSrc} alt="garment" style={{ width:'100%', display:'block', filter:colorToFilter(color) }} onError={e=>{e.target.style.opacity='0.05'}} />
+          <div style={{ position:'absolute', inset:0, display:'flex', alignItems:'center', justifyContent:'center', fontSize:100, opacity:0.03, pointerEvents:'none' }}>{garmentEmoji}</div>
+          {designImgSrc && (
+            <img src={designImgSrc} alt="design" style={{ position:'absolute', top:`${posY}%`, left:`${posX}%`, transform:`translate(-50%,-50%) rotate(${rotation}deg)`, width:`${scale}%`, objectFit:'contain', pointerEvents:'none' }} />
+          )}
+          {textOn && textVal && (
+            <div style={{ position:'absolute', top:'65%', left:'50%', transform:'translateX(-50%)', fontFamily:textFont, fontSize:textSize, color:textColor, fontWeight:700, textShadow:'0 1px 6px rgba(0,0,0,.4)', pointerEvents:'none', whiteSpace:'nowrap' }}>{textVal}</div>
+          )}
+        </div>
+        {/* Zoom indicator */}
+        {zoom > 1 && (
+          <div style={{ position:'absolute', top:10, right:10, background:'rgba(0,0,0,.5)', color:'#fff', fontSize:11, fontWeight:700, padding:'4px 8px', borderRadius:6, backdropFilter:'blur(4px)' }}>
+            {Math.round(zoom*100)}%
           </div>
         )}
-        {err && <div style={{ position:'absolute', inset:0, display:'flex', alignItems:'center', justifyContent:'center', color:'#c8102e', fontSize:13, padding:24, textAlign:'center' }}>{err}</div>}
       </div>
-      <div style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:16, marginTop:10 }}>
-        <span style={{ fontSize:11, color:'rgba(255,255,255,.35)' }}>Drag to rotate</span>
-        <button onClick={()=>{ stateRef.current.spinning=!spinning; setSpinning(s=>!s) }}
-          style={{ fontSize:11, fontWeight:700, color:spinning?'#c8102e':'rgba(255,255,255,.4)', background:'none', border:'none', cursor:'pointer' }}>
-          {spinning ? '⏸ Pause' : '▶ Spin'}
-        </button>
+
+      {/* Controls */}
+      <div style={{ display:'flex', gap:8, marginTop:12, justifyContent:'center', alignItems:'center' }}>
+        <span style={{ fontSize:11, color:'rgba(255,255,255,.3)' }}>Pinch to zoom · Drag to pan</span>
+        {zoom > 1 && <button onClick={resetView} style={{ fontSize:11, fontWeight:700, color:'#c8102e', background:'none', border:'none', cursor:'pointer' }}>Reset</button>}
       </div>
+
+      {/* Save button */}
+      <button onClick={savePreview}
+        style={{ display:'flex', alignItems:'center', gap:8, margin:'12px auto 0', padding:'11px 28px', borderRadius:8, border:'1.5px solid rgba(255,255,255,.2)', background:saved?'rgba(0,168,107,.15)':'rgba(255,255,255,.07)', color:saved?'#00a86b':'#fff', fontSize:13, fontWeight:700, cursor:'pointer', transition:'all .2s' }}>
+        {saved ? '✓ Saved to device!' : '📥 Save Preview Image'}
+      </button>
     </div>
   )
 }
-
 // ══════════════════════════════════════════════════════════════
 // ══════════════════════════════════════════════════════════════
 // LIVE T-SHIRT PREVIEW  -  canvas-based, design on fabric
@@ -695,7 +600,7 @@ function StudioPage({ user, onNav }) {
   const [custTab,    setCustTab]     = useState('position')
 
   // ── Step 5 (Preview): 3D ─────────────────────────────────
-  const [viewMode, setViewMode] = useState('flat')  // flat | 3d
+  // Step 5 preview handled by InteractiveMockup component
   // ── Step 6: Order ─────────────────────────────────────────
   const [size,       setSize]     = useState('M')
   const [form,       setForm]     = useState({ name:user?.user_metadata?.full_name||'', phone:'', qty:1, address:'' })
@@ -744,7 +649,24 @@ function StudioPage({ user, onNav }) {
   }
   const canvasFilter = [filterFx, `brightness(${brightness}%) contrast(${contrast}%) saturate(${saturation}%)`].filter(Boolean).join(' ')
 
-  // Garment image — use admin product image if available, fallback to default
+  // Load admin-uploaded mockup URLs from Supabase settings
+  const [mockupUrls, setMockupUrls] = React.useState({})
+  React.useEffect(() => {
+    supabase.from('drynn_settings').select('key,value')
+      .then(({ data }) => {
+        if (!data) return
+        const map = {}
+        data.forEach(row => { if(row.key.startsWith('mockup_')) map[row.key] = row.value })
+        setMockupUrls(map)
+      })
+  }, [])
+
+  const getMockupUrl = (garment, view) => {
+    const key = `mockup_${garment.toLowerCase().replace(' ','-')}_${view}`
+    return mockupUrls[key] || null
+  }
+
+  // Garment image — use admin product image if available, fallback to mockup, fallback to default
   const GARMENT_DEFAULTS = {
     'T-Shirt': 'https://res.cloudinary.com/dfhdyp4oq/image/upload/drynn/products/tshirt_white.png',
     'Hoodie':  'https://res.cloudinary.com/dfhdyp4oq/image/upload/drynn/products/hoodie_navy.png',
@@ -755,7 +677,7 @@ function StudioPage({ user, onNav }) {
   const garmentType = selectedProduct
     ? (selectedProduct.category==='Hoodies'?'Hoodie':selectedProduct.category==='Polos'?'Polo':selectedProduct.category==='Joggers'?'Joggers':'T-Shirt')
     : 'T-Shirt'
-  const garmentImgSrc = selectedProduct?.image_url || GARMENT_DEFAULTS[garmentType]
+  const garmentImgSrc = selectedProduct?.image_url || getMockupUrl(garmentType,'front') || GARMENT_DEFAULTS[garmentType]
 
   const canGoNext = () => {
     if (step===1) return true  // product optional
@@ -1191,60 +1113,24 @@ function StudioPage({ user, onNav }) {
         {/* ══ STEP 5: PREVIEW ══ */}
         {step === 5 && (
           <div>
-            <h2 style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:28, color:'#fff', letterSpacing:'.06em', marginBottom:6 }}>STEP 5 — PREVIEW YOUR DESIGN</h2>
-            <p style={{ fontSize:13, color:'rgba(255,255,255,.45)', marginBottom:20 }}>This is exactly how your design will look when printed. Switch to 3D for a different angle.</p>
+            <h2 style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:28, color:'#fff', letterSpacing:'.06em', marginBottom:4 }}>STEP 5 — PREVIEW YOUR DESIGN</h2>
+            <p style={{ fontSize:13, color:'rgba(255,255,255,.45)', marginBottom:16 }}>This is exactly how your design will look when printed. Pinch to zoom · Drag to pan.</p>
 
-            {/* View toggle */}
-            <div style={{ display:'flex', gap:8, justifyContent:'center', marginBottom:20 }}>
-              {[['flat','🖼 Flat Mockup'],['3d','🎲 3D View']].map(([k,l])=>(
-                <button key={k} onClick={()=>setViewMode(k)}
-                  style={{ padding:'10px 22px', borderRadius:50, fontSize:13, fontWeight:700, cursor:'pointer', border:'1.5px solid',
-                    borderColor:viewMode===k?'#c8102e':'rgba(255,255,255,.15)',
-                    background:viewMode===k?'#c8102e':'rgba(255,255,255,.05)', color:'#fff', transition:'all .15s' }}>
-                  {l}
-                </button>
-              ))}
-            </div>
-
-            {/* Flat preview */}
-            {viewMode==='flat' && (
-              <div style={{ maxWidth:420, margin:'0 auto', position:'relative', borderRadius:18, overflow:'hidden', background:'#1e2a1e', boxShadow:'0 12px 48px rgba(0,0,0,.6)', filter:canvasFilter }}>
-                <img src={garmentImgSrc} alt={garmentType} style={{ width:'100%', display:'block', filter:colorToFilter(color) }} onError={e=>{ e.target.style.opacity='0.05' }} />
-                <div style={{ position:'absolute', inset:0, display:'flex', alignItems:'center', justifyContent:'center', fontSize:100, opacity:0.04, pointerEvents:'none' }}>
-                  {GARMENT_EMOJI[garmentType]}
-                </div>
-                {designImgSrc && (
-                  <img src={designImgSrc} alt="design"
-                    style={{ position:'absolute', top:`${posY}%`, left:`${posX}%`,
-                      transform:`translate(-50%,-50%) rotate(${rotation}deg)`,
-                      width:`${scale}%`, objectFit:'contain', pointerEvents:'none' }} />
-                )}
-                {textOn && textVal && (
-                  <div style={{ position:'absolute', top:'65%', left:'50%', transform:'translateX(-50%)',
-                    fontFamily:textFont, fontSize:textSize, color:textColor, fontWeight:700,
-                    textShadow:'0 1px 6px rgba(0,0,0,.6)', pointerEvents:'none', whiteSpace:'nowrap' }}>
-                    {textVal}
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* 3D view — CSS perspective rotation of real shirt mockup */}
-            {viewMode==='3d' && (
-              <Css3DView
-                garmentImgSrc={garmentImgSrc}
-                designImgSrc={designImgSrc}
-                color={color}
-                posX={posX} posY={posY} scale={scale} rotation={rotation}
-                textOn={textOn} textVal={textVal} textFont={textFont}
-                textSize={textSize} textColor={textColor}
-                garmentEmoji={GARMENT_EMOJI[garmentType]}
-                colorToFilter={colorToFilter}
-              />
-            )}
+            {/* Interactive flat mockup */}
+            <InteractiveMockup
+              garmentImgSrc={garmentImgSrc}
+              designImgSrc={designImgSrc}
+              color={color}
+              posX={posX} posY={posY} scale={scale} rotation={rotation}
+              textOn={textOn} textVal={textVal} textFont={textFont}
+              textSize={textSize} textColor={textColor}
+              colorToFilter={colorToFilter}
+              canvasFilter={canvasFilter}
+              garmentEmoji={GARMENT_EMOJI[garmentType]}
+            />
 
             {/* Summary strip */}
-            <div style={{ maxWidth:420, margin:'20px auto 0', background:'rgba(255,255,255,.06)', border:'1px solid rgba(255,255,255,.1)', borderRadius:12, padding:'14px 18px', display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
+            <div style={{ maxWidth:420, margin:'16px auto 0', background:'rgba(255,255,255,.06)', border:'1px solid rgba(255,255,255,.1)', borderRadius:12, padding:'14px 18px', display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
               {[
                 ['Garment', selectedProduct?.name || garmentType],
                 ['Colour',  color],
@@ -1258,7 +1144,7 @@ function StudioPage({ user, onNav }) {
               ))}
             </div>
 
-            <div style={{ display:'flex', gap:10, marginTop:24, justifyContent:'center' }}>
+            <div style={{ display:'flex', gap:10, marginTop:20, justifyContent:'center' }}>
               <button onClick={()=>setStep(4)} style={{ padding:'12px 20px', borderRadius:8, border:'1px solid rgba(255,255,255,.15)', background:'transparent', color:'rgba(255,255,255,.5)', fontSize:13, fontWeight:600, cursor:'pointer' }}>← Edit</button>
               <button onClick={()=>setStep(6)} className="btn-primary" style={{ padding:'13px 36px', fontSize:14 }}>Place Order →</button>
             </div>
@@ -2556,6 +2442,103 @@ function TermsPage({ onBack }) {
 // ══════════════════════════════════════════════════════════════
 const ADMIN_EMAIL = 'gokulmaniraj2008@gmail.com'
 
+// ══════════════════════════════════════════════════════════════
+// MOCKUP UPLOADER — admin uploads garment views directly to Cloudinary
+// ══════════════════════════════════════════════════════════════
+const MOCKUP_SLOTS = {
+  'T-Shirt':  ['front','back','left','right'],
+  'Hoodie':   ['front','back','left','right'],
+  'Polo':     ['front','back','left','right'],
+}
+const MOCKUP_KEY = (garment, view) => `mockup_${garment.toLowerCase().replace(' ','-')}_${view}`
+const MOCKUP_LABELS = { front:'👕 Front', back:'🔙 Back', left:'💪 Left', right:'💪 Right' }
+
+function MockupUploader() {
+  const [urls, setUrls]       = React.useState({})
+  const [uploading, setUploading] = React.useState({})
+  const [saved, setSaved]     = React.useState({})
+
+  // Load existing URLs from Supabase settings table
+  React.useEffect(() => {
+    supabase.from('drynn_settings').select('key,value')
+      .then(({ data }) => {
+        if (!data) return
+        const map = {}
+        data.forEach(row => { map[row.key] = row.value })
+        setUrls(map)
+      })
+  }, [])
+
+  const handleFile = async (garment, view, file) => {
+    if (!file) return
+    const key = MOCKUP_KEY(garment, view)
+    setUploading(u => ({ ...u, [key]: true }))
+    try {
+      const url = await uploadToCloudinary(file, () => {})
+      // Save URL to Supabase settings
+      await supabase.from('drynn_settings').upsert({ key, value: url }, { onConflict: 'key' })
+      setUrls(u => ({ ...u, [key]: url }))
+      setSaved(s => ({ ...s, [key]: true }))
+      setTimeout(() => setSaved(s => ({ ...s, [key]: false })), 2500)
+    } catch(e) {
+      alert('Upload failed: ' + e.message)
+    }
+    setUploading(u => ({ ...u, [key]: false }))
+  }
+
+  return (
+    <div style={{ display:'flex', flexDirection:'column', gap:28 }}>
+      {Object.entries(MOCKUP_SLOTS).map(([garment, views]) => (
+        <div key={garment} style={{ background:'#fff', borderRadius:12, border:'1px solid #e8e8e8', overflow:'hidden' }}>
+          <div style={{ background:'#0a0a0a', padding:'12px 16px' }}>
+            <div style={{ fontSize:14, fontWeight:700, color:'#fff', letterSpacing:'.06em' }}>{garment.toUpperCase()}</div>
+          </div>
+          <div style={{ display:'grid', gridTemplateColumns:'repeat(2,1fr)', gap:1, background:'#f0f0f0' }}>
+            {views.map(view => {
+              const key = MOCKUP_KEY(garment, view)
+              const url = urls[key]
+              const busy = uploading[key]
+              const done = saved[key]
+              return (
+                <div key={view} style={{ background:'#fff', padding:14 }}>
+                  <div style={{ fontSize:11, fontWeight:700, color:'#555', letterSpacing:'.08em', textTransform:'uppercase', marginBottom:8 }}>
+                    {MOCKUP_LABELS[view]}
+                  </div>
+                  {/* Current image preview */}
+                  {url && (
+                    <div style={{ marginBottom:8, borderRadius:8, overflow:'hidden', background:'#f8f8f8', border:'1px solid #eee' }}>
+                      <img src={url} alt={view} style={{ width:'100%', height:100, objectFit:'contain', display:'block' }} />
+                    </div>
+                  )}
+                  {/* Upload button */}
+                  <label style={{ display:'block', cursor:'pointer' }}>
+                    <input type="file" accept=".png,.jpg,.jpeg" style={{ display:'none' }}
+                      onChange={e => handleFile(garment, view, e.target.files[0])} />
+                    <div style={{ padding:'8px 12px', borderRadius:6, border:'1.5px dashed #d0d0d0', textAlign:'center', background: done?'rgba(0,168,107,.06)':busy?'#f8f8f8':'#fafafa', cursor:'pointer', transition:'all .2s' }}>
+                      {busy ? (
+                        <span style={{ fontSize:11, color:'#888' }}>⏳ Uploading…</span>
+                      ) : done ? (
+                        <span style={{ fontSize:11, color:'#00a86b', fontWeight:700 }}>✅ Saved!</span>
+                      ) : (
+                        <span style={{ fontSize:11, color:'#c8102e', fontWeight:700 }}>{url ? '🔄 Replace' : '📤 Upload'}</span>
+                      )}
+                    </div>
+                  </label>
+                  {url && (
+                    <div style={{ marginTop:6, fontSize:9, color:'#aaa', wordBreak:'break-all', lineHeight:1.4 }}>
+                      {url.split('/').pop()}
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 function AdminPanel({ onBack }) {
   const [currentUser, setCurrentUser] = useState(null)
   const [checking, setChecking]       = useState(true)
@@ -2764,6 +2747,7 @@ function AdminPanel({ onBack }) {
           <button onClick={()=>{setTab('orders');loadOrders()}} style={{ flexShrink:0, padding:'6px 16px', borderRadius:4, border:'none', cursor:'pointer', background:tab==='orders'?'#c8102e':'#222', color:'#fff', fontSize:12, fontWeight:700 }}>Orders</button>
           <button onClick={()=>{setTab('products');loadProducts()}} style={{ flexShrink:0, padding:'6px 16px', borderRadius:4, border:'none', cursor:'pointer', background:tab==='products'?'#c8102e':'#222', color:'#fff', fontSize:12, fontWeight:700 }}>Products</button>
           <button onClick={()=>{setTab('samples');loadSamples()}} style={{ flexShrink:0, padding:'6px 16px', borderRadius:4, border:'none', cursor:'pointer', background:tab==='samples'?'#c8102e':'#222', color:'#fff', fontSize:12, fontWeight:700 }}>Samples</button>
+          <button onClick={()=>setTab('mockups')} style={{ flexShrink:0, padding:'6px 16px', borderRadius:4, border:'none', cursor:'pointer', background:tab==='mockups'?'#c8102e':'#222', color:'#fff', fontSize:12, fontWeight:700 }}>Mockups</button>
           <button onClick={()=>{setTab('uploads');loadOrders()}} style={{ flexShrink:0, padding:'6px 16px', borderRadius:4, border:'none', cursor:'pointer', background:tab==='uploads'?'#c8102e':'#222', color:'#fff', fontSize:12, fontWeight:700 }}>Uploads</button>
         </div>
       </div>
@@ -2945,6 +2929,15 @@ function AdminPanel({ onBack }) {
         )}
 
         {/* SAMPLES TAB */}
+        {/* ── MOCKUPS TAB ── */}
+        {tab==='mockups' && (
+          <div style={{ padding:20 }}>
+            <h2 style={{ fontSize:18, fontWeight:700, marginBottom:4 }}>Garment Mockup Images</h2>
+            <p style={{ fontSize:13, color:'#888', marginBottom:20 }}>Upload front, back, left & right views for each garment. Images go straight to Cloudinary and save automatically.</p>
+            <MockupUploader />
+          </div>
+        )}
+
         {tab==='uploads' && (
           <div>
             <h2 style={{ fontSize:18, fontWeight:700, marginBottom:16 }}>Customer Design Uploads</h2>

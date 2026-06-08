@@ -2411,7 +2411,7 @@ function CartPage({ cart, onRemove, onClear, user, onNav }) {
           color: item.color || 'Various',
           size: item.size || form.size || 'Various',
           qty: item.qty,
-          design_file: item.isCustom ? (cd?.designUrls?.front || '') : 'catalog-order',
+          design_file: item.isCustom ? (cd?.designUrls ? JSON.stringify(cd.designUrls) : '') : 'catalog-order',
           status: 'Received',
           payment_status: 'Unpaid',
           total: grandTotal,
@@ -3092,11 +3092,22 @@ function AdminOrderPreview({ order }) {
       })
   }, [o.garment])
 
-  const designs = {
-    front: o.design_file?.startsWith('http') ? o.design_file : null,
-    back:  o.design_back?.startsWith('http')  ? o.design_back  : null,
-    left:  o.design_left?.startsWith('http')  ? o.design_left  : null,
-    right: o.design_right?.startsWith('http') ? o.design_right : null,
+  // Parse design_file — JSON {front,back,left,right} for new orders, plain URL for old
+  let designs = { front:null, back:null, left:null, right:null }
+  if (o.design_file) {
+    try {
+      const parsed = JSON.parse(o.design_file)
+      if (typeof parsed === 'object') {
+        designs = {
+          front: parsed.front?.startsWith('http') ? parsed.front : null,
+          back:  parsed.back?.startsWith('http')  ? parsed.back  : null,
+          left:  parsed.left?.startsWith('http')  ? parsed.left  : null,
+          right: parsed.right?.startsWith('http') ? parsed.right : null,
+        }
+      }
+    } catch(e) {
+      if (o.design_file.startsWith('http')) designs.front = o.design_file
+    }
   }
   const activeSides = ['front','back','left','right'].filter(s => designs[s])
   const [activeIdx, setActiveIdx] = React.useState(0)
@@ -3528,13 +3539,15 @@ function AdminPanel({ onBack }) {
               <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
                 {orders.length===0 && <div style={{ textAlign:'center', padding:60, color:'#888', background:'#fff', borderRadius:10 }}>No orders yet.</div>}
                 {orders.map(o => {
-                  const isCustom = o.order_type === 'custom' || (o.design_file && o.design_file.startsWith('http'))
-                  const designSides = [
-                    { label:'Front', url: o.design_file?.startsWith('http') ? o.design_file : null },
-                    { label:'Back',  url: o.design_back?.startsWith('http')  ? o.design_back  : null },
-                    { label:'Left',  url: o.design_left?.startsWith('http')  ? o.design_left  : null },
-                    { label:'Right', url: o.design_right?.startsWith('http') ? o.design_right : null },
-                  ].filter(s => s.url)
+                  const isCustom = o.order_type === 'custom' || (o.design_file && o.design_file !== 'catalog-order')
+                  const parseDesigns = (df) => {
+                    if (!df || df === 'catalog-order') return {}
+                    try { const p = JSON.parse(df); return typeof p==='object' ? p : { front: df } } catch { return { front: df } }
+                  }
+                  const parsedDesigns = parseDesigns(o.design_file)
+                  const designSides = ['front','back','left','right']
+                    .map(s => ({ label: s.charAt(0).toUpperCase()+s.slice(1), url: parsedDesigns[s]?.startsWith('http') ? parsedDesigns[s] : null }))
+                    .filter(s => s.url)
 
                   return (
                   <div key={o.id} style={{ background:'#fff', borderRadius:10, border:'1px solid #e8e8e8', boxShadow:'0 1px 4px rgba(0,0,0,.04)', overflow:'hidden' }}>
@@ -3742,7 +3755,8 @@ function AdminPanel({ onBack }) {
             {loading ? (
               <div style={{ textAlign:'center', padding:40, color:'#888' }}>Loading…</div>
             ) : (() => {
-              const customOrders = orders.filter(o => o.design_file && o.design_file.startsWith('http'))
+              const parseDF = (df) => { if (!df || df==='catalog-order') return {}; try { const p=JSON.parse(df); return typeof p==='object'?p:{front:df} } catch { return {front:df} } }
+              const customOrders = orders.filter(o => o.design_file && o.design_file !== 'catalog-order')
               const GD = {
                 'T-Shirt': 'https://res.cloudinary.com/dfhdyp4oq/image/upload/drynn/products/tshirt_white.png',
                 'Hoodie':  'https://res.cloudinary.com/dfhdyp4oq/image/upload/drynn/products/hoodie_navy.png',
@@ -3761,18 +3775,16 @@ function AdminPanel({ onBack }) {
                       : o.garment?.toLowerCase().includes('polo') ? 'Polo'
                       : o.garment?.toLowerCase().includes('jogger') ? 'Joggers' : 'T-Shirt'
                     const gi = GD[gk]
-                    const sides = [
-                      { label:'Front', url: o.design_file },
-                      { label:'Back',  url: o.design_back?.startsWith('http')  ? o.design_back  : null },
-                      { label:'Left',  url: o.design_left?.startsWith('http')  ? o.design_left  : null },
-                      { label:'Right', url: o.design_right?.startsWith('http') ? o.design_right : null },
-                    ].filter(s => s.url)
+                    const pd = parseDF(o.design_file)
+                    const sides = ['front','back','left','right']
+                      .map(s => ({ label:s.charAt(0).toUpperCase()+s.slice(1), url: pd[s]?.startsWith('http')?pd[s]:null }))
+                      .filter(s => s.url)
                     return (
                       <div key={o.id} style={{ background:'#fff', borderRadius:12, overflow:'hidden', border:'1px solid #e8e8e8', boxShadow:'0 2px 8px rgba(0,0,0,.05)' }}>
                         <div style={{ position:'relative', background:'#f5f5f5', padding:8 }}>
                           <div style={{ position:'relative', borderRadius:8, overflow:'hidden' }}>
                             <img src={gi} alt={gk} style={{ width:'100%', display:'block' }} onError={e=>e.target.style.opacity='0.1'} />
-                            <img src={o.design_file} alt="design"
+                            <img src={pd.front || Object.values(pd)[0] || ''} alt="design"
                               style={{ position:'absolute', top:'38%', left:'50%', transform:'translate(-50%,-50%)', width:'42%', objectFit:'contain', pointerEvents:'none' }}
                               onError={e=>e.target.style.display='none'} />
                           </div>
@@ -3791,7 +3803,7 @@ function AdminPanel({ onBack }) {
                           <div style={{ fontSize:13, fontWeight:700, marginBottom:2 }}>{o.name}</div>
                           <div style={{ fontSize:10, color:'#888', marginBottom:2 }}>{o.garment} · {o.size} · Qty {o.qty}</div>
                           <div style={{ fontSize:10, color:'#aaa', marginBottom:8 }}>{new Date(o.placed_at||o.created_at).toLocaleDateString('en-IN')}</div>
-                          <a href={o.design_file} target="_blank" rel="noreferrer" style={{ fontSize:11, color:'#c8102e', fontWeight:700, textDecoration:'underline' }}>Open Full Design ↗</a>
+                          <a href={pd.front || Object.values(pd)[0] || ''} target="_blank" rel="noreferrer" style={{ fontSize:11, color:'#c8102e', fontWeight:700, textDecoration:'underline' }}>Open Full Design ↗</a>
                         </div>
                       </div>
                     )

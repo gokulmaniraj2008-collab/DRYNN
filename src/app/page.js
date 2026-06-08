@@ -547,7 +547,7 @@ function InteractiveMockup({ garmentImgSrc, designImgSrc, color, posX, posY, sca
 // ══════════════════════════════════════════════════════════════
 // PRODUCT IMAGE VIEWER — Flipkart-style 360° drag viewer (Studio Step 5)
 // ══════════════════════════════════════════════════════════════
-function ProductImageViewer({ product, fallbackSrc, designImgSrc, sideImgs, sidePos, posX, posY, scale, rotation, textOn, textVal, textFont, textSize, textColor, textPosX=50, textPosY=75, textRot=0, colorToFilter, color, canvasFilter, garmentEmoji, bgColor='#111' }) {
+function ProductImageViewer({ product, fallbackSrc, designImgSrc, sideImgs, sidePos, posX, posY, scale, rotation, textOn, textVal, textFont, textSize, textColor, textPosX=50, textPosY=75, textRot=0, sideText, colorToFilter, color, canvasFilter, garmentEmoji, bgColor='#111' }) {
   // sideImgs/sidePos take priority (Step 5 multi-side); fall back to single designImgSrc
   const getDesign = key => sideImgs ? sideImgs[key] : (key==='front' ? designImgSrc : null)
   const getPos    = key => sidePos  ? sidePos[key]  : { posX, posY, scale, rotation }
@@ -650,11 +650,12 @@ function ProductImageViewer({ product, fallbackSrc, designImgSrc, sideImgs, side
         }
       }
 
-      // Text overlay (all sides)
-      if (textOn && textVal) {
-        ctx.font = 'bold ' + textSize + 'px ' + textFont
-        ctx.fillStyle = textColor; ctx.textAlign = 'center'
-        ctx.fillText(textVal, 400, (textPosY/100)*800 + 50)
+      // Text overlay (per-side)
+      const st = sideText ? sideText[current.key] : { on: textOn, val: textVal, font: textFont, size: textSize, color: textColor, posY: textPosY, posX: textPosX, rot: textRot }
+      if (st?.on && st?.val) {
+        ctx.font = 'bold ' + st.size + 'px ' + st.font
+        ctx.fillStyle = st.color; ctx.textAlign = 'center'
+        ctx.fillText(st.val, 400, (st.posY/100)*800 + 50)
       }
 
       canvas.toBlob(async blob => {
@@ -706,12 +707,16 @@ function ProductImageViewer({ product, fallbackSrc, designImgSrc, sideImgs, side
                     width:`${p.scale}%`, objectFit:'contain', pointerEvents:'none' }} />
               )
             })()}
-            {/* Text overlay */}
-            {textOn && textVal && (
-              <div style={{ position:'absolute', top:`${textPosY}%`, left:`${textPosX}%`, transform:`translate(-50%,-50%) rotate(${textRot}deg)`,
-                fontFamily:textFont, fontSize:textSize, color:textColor, fontWeight:700,
-                textShadow:'0 1px 6px rgba(0,0,0,.5)', pointerEvents:'none', whiteSpace:'nowrap' }}>{textVal}</div>
-            )}
+            {/* Text overlay — per side */}
+            {(() => {
+              const st = sideText ? sideText[f.key] : { on: textOn, val: textVal, font: textFont, size: textSize, color: textColor, posY: textPosY, posX: textPosX, rot: textRot }
+              if (!st?.on || !st?.val) return null
+              return (
+                <div style={{ position:'absolute', top:`${st.posY}%`, left:`${st.posX}%`, transform:`translate(-50%,-50%) rotate(${st.rot}deg)`,
+                  fontFamily:st.font, fontSize:st.size, color:st.color, fontWeight:700,
+                  textShadow:'0 1px 6px rgba(0,0,0,.5)', pointerEvents:'none', whiteSpace:'nowrap' }}>{st.val}</div>
+              )
+            })()}
           </div>
         ))}
 
@@ -928,14 +933,25 @@ function StudioPage({ user, onNav, onAddToCart }) {
   const setScale    = v => setSidePos(p => ({ ...p, [custSide]: { ...p[custSide], scale: v } }))
   const setRotation = v => setSidePos(p => ({ ...p, [custSide]: { ...p[custSide], rotation: v } }))
 
-  const [textOn,     setTextOn]     = useState(false)
-  const [textVal,    setTextVal]    = useState('YOUR TEXT')
-  const [textFont,   setTextFont]   = useState('Bebas Neue')
-  const [textColor,  setTextColor]  = useState('#ffffff')
-  const [textSize,   setTextSize]   = useState(24)
-  const [textPosY,   setTextPosY]   = useState(75)
-  const [textPosX,   setTextPosX]   = useState(50)
-  const [textRot,    setTextRot]    = useState(0)
+  const DEFAULT_TEXT = { on:false, val:'YOUR TEXT', font:'Bebas Neue', color:'#ffffff', size:24, posY:75, posX:50, rot:0 }
+  const [sideText, setSideText] = useState({ front:{...DEFAULT_TEXT}, back:{...DEFAULT_TEXT}, left:{...DEFAULT_TEXT}, right:{...DEFAULT_TEXT} })
+  const custText = sideText[custSide]
+  const textOn    = custText.on
+  const textVal   = custText.val
+  const textFont  = custText.font
+  const textColor = custText.color
+  const textSize  = custText.size
+  const textPosY  = custText.posY
+  const textPosX  = custText.posX
+  const textRot   = custText.rot
+  const setTextOn    = v => setSideText(p => ({ ...p, [custSide]: { ...p[custSide], on:    typeof v === 'function' ? v(p[custSide].on)  : v } }))
+  const setTextVal   = v => setSideText(p => ({ ...p, [custSide]: { ...p[custSide], val:   v } }))
+  const setTextFont  = v => setSideText(p => ({ ...p, [custSide]: { ...p[custSide], font:  v } }))
+  const setTextColor = v => setSideText(p => ({ ...p, [custSide]: { ...p[custSide], color: v } }))
+  const setTextSize  = v => setSideText(p => ({ ...p, [custSide]: { ...p[custSide], size:  v } }))
+  const setTextPosY  = v => setSideText(p => ({ ...p, [custSide]: { ...p[custSide], posY:  v } }))
+  const setTextPosX  = v => setSideText(p => ({ ...p, [custSide]: { ...p[custSide], posX:  v } }))
+  const setTextRot   = v => setSideText(p => ({ ...p, [custSide]: { ...p[custSide], rot:   v } }))
   const [brightness, setBrightness] = useState(100)
   const [contrast,   setContrast]   = useState(100)
   const [saturation, setSaturation] = useState(100)
@@ -1026,12 +1042,13 @@ function StudioPage({ user, onNav, onAddToCart }) {
           }
         }
 
-        // Text overlay (all sides)
-        if (textOn && textVal) {
-          ctx.font      = `bold ${Math.round(textSize * (PANEL_W / 420))}px ${textFont}`
-          ctx.fillStyle = textColor
+        // Text overlay (per-side)
+        const st = sideText[side]
+        if (st?.on && st?.val) {
+          ctx.font      = `bold ${Math.round(st.size * (PANEL_W / 420))}px ${st.font}`
+          ctx.fillStyle = st.color
           ctx.textAlign = 'center'
-          ctx.fillText(textVal, baseX + PANEL_W / 2, baseY + (textPosY / 100) * PANEL_H + 40)
+          ctx.fillText(st.val, baseX + PANEL_W / 2, baseY + (st.posY / 100) * PANEL_H + 40)
         }
 
         // Side label inside each panel (top-left corner)
@@ -1121,6 +1138,7 @@ function StudioPage({ user, onNav, onAddToCart }) {
           phone:         form.phone,
           address:       form.address,
           textOn, textVal, textFont, textColor, textSize, textPosX, textPosY, textRot,
+          sideText,
           printSheetUrl: sheetUrl || null,
         },
       }
@@ -1209,12 +1227,12 @@ function StudioPage({ user, onNav, onAddToCart }) {
               width:`${pp.scale}%`, objectFit:'contain', pointerEvents:'none' }} />
         )}
         {/* Text overlay */}
-        {textOn && textVal && (
-          <div style={{ position:'absolute', top:`${textPosY}%`, left:`${textPosX}%`,
-            transform:`translate(-50%,-50%) rotate(${textRot}deg)`,
-            fontFamily:textFont, fontSize:textSize, color:textColor, fontWeight:700,
+        {sideText[ps]?.on && sideText[ps]?.val && (
+          <div style={{ position:'absolute', top:`${sideText[ps].posY}%`, left:`${sideText[ps].posX}%`,
+            transform:`translate(-50%,-50%) rotate(${sideText[ps].rot}deg)`,
+            fontFamily:sideText[ps].font, fontSize:sideText[ps].size, color:sideText[ps].color, fontWeight:700,
             textShadow:'0 1px 6px rgba(0,0,0,.6)', pointerEvents:'none', whiteSpace:'nowrap' }}>
-            {textVal}
+            {sideText[ps].val}
           </div>
         )}
         {/* No design hint */}
@@ -1599,7 +1617,7 @@ function StudioPage({ user, onNav, onAddToCart }) {
               {custTab==='text' && (
                 <div>
                   <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16 }}>
-                    <span style={{ fontSize:11, fontWeight:700, letterSpacing:'.1em', textTransform:'uppercase', color:'rgba(255,255,255,.45)' }}>Text Overlay</span>
+                    <span style={{ fontSize:11, fontWeight:700, letterSpacing:'.1em', textTransform:'uppercase', color:'rgba(255,255,255,.45)' }}>Text — {SIDE_LABELS[custSide]}</span>
                     <button onClick={()=>setTextOn(v=>!v)}
                       style={{ padding:'6px 16px', borderRadius:50, fontSize:11, fontWeight:700, cursor:'pointer', border:'none',
                         background:textOn?'#c8102e':'rgba(255,255,255,.1)', color:'#fff' }}>
@@ -1699,49 +1717,47 @@ function StudioPage({ user, onNav, onAddToCart }) {
 
         {/* ══ STEP 5: PREVIEW ══ */}
         {step === 5 && (
-          <div style={{ display:'flex', gap:24, flexWrap:'wrap' }}>
-            <div style={{ flex:'1 1 280px' }}>
-              <h2 style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:28, color:'#fff', letterSpacing:'.06em', marginBottom:4 }}>STEP 5 — PREVIEW YOUR DESIGN</h2>
-              <p style={{ fontSize:13, color:'rgba(255,255,255,.45)', marginBottom:20 }}>Swipe or tap thumbnails to see all angles. Your design appears on each uploaded side.</p>
+          <div>
+            <h2 style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:28, color:'#fff', letterSpacing:'.06em', marginBottom:4 }}>STEP 5 — PREVIEW YOUR DESIGN</h2>
+            <p style={{ fontSize:13, color:'rgba(255,255,255,.45)', marginBottom:20 }}>Swipe or tap thumbnails to see all angles. Your design appears on each uploaded side.</p>
 
-              {/* 4-image swipe viewer */}
-              <ProductImageViewer
-                product={selectedProduct}
-                fallbackSrc={garmentImgSrc}
-                sideImgs={sideImgs}
-                sidePos={sidePos}
-                posX={posX} posY={posY} scale={scale} rotation={rotation}
-                textOn={textOn} textVal={textVal} textFont={textFont}
-                textSize={textSize} textColor={textColor}
-                textPosX={textPosX} textPosY={textPosY} textRot={textRot}
-                colorToFilter={colorToFilter}
-                color={color}
-                canvasFilter={canvasFilter}
-                garmentEmoji={GARMENT_EMOJI[garmentType]}
-                bgColor={bgColor}
-              />
+            {/* 4-image swipe viewer */}
+            <ProductImageViewer
+              product={selectedProduct}
+              fallbackSrc={garmentImgSrc}
+              sideImgs={sideImgs}
+              sidePos={sidePos}
+              posX={posX} posY={posY} scale={scale} rotation={rotation}
+              textOn={textOn} textVal={textVal} textFont={textFont}
+              textSize={textSize} textColor={textColor}
+              textPosX={textPosX} textPosY={textPosY} textRot={textRot}
+              sideText={sideText}
+              colorToFilter={colorToFilter}
+              color={color}
+              canvasFilter={canvasFilter}
+              garmentEmoji={GARMENT_EMOJI[garmentType]}
+              bgColor={bgColor}
+            />
 
-              {/* Summary strip */}
-              <div style={{ margin:'16px 0 0', background:'rgba(255,255,255,.06)', border:'1px solid rgba(255,255,255,.1)', borderRadius:12, padding:'14px 18px', display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
-                {[
-                  ['Garment', selectedProduct?.name || garmentType],
-                  ['Colour',  color],
-                  ['Designs', SIDES.filter(s=>sideImgs[s]).map(s=>SIDE_LABELS[s]).join(', ') || '—'],
-                  ['Text',    textOn ? textVal : 'None'],
-                ].map(([k,v])=>(
-                  <div key={k}>
-                    <div style={{ fontSize:9, fontWeight:700, letterSpacing:'.1em', textTransform:'uppercase', color:'rgba(255,255,255,.3)', marginBottom:2 }}>{k}</div>
-                    <div style={{ fontSize:12, fontWeight:700, color:'#fff', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{v}</div>
-                  </div>
-                ))}
-              </div>
-
-              <div style={{ display:'flex', gap:10, marginTop:20 }}>
-                <button onClick={()=>setStep(4)} style={{ padding:'12px 20px', borderRadius:8, border:'1px solid rgba(255,255,255,.15)', background:'transparent', color:'rgba(255,255,255,.5)', fontSize:13, fontWeight:600, cursor:'pointer' }}>← Edit</button>
-                <button onClick={()=>setStep(6)} className="btn-primary" style={{ flex:1, padding:'13px 36px', fontSize:14 }}>Place Order →</button>
-              </div>
+            {/* Summary strip */}
+            <div style={{ maxWidth:420, margin:'16px auto 0', background:'rgba(255,255,255,.06)', border:'1px solid rgba(255,255,255,.1)', borderRadius:12, padding:'14px 18px', display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
+              {[
+                ['Garment', selectedProduct?.name || garmentType],
+                ['Colour',  color],
+                ['Designs', SIDES.filter(s=>sideImgs[s]).map(s=>SIDE_LABELS[s]).join(', ') || '—'],
+                ['Text', Object.values(sideText).filter(t=>t.on&&t.val).length > 0 ? Object.entries(sideText).filter(([,t])=>t.on&&t.val).map(([s])=>SIDE_LABELS[s]).join(', ') : 'None'],
+              ].map(([k,v])=>(
+                <div key={k}>
+                  <div style={{ fontSize:9, fontWeight:700, letterSpacing:'.1em', textTransform:'uppercase', color:'rgba(255,255,255,.3)', marginBottom:2 }}>{k}</div>
+                  <div style={{ fontSize:12, fontWeight:700, color:'#fff', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{v}</div>
+                </div>
+              ))}
             </div>
-            <LivePreview />
+
+            <div style={{ display:'flex', gap:10, marginTop:20, justifyContent:'center' }}>
+              <button onClick={()=>setStep(4)} style={{ padding:'12px 20px', borderRadius:8, border:'1px solid rgba(255,255,255,.15)', background:'transparent', color:'rgba(255,255,255,.5)', fontSize:13, fontWeight:600, cursor:'pointer' }}>← Edit</button>
+              <button onClick={()=>setStep(6)} className="btn-primary" style={{ padding:'13px 36px', fontSize:14 }}>Place Order →</button>
+            </div>
           </div>
         )}
 

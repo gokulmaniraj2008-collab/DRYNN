@@ -2936,12 +2936,6 @@ function AdminPanel({ onBack }) {
               ))}
             </div>
 
-            {/* Garment Mockup Images */}
-            <div style={{ marginTop:32, borderTop:'1.5px solid #f0f0f0', paddingTop:24 }}>
-              <h3 style={{ fontSize:16, fontWeight:700, marginBottom:4 }}>Garment Mockup Images</h3>
-              <p style={{ fontSize:13, color:'#888', marginBottom:20 }}>Upload front, back, left & right views for each garment. Images go straight to Cloudinary and save automatically.</p>
-              <MockupUploader />
-            </div>
           </div>
         )}
 

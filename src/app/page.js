@@ -547,7 +547,7 @@ function InteractiveMockup({ garmentImgSrc, designImgSrc, color, posX, posY, sca
 // ══════════════════════════════════════════════════════════════
 // PRODUCT IMAGE VIEWER — Flipkart-style 360° drag viewer (Studio Step 5)
 // ══════════════════════════════════════════════════════════════
-function ProductImageViewer({ product, fallbackSrc, designImgSrc, posX, posY, scale, rotation, sideImgs, sidePos, textOn, textVal, textFont, textSize, textColor, textPosX=50, textPosY=75, textRot=0, colorToFilter, color, canvasFilter, garmentEmoji }) {
+function ProductImageViewer({ product, fallbackSrc, designImgSrc, posX, posY, scale, rotation, textOn, textVal, textFont, textSize, textColor, textPosX=50, textPosY=75, textRot=0, colorToFilter, color, canvasFilter, garmentEmoji }) {
   const frames = React.useMemo(() => {
     if (product?.img_front || product?.img_back || product?.img_left || product?.img_right) {
       return [
@@ -624,14 +624,12 @@ function ProductImageViewer({ product, fallbackSrc, designImgSrc, posX, posY, sc
       const gImg = await loadImg(current.src)
       if (gImg) ctx.drawImage(gImg, 0, 50, 800, 800)
       if (designImgSrc && showDesign) {
-        const activeDesign = sideImgs ? sideImgs[current.key] : designImgSrc
-        const activePos    = sidePos  ? sidePos[current.key]  : { posX, posY, scale, rotation }
-        const dImg = await loadImg(activeDesign)
+        const dImg = await loadImg(designImgSrc)
         if (dImg) {
-          const dw = (activePos.scale/100)*800
-          const dx = (activePos.posX/100)*800 - dw/2
-          const dy = (activePos.posY/100)*800 - dw/2 + 50
-          ctx.save(); ctx.translate(dx+dw/2, dy+dw/2); ctx.rotate(activePos.rotation*Math.PI/180)
+          const dw = (scale/100)*800
+          const dx = (posX/100)*800 - dw/2
+          const dy = (posY/100)*800 - dw/2 + 50
+          ctx.save(); ctx.translate(dx+dw/2, dy+dw/2); ctx.rotate(rotation*Math.PI/180)
           ctx.drawImage(dImg, -dw/2, -dw/2, dw, dw); ctx.restore()
         }
       }
@@ -671,20 +669,20 @@ function ProductImageViewer({ product, fallbackSrc, designImgSrc, posX, posY, sc
               style={{ width:'100%', display:'block', filter:colorToFilter(color), minHeight:260, objectFit:'contain' }}
               onError={e=>{ e.target.style.opacity='0.05' }}
             />
-            {/* Design overlay — per side (uses sideImgs/sidePos if available, falls back to props) */}
-            {(() => {
-              const img = sideImgs ? sideImgs[f.key] : (f.key === 'front' ? designImgSrc : null)
-              const pos = sidePos  ? sidePos[f.key]  : { posX, posY, scale, rotation }
-              if (!img) return null
-              const isBack = f.key === 'back'
-              return (
-                <img src={img} alt="design"
-                  style={{ position:'absolute', top:`${pos.posY}%`, left:`${pos.posX}%`,
-                    transform:`translate(-50%,-50%) rotate(${pos.rotation}deg)${isBack?' scaleX(-1)':''}`,
-                    width:`${pos.scale}%`, objectFit:'contain', pointerEvents:'none',
-                    opacity: isBack ? 0.6 : 1 }} />
-              )
-            })()}
+            {/* Design overlay — front */}
+            {designImgSrc && f.key==='front' && (
+              <img src={designImgSrc} alt="design"
+                style={{ position:'absolute', top:`${posY}%`, left:`${posX}%`,
+                  transform:`translate(-50%,-50%) rotate(${rotation}deg)`,
+                  width:`${scale}%`, objectFit:'contain', pointerEvents:'none' }} />
+            )}
+            {/* Design overlay — back (mirrored, faint) */}
+            {designImgSrc && f.key==='back' && (
+              <img src={designImgSrc} alt="design"
+                style={{ position:'absolute', top:`${posY}%`, left:`${posX}%`,
+                  transform:`translate(-50%,-50%) rotate(${rotation}deg) scaleX(-1)`,
+                  width:`${scale}%`, objectFit:'contain', pointerEvents:'none', opacity:0.6 }} />
+            )}
             {/* Text overlay */}
             {textOn && textVal && f.key==='front' && (
               <div style={{ position:'absolute', top:`${textPosY}%`, left:`${textPosX}%`, transform:`translate(-50%,-50%) rotate(${textRot}deg)`,
@@ -986,12 +984,16 @@ function StudioPage({ user, onNav }) {
     const ps = previewSide || custSide || 'front'
     const pImg = sideImgs[ps]
     const pp   = sidePos[ps]
+    // Resolve the correct garment image for the active side
+    const sideGarmentImg = selectedProduct
+      ? (selectedProduct[`img_${ps}`] || selectedProduct.image_url || GARMENT_DEFAULTS[garmentType])
+      : GARMENT_DEFAULTS[garmentType]
     return (
     <div style={{ position:'sticky', top:72, flex:'0 0 280px', maxWidth:280, display:'flex', flexDirection:'column', gap:10 }}>
-      <div style={{ fontSize:10, fontWeight:700, letterSpacing:'.14em', textTransform:'uppercase', color:'rgba(255,255,255,.35)', textAlign:'center', marginBottom:4 }}>Live Preview</div>
+      <div style={{ fontSize:10, fontWeight:700, letterSpacing:'.14em', textTransform:'uppercase', color:'rgba(255,255,255,.35)', textAlign:'center', marginBottom:4 }}>Live Preview — {SIDE_LABELS[ps]}</div>
       <div style={{ position:'relative', borderRadius:14, overflow:'hidden', background:'#1e2a1e', boxShadow:'0 8px 32px rgba(0,0,0,.5)', filter:canvasFilter }}>
-        {/* Garment base */}
-        <img src={garmentImgSrc} alt={garmentType} style={{ width:'100%', display:'block', filter:colorToFilter(color), minHeight:220, objectFit:'contain' }}
+        {/* Garment base — switches per selected side tab */}
+        <img src={sideGarmentImg} alt={`${garmentType} ${ps}`} style={{ width:'100%', display:'block', filter:colorToFilter(color), minHeight:220, objectFit:'contain' }}
           onError={e=>{ e.target.style.opacity='0.05' }} />
         {/* Fallback emoji */}
         <div style={{ position:'absolute', inset:0, display:'flex', alignItems:'center', justifyContent:'center', fontSize:80, opacity:0.04, pointerEvents:'none' }}>
@@ -1217,6 +1219,22 @@ function StudioPage({ user, onNav }) {
                       {SIDE_LABELS[s]}
                     </span>
                     {sideImgs[s] && <span style={{ fontSize:8, color:'#00a86b', fontWeight:700 }}>✓</span>}
+                  </button>
+                ))}
+              </div>
+
+              {/* Side selector tabs */}
+              <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:4, marginBottom:20 }}>
+                {SIDES.map(s=>(
+                  <button key={s} onClick={()=>setActiveSide(s)}
+                    style={{ padding:'8px 4px', borderRadius:8, border:`2px solid ${activeSide===s?'#c8102e':sideImgs[s]?'#00a86b':'rgba(255,255,255,.12)'}`,
+                      background:activeSide===s?'rgba(200,16,46,.15)':sideImgs[s]?'rgba(0,168,107,.08)':'rgba(255,255,255,.04)',
+                      cursor:'pointer', display:'flex', flexDirection:'column', alignItems:'center', gap:3, transition:'all .15s' }}>
+                    <span style={{ fontSize:14 }}>{s==='front'?'👕':s==='back'?'🔙':s==='left'?'💪':'💪'}</span>
+                    <span style={{ fontSize:9, fontWeight:700, letterSpacing:'.06em', textTransform:'uppercase',
+                      color:activeSide===s?'#fff':sideImgs[s]?'#00a86b':'rgba(255,255,255,.4)' }}>{SIDE_LABELS[s]}</span>
+                    {sideImgs[s] && <span style={{ fontSize:8, color:'#00a86b', fontWeight:700 }}>✓</span>}
+
                   </button>
                 ))}
               </div>
@@ -1475,8 +1493,6 @@ function StudioPage({ user, onNav }) {
               product={selectedProduct}
               fallbackSrc={garmentImgSrc}
               designImgSrc={designImgSrc}
-              sideImgs={sideImgs}
-              sidePos={sidePos}
               posX={posX} posY={posY} scale={scale} rotation={rotation}
               textOn={textOn} textVal={textVal} textFont={textFont}
               textSize={textSize} textColor={textColor}

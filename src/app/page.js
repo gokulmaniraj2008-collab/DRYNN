@@ -408,86 +408,55 @@ function LoginPage({ onBack }) {
 
 
 // ══════════════════════════════════════════════════════════════
-// 360° SWIPE MOCKUP — real garment images, swipe to rotate
+// INTERACTIVE MOCKUP — pinch zoom, drag pan, save to photos
 // ══════════════════════════════════════════════════════════════
 function InteractiveMockup({ garmentImgSrc, designImgSrc, color, posX, posY, scale,
-  rotation, textOn, textVal, textFont, textSize, textColor, colorToFilter,
-  canvasFilter, garmentEmoji, getMockupUrl, garmentType }) {
+  rotation, textOn, textVal, textFont, textSize, textColor, colorToFilter, canvasFilter, garmentEmoji }) {
 
-  // 4 views in order: front → right → back → left
-  const VIEWS = ['front','right','back','left']
-  const VIEW_LABELS = { front:'Front', right:'Right Side', back:'Back', left:'Left Side' }
-  // Design only shows on front and back (printable sides)
-  const DESIGN_VIEWS = ['front','back']
+  const [zoom, setZoom]   = React.useState(1)
+  const [panX, setPanX]   = React.useState(0)
+  const [panY, setPanY]   = React.useState(0)
+  const [saved, setSaved] = React.useState(false)
+  const dragRef = React.useRef({ dragging:false, startX:0, startY:0, startPanX:0, startPanY:0, lastDist:0 })
+  const containerRef = React.useRef(null)
 
-  const [viewIdx, setViewIdx]   = React.useState(0)
-  const [animDir, setAnimDir]   = React.useState(0) // -1 left, 1 right
-  const [sliding, setSliding]   = React.useState(false)
-  const [saved,   setSaved]     = React.useState(false)
-  const [autoSpin, setAutoSpin] = React.useState(true)
-  const dragRef = React.useRef({ startX:0, dragging:false })
-  const autoRef = React.useRef(null)
+  const resetView = () => { setZoom(1); setPanX(0); setPanY(0) }
 
-  // Get image URL for a view
-  const getImg = (view) => {
-    const fromAdmin = getMockupUrl ? getMockupUrl(garmentType, view) : null
-    if (fromAdmin) return fromAdmin
-    // Fallback: use front image for all views if others not uploaded yet
-    return view === 'front' ? garmentImgSrc : garmentImgSrc
-  }
-
-  // Auto-spin every 2.5s
-  React.useEffect(() => {
-    if (!autoSpin) { clearInterval(autoRef.current); return }
-    autoRef.current = setInterval(() => goTo(1), 2500)
-    return () => clearInterval(autoRef.current)
-  }, [autoSpin, viewIdx])
-
-  const goTo = (dir) => {
-    if (sliding) return
-    setAnimDir(dir)
-    setSliding(true)
-    setTimeout(() => {
-      setViewIdx(i => (i + dir + VIEWS.length) % VIEWS.length)
-      setSliding(false)
-      setAnimDir(0)
-    }, 280)
-  }
-
-  // Touch/drag swipe
+  // Touch pinch-zoom
   const onTouchStart = e => {
-    dragRef.current = { startX: e.touches[0].clientX, dragging: true }
-    setAutoSpin(false)
+    if (e.touches.length === 2) {
+      const dx = e.touches[0].clientX - e.touches[1].clientX
+      const dy = e.touches[0].clientY - e.touches[1].clientY
+      dragRef.current.lastDist = Math.sqrt(dx*dx + dy*dy)
+    } else {
+      dragRef.current = { ...dragRef.current, dragging:true, startX:e.touches[0].clientX - panX, startY:e.touches[0].clientY - panY }
+    }
   }
-  const onTouchEnd = e => {
-    if (!dragRef.current.dragging) return
-    const dx = e.changedTouches[0].clientX - dragRef.current.startX
-    if (Math.abs(dx) > 40) goTo(dx < 0 ? 1 : -1)
-    dragRef.current.dragging = false
-    setTimeout(() => setAutoSpin(true), 3000)
+  const onTouchMove = e => {
+    e.preventDefault()
+    if (e.touches.length === 2) {
+      const dx = e.touches[0].clientX - e.touches[1].clientX
+      const dy = e.touches[0].clientY - e.touches[1].clientY
+      const dist = Math.sqrt(dx*dx + dy*dy)
+      const delta = dist / dragRef.current.lastDist
+      setZoom(z => Math.max(1, Math.min(4, z * delta)))
+      dragRef.current.lastDist = dist
+    } else if (dragRef.current.dragging && zoom > 1) {
+      setPanX(e.touches[0].clientX - dragRef.current.startX)
+      setPanY(e.touches[0].clientY - dragRef.current.startY)
+    }
   }
-  const onMouseDown = e => { dragRef.current = { startX: e.clientX, dragging: true }; setAutoSpin(false) }
-  const onMouseUp   = e => {
-    if (!dragRef.current.dragging) return
-    const dx = e.clientX - dragRef.current.startX
-    if (Math.abs(dx) > 40) goTo(dx < 0 ? 1 : -1)
-    dragRef.current.dragging = false
-    setTimeout(() => setAutoSpin(true), 3000)
-  }
+  const onTouchEnd = () => { dragRef.current.dragging = false }
 
-  const currentView = VIEWS[viewIdx]
-  const showDesign  = DESIGN_VIEWS.includes(currentView) && designImgSrc
-  const slideStyle  = sliding ? {
-    transform: `translateX(${animDir < 0 ? '8%' : '-8%'})`,
-    opacity: 0,
-    transition: 'transform 0.28s ease, opacity 0.28s ease'
-  } : {
-    transform: 'translateX(0)',
-    opacity: 1,
-    transition: 'transform 0.28s ease, opacity 0.28s ease'
-  }
+  // Mouse drag
+  const onMouseDown = e => { dragRef.current = { ...dragRef.current, dragging:true, startX:e.clientX - panX, startY:e.clientY - panY } }
+  const onMouseMove = e => { if(!dragRef.current.dragging || zoom <= 1) return; setPanX(e.clientX - dragRef.current.startX); setPanY(e.clientY - dragRef.current.startY) }
+  const onMouseUp   = () => { dragRef.current.dragging = false }
 
-  // Save front view as image
+  // Wheel zoom
+  const onWheel = e => { e.preventDefault(); setZoom(z => Math.max(1, Math.min(4, z - e.deltaY * 0.002))) }
+
+  // Save preview as image
   const savePreview = async () => {
     try {
       const canvas = document.createElement('canvas')
@@ -495,12 +464,14 @@ function InteractiveMockup({ garmentImgSrc, designImgSrc, color, posX, posY, sca
       const ctx = canvas.getContext('2d')
       ctx.fillStyle = '#ffffff'; ctx.fillRect(0,0,800,900)
       const loadImg = src => new Promise(res => { const i = new Image(); i.crossOrigin='anonymous'; i.onload=()=>res(i); i.onerror=()=>res(null); i.src=src })
-      const gImg = await loadImg(getImg('front'))
+      const gImg = await loadImg(garmentImgSrc)
       if (gImg) ctx.drawImage(gImg, 0, 50, 800, 800)
       if (designImgSrc) {
         const dImg = await loadImg(designImgSrc)
         if (dImg) {
-          const dw = (scale/100)*800, dx = (posX/100)*800 - dw/2, dy = (posY/100)*800 - dw/2 + 50
+          const dw = (scale/100) * 800
+          const dx = (posX/100) * 800 - dw/2
+          const dy = (posY/100) * 800 - dw/2 + 50
           ctx.save(); ctx.translate(dx+dw/2, dy+dw/2); ctx.rotate(rotation*Math.PI/180)
           ctx.drawImage(dImg, -dw/2, -dw/2, dw, dw); ctx.restore()
         }
@@ -519,93 +490,40 @@ function InteractiveMockup({ garmentImgSrc, designImgSrc, color, posX, posY, sca
   }
 
   return (
-    <div style={{ maxWidth:420, margin:'0 auto', userSelect:'none' }}>
-
-      {/* Main mockup viewer */}
-      <div
-        onMouseDown={onMouseDown} onMouseUp={onMouseUp}
-        onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}
-        style={{ position:'relative', borderRadius:18, overflow:'hidden', background:'#fff', boxShadow:'0 12px 48px rgba(0,0,0,.4)', cursor:'grab', touchAction:'pan-y' }}>
-
-        {/* Garment image with slide animation */}
-        <div style={{ ...slideStyle, position:'relative', filter:canvasFilter }}>
-          <img src={getImg(currentView)} alt={currentView}
-            style={{ width:'100%', display:'block', filter:colorToFilter(color) }}
-            onError={e=>{ e.target.style.opacity='0.05' }} />
-
-          {/* Design overlay — only on front and back */}
-          {showDesign && (
-            <img src={designImgSrc} alt="design"
-              style={{ position:'absolute',
-                top: currentView==='back' ? `${100-posY}%` : `${posY}%`,
-                left:`${posX}%`,
-                transform:`translate(-50%,-50%) rotate(${currentView==='back'?-rotation:rotation}deg)`,
-                width:`${scale}%`, objectFit:'contain', pointerEvents:'none' }} />
+    <div style={{ maxWidth:420, margin:'0 auto' }}>
+      {/* Mockup container */}
+      <div ref={containerRef}
+        onMouseDown={onMouseDown} onMouseMove={onMouseMove} onMouseUp={onMouseUp} onMouseLeave={onMouseUp}
+        onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}
+        onWheel={onWheel}
+        style={{ position:'relative', borderRadius:18, overflow:'hidden', background:'#fff', boxShadow:'0 12px 48px rgba(0,0,0,.5)', cursor:zoom>1?'grab':'default', touchAction:'none', userSelect:'none' }}>
+        <div style={{ transform:`scale(${zoom}) translate(${panX/zoom}px,${panY/zoom}px)`, transformOrigin:'center center', transition:dragRef.current.dragging?'none':'transform 0.1s', filter:canvasFilter }}>
+          <img src={garmentImgSrc} alt="garment" style={{ width:'100%', display:'block', filter:colorToFilter(color) }} onError={e=>{e.target.style.opacity='0.05'}} />
+          <div style={{ position:'absolute', inset:0, display:'flex', alignItems:'center', justifyContent:'center', fontSize:100, opacity:0.03, pointerEvents:'none' }}>{garmentEmoji}</div>
+          {designImgSrc && (
+            <img src={designImgSrc} alt="design" style={{ position:'absolute', top:`${posY}%`, left:`${posX}%`, transform:`translate(-50%,-50%) rotate(${rotation}deg)`, width:`${scale}%`, objectFit:'contain', pointerEvents:'none' }} />
           )}
-
-          {/* Text overlay */}
-          {textOn && textVal && DESIGN_VIEWS.includes(currentView) && (
-            <div style={{ position:'absolute', top:'65%', left:'50%', transform:'translateX(-50%)',
-              fontFamily:textFont, fontSize:textSize, color:textColor, fontWeight:700,
-              textShadow:'0 1px 6px rgba(0,0,0,.4)', pointerEvents:'none', whiteSpace:'nowrap' }}>
-              {textVal}
-            </div>
-          )}
-
-          {/* No design indicator for side views */}
-          {!DESIGN_VIEWS.includes(currentView) && (
-            <div style={{ position:'absolute', bottom:12, left:'50%', transform:'translateX(-50%)',
-              background:'rgba(0,0,0,.45)', color:'#fff', fontSize:10, fontWeight:700,
-              padding:'4px 12px', borderRadius:20, whiteSpace:'nowrap', backdropFilter:'blur(4px)' }}>
-              Side view — no print area
-            </div>
+          {textOn && textVal && (
+            <div style={{ position:'absolute', top:'65%', left:'50%', transform:'translateX(-50%)', fontFamily:textFont, fontSize:textSize, color:textColor, fontWeight:700, textShadow:'0 1px 6px rgba(0,0,0,.4)', pointerEvents:'none', whiteSpace:'nowrap' }}>{textVal}</div>
           )}
         </div>
-
-        {/* Left arrow */}
-        <button onClick={()=>{ goTo(-1); setAutoSpin(false); setTimeout(()=>setAutoSpin(true),3000) }}
-          style={{ position:'absolute', left:8, top:'50%', transform:'translateY(-50%)', width:32, height:32, borderRadius:'50%', background:'rgba(0,0,0,.35)', border:'none', color:'#fff', fontSize:16, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', backdropFilter:'blur(4px)' }}>
-          ‹
-        </button>
-
-        {/* Right arrow */}
-        <button onClick={()=>{ goTo(1); setAutoSpin(false); setTimeout(()=>setAutoSpin(true),3000) }}
-          style={{ position:'absolute', right:8, top:'50%', transform:'translateY(-50%)', width:32, height:32, borderRadius:'50%', background:'rgba(0,0,0,.35)', border:'none', color:'#fff', fontSize:16, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', backdropFilter:'blur(4px)' }}>
-          ›
-        </button>
-
-        {/* View label */}
-        <div style={{ position:'absolute', top:10, left:'50%', transform:'translateX(-50%)',
-          background:'rgba(0,0,0,.45)', color:'#fff', fontSize:10, fontWeight:700,
-          padding:'4px 12px', borderRadius:20, backdropFilter:'blur(4px)', whiteSpace:'nowrap' }}>
-          {VIEW_LABELS[currentView]}
-        </div>
+        {/* Zoom indicator */}
+        {zoom > 1 && (
+          <div style={{ position:'absolute', top:10, right:10, background:'rgba(0,0,0,.5)', color:'#fff', fontSize:11, fontWeight:700, padding:'4px 8px', borderRadius:6, backdropFilter:'blur(4px)' }}>
+            {Math.round(zoom*100)}%
+          </div>
+        )}
       </div>
 
-      {/* Dot indicators */}
-      <div style={{ display:'flex', justifyContent:'center', gap:6, marginTop:12 }}>
-        {VIEWS.map((v,i) => (
-          <button key={v} onClick={()=>{ setViewIdx(i); setAutoSpin(false); setTimeout(()=>setAutoSpin(true),3000) }}
-            style={{ width: viewIdx===i?20:8, height:8, borderRadius:4, border:'none', cursor:'pointer',
-              background: viewIdx===i?'#c8102e':'rgba(255,255,255,.3)', transition:'all .2s' }} />
-        ))}
-      </div>
-
-      {/* Controls row */}
-      <div style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:16, marginTop:10 }}>
-        <span style={{ fontSize:11, color:'rgba(255,255,255,.35)' }}>Swipe to rotate</span>
-        <button onClick={()=>setAutoSpin(s=>!s)}
-          style={{ fontSize:11, fontWeight:700, color:autoSpin?'#c8102e':'rgba(255,255,255,.4)', background:'none', border:'none', cursor:'pointer' }}>
-          {autoSpin ? '⏸ Pause' : '▶ Auto'}
-        </button>
+      {/* Controls */}
+      <div style={{ display:'flex', gap:8, marginTop:12, justifyContent:'center', alignItems:'center' }}>
+        <span style={{ fontSize:11, color:'rgba(255,255,255,.3)' }}>Pinch to zoom · Drag to pan</span>
+        {zoom > 1 && <button onClick={resetView} style={{ fontSize:11, fontWeight:700, color:'#c8102e', background:'none', border:'none', cursor:'pointer' }}>Reset</button>}
       </div>
 
       {/* Save button */}
       <button onClick={savePreview}
-        style={{ display:'flex', alignItems:'center', gap:8, margin:'12px auto 0', padding:'11px 28px', borderRadius:8,
-          border:'1.5px solid rgba(255,255,255,.2)',
-          background:saved?'rgba(0,168,107,.15)':'rgba(255,255,255,.07)',
-          color:saved?'#00a86b':'#fff', fontSize:13, fontWeight:700, cursor:'pointer', transition:'all .2s' }}>
+        style={{ display:'flex', alignItems:'center', gap:8, margin:'12px auto 0', padding:'11px 28px', borderRadius:8, border:'1.5px solid rgba(255,255,255,.2)', background:saved?'rgba(0,168,107,.15)':'rgba(255,255,255,.07)', color:saved?'#00a86b':'#fff', fontSize:13, fontWeight:700, cursor:'pointer', transition:'all .2s' }}>
         {saved ? '✓ Saved to device!' : '📥 Save Preview Image'}
       </button>
     </div>
@@ -683,6 +601,7 @@ function StudioPage({ user, onNav }) {
 
   // ── Step 5 (Preview): 3D ─────────────────────────────────
   // Step 5 preview handled by InteractiveMockup component
+  const [previewAngle, setPreviewAngle] = useState('front')
   // ── Step 6: Order ─────────────────────────────────────────
   const [size,       setSize]     = useState('M')
   const [form,       setForm]     = useState({ name:user?.user_metadata?.full_name||'', phone:'', qty:1, address:'' })
@@ -743,23 +662,19 @@ function StudioPage({ user, onNav }) {
       })
   }, [])
 
-  const getMockupUrl = (garment, view) => {
-    const key = `mockup_${garment.toLowerCase().replace(' ','-')}_${view}`
+  const getMockupUrl = (productId, view) => {
+    const key = `mockup_product_${productId}_${view}`
     return mockupUrls[key] || null
   }
 
-  // Garment image — use admin product image if available, fallback to mockup, fallback to default
-  const GARMENT_DEFAULTS = {
-    'T-Shirt': 'https://res.cloudinary.com/dfhdyp4oq/image/upload/drynn/products/tshirt_white.png',
-    'Hoodie':  'https://res.cloudinary.com/dfhdyp4oq/image/upload/drynn/products/hoodie_navy.png',
-    'Polo':    'https://res.cloudinary.com/dfhdyp4oq/image/upload/drynn/products/polo_white.png',
-    'Joggers': 'https://res.cloudinary.com/dfhdyp4oq/image/upload/drynn/products/joggers_black.png',
-  }
+  // Garment image priority: product mockup front → product image_url → default emoji
   const GARMENT_EMOJI = {'T-Shirt':'👕','Hoodie':'🧥','Polo':'👔','Joggers':'👖'}
   const garmentType = selectedProduct
     ? (selectedProduct.category==='Hoodies'?'Hoodie':selectedProduct.category==='Polos'?'Polo':selectedProduct.category==='Joggers'?'Joggers':'T-Shirt')
     : 'T-Shirt'
-  const garmentImgSrc = selectedProduct?.image_url || getMockupUrl(garmentType,'front') || GARMENT_DEFAULTS[garmentType]
+  const garmentImgSrc = selectedProduct
+    ? (getMockupUrl(selectedProduct.id, 'front') || selectedProduct.image_url || null)
+    : null
 
   const canGoNext = () => {
     if (step===1) return true  // product optional
@@ -1193,14 +1108,34 @@ function StudioPage({ user, onNav }) {
         )}
 
         {/* ══ STEP 5: PREVIEW ══ */}
-        {step === 5 && (
+        {step === 5 && (() => {
+          const angles = selectedProduct
+            ? MOCKUP_VIEWS.filter(v => getMockupUrl(selectedProduct.id, v))
+            : []
+          const activeImgSrc = selectedProduct && angles.includes(previewAngle)
+            ? getMockupUrl(selectedProduct.id, previewAngle)
+            : garmentImgSrc
+          return (
           <div>
             <h2 style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:28, color:'#fff', letterSpacing:'.06em', marginBottom:4 }}>STEP 5 — PREVIEW YOUR DESIGN</h2>
             <p style={{ fontSize:13, color:'rgba(255,255,255,.45)', marginBottom:16 }}>This is exactly how your design will look when printed. Pinch to zoom · Drag to pan.</p>
 
+            {/* Multi-angle switcher */}
+            {angles.length > 1 && (
+              <div style={{ display:'flex', gap:8, justifyContent:'center', marginBottom:14 }}>
+                {angles.map(v => (
+                  <button key={v} onClick={()=>setPreviewAngle(v)}
+                    style={{ padding:'4px', borderRadius:8, border:`2px solid ${previewAngle===v?'#c8102e':'rgba(255,255,255,.15)'}`, background:'rgba(255,255,255,.05)', cursor:'pointer', transition:'all .15s' }}>
+                    <img src={getMockupUrl(selectedProduct.id, v)} alt={v} style={{ width:44, height:44, objectFit:'contain', borderRadius:5, display:'block' }} />
+                    <div style={{ fontSize:8, color:previewAngle===v?'#c8102e':'rgba(255,255,255,.4)', fontWeight:700, marginTop:3, textAlign:'center', textTransform:'uppercase' }}>{v}</div>
+                  </button>
+                ))}
+              </div>
+            )}
+
             {/* Interactive flat mockup */}
             <InteractiveMockup
-              garmentImgSrc={garmentImgSrc}
+              garmentImgSrc={activeImgSrc}
               designImgSrc={designImgSrc}
               color={color}
               posX={posX} posY={posY} scale={scale} rotation={rotation}
@@ -1209,8 +1144,6 @@ function StudioPage({ user, onNav }) {
               colorToFilter={colorToFilter}
               canvasFilter={canvasFilter}
               garmentEmoji={GARMENT_EMOJI[garmentType]}
-              getMockupUrl={getMockupUrl}
-              garmentType={garmentType}
             />
 
             {/* Summary strip */}
@@ -1233,7 +1166,8 @@ function StudioPage({ user, onNav }) {
               <button onClick={()=>setStep(6)} className="btn-primary" style={{ padding:'13px 36px', fontSize:14 }}>Place Order →</button>
             </div>
           </div>
-        )}
+          )
+        })()}
 
         {/* ══ STEP 6: ORDER ══ */}
         {step === 6 && (
@@ -2529,96 +2463,86 @@ const ADMIN_EMAIL = 'gokulmaniraj2008@gmail.com'
 // ══════════════════════════════════════════════════════════════
 // MOCKUP UPLOADER — admin uploads garment views directly to Cloudinary
 // ══════════════════════════════════════════════════════════════
-const MOCKUP_SLOTS = {
-  'T-Shirt':  ['front','back','left','right'],
-  'Hoodie':   ['front','back','left','right'],
-  'Polo':     ['front','back','left','right'],
-}
-const MOCKUP_KEY = (garment, view) => `mockup_${garment.toLowerCase().replace(' ','-')}_${view}`
-const MOCKUP_LABELS = { front:'👕 Front', back:'🔙 Back', left:'💪 Left', right:'💪 Right' }
+const MOCKUP_VIEWS  = ['front','back','left','right']
+const MOCKUP_KEY    = (productId, view) => `mockup_product_${productId}_${view}`
+const MOCKUP_LABELS = { front:'👕 Front', back:'🔙 Back', left:'💪 Left Sleeve', right:'💪 Right Sleeve' }
 
-function MockupUploader() {
-  const [urls, setUrls]       = React.useState({})
+// Per-product mockup slots shown inside each product card
+function ProductMockupSlots({ productId }) {
+  const [urls,      setUrls]      = React.useState({})
   const [uploading, setUploading] = React.useState({})
-  const [saved, setSaved]     = React.useState({})
+  const [saved,     setSaved]     = React.useState({})
 
-  // Load existing URLs from Supabase settings table
   React.useEffect(() => {
-    supabase.from('drynn_settings').select('key,value')
+    supabase.from('drynn_settings')
+      .select('key,value')
+      .like('key', `mockup_product_${productId}_%`)
       .then(({ data }) => {
         if (!data) return
         const map = {}
         data.forEach(row => { map[row.key] = row.value })
         setUrls(map)
       })
-  }, [])
+  }, [productId])
 
-  const handleFile = async (garment, view, file) => {
+  const handleFile = async (view, file) => {
     if (!file) return
-    const key = MOCKUP_KEY(garment, view)
+    const key = MOCKUP_KEY(productId, view)
     setUploading(u => ({ ...u, [key]: true }))
     try {
       const url = await uploadToCloudinary(file, () => {})
-      // Save URL to Supabase settings
       await supabase.from('drynn_settings').upsert({ key, value: url }, { onConflict: 'key' })
       setUrls(u => ({ ...u, [key]: url }))
       setSaved(s => ({ ...s, [key]: true }))
       setTimeout(() => setSaved(s => ({ ...s, [key]: false })), 2500)
-    } catch(e) {
-      alert('Upload failed: ' + e.message)
-    }
+    } catch(e) { alert('Upload failed: ' + e.message) }
     setUploading(u => ({ ...u, [key]: false }))
   }
 
+  const handleDelete = async (view) => {
+    const key = MOCKUP_KEY(productId, view)
+    await supabase.from('drynn_settings').delete().eq('key', key)
+    setUrls(u => { const n={...u}; delete n[key]; return n })
+  }
+
   return (
-    <div style={{ display:'flex', flexDirection:'column', gap:28 }}>
-      {Object.entries(MOCKUP_SLOTS).map(([garment, views]) => (
-        <div key={garment} style={{ background:'#fff', borderRadius:12, border:'1px solid #e8e8e8', overflow:'hidden' }}>
-          <div style={{ background:'#0a0a0a', padding:'12px 16px' }}>
-            <div style={{ fontSize:14, fontWeight:700, color:'#fff', letterSpacing:'.06em' }}>{garment.toUpperCase()}</div>
-          </div>
-          <div style={{ display:'grid', gridTemplateColumns:'repeat(2,1fr)', gap:1, background:'#f0f0f0' }}>
-            {views.map(view => {
-              const key = MOCKUP_KEY(garment, view)
-              const url = urls[key]
-              const busy = uploading[key]
-              const done = saved[key]
-              return (
-                <div key={view} style={{ background:'#fff', padding:14 }}>
-                  <div style={{ fontSize:11, fontWeight:700, color:'#555', letterSpacing:'.08em', textTransform:'uppercase', marginBottom:8 }}>
-                    {MOCKUP_LABELS[view]}
+    <div style={{ marginTop:14, paddingTop:14, borderTop:'1px solid #f0f0f0' }}>
+      <div style={{ fontSize:11, fontWeight:700, letterSpacing:'.1em', textTransform:'uppercase', color:'#555', marginBottom:10 }}>
+        📷 Mockup Images
+        <span style={{ color:'#aaa', fontWeight:400, textTransform:'none', letterSpacing:0, marginLeft:6 }}>Used as garment base in Studio</span>
+      </div>
+      <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:8 }}>
+        {MOCKUP_VIEWS.map(view => {
+          const key  = MOCKUP_KEY(productId, view)
+          const url  = urls[key]
+          const busy = uploading[key]
+          const done = saved[key]
+          return (
+            <div key={view} style={{ background:'#fafafa', border:'1px solid #eee', borderRadius:8, overflow:'hidden' }}>
+              <div style={{ height:80, background:'#f4f4f4', display:'flex', alignItems:'center', justifyContent:'center', position:'relative', overflow:'hidden' }}>
+                {url
+                  ? <img src={url} alt={view} style={{ width:'100%', height:'100%', objectFit:'contain' }} />
+                  : <span style={{ fontSize:22, opacity:.25 }}>👕</span>}
+                {url && (
+                  <button onClick={()=>handleDelete(view)} style={{ position:'absolute', top:2, right:2, width:18, height:18, borderRadius:'50%', background:'rgba(200,16,46,.85)', border:'none', cursor:'pointer', fontSize:9, color:'#fff', fontWeight:700, display:'flex', alignItems:'center', justifyContent:'center', lineHeight:1 }}>✕</button>
+                )}
+              </div>
+              <div style={{ padding:'6px 8px' }}>
+                <div style={{ fontSize:9, fontWeight:700, color:'#888', letterSpacing:'.08em', textTransform:'uppercase', marginBottom:5 }}>{MOCKUP_LABELS[view]}</div>
+                <label style={{ display:'block', cursor:'pointer' }}>
+                  <input type="file" accept=".png,.jpg,.jpeg,.webp" style={{ display:'none' }} onChange={e=>handleFile(view, e.target.files[0])} />
+                  <div style={{ padding:'5px 0', borderRadius:5, border:'1.5px dashed', textAlign:'center', fontSize:9, fontWeight:700,
+                    borderColor: done?'#00a86b':busy?'#e0e0e0':'#c8102e',
+                    color: done?'#00a86b':busy?'#aaa':'#c8102e',
+                    background: done?'rgba(0,168,107,.05)':'rgba(200,16,46,.03)' }}>
+                    {busy?'⏳ Uploading…':done?'✅ Saved!':url?'🔄 Replace':'📤 Upload'}
                   </div>
-                  {/* Current image preview */}
-                  {url && (
-                    <div style={{ marginBottom:8, borderRadius:8, overflow:'hidden', background:'#f8f8f8', border:'1px solid #eee' }}>
-                      <img src={url} alt={view} style={{ width:'100%', height:100, objectFit:'contain', display:'block' }} />
-                    </div>
-                  )}
-                  {/* Upload button */}
-                  <label style={{ display:'block', cursor:'pointer' }}>
-                    <input type="file" accept=".png,.jpg,.jpeg" style={{ display:'none' }}
-                      onChange={e => handleFile(garment, view, e.target.files[0])} />
-                    <div style={{ padding:'8px 12px', borderRadius:6, border:'1.5px dashed #d0d0d0', textAlign:'center', background: done?'rgba(0,168,107,.06)':busy?'#f8f8f8':'#fafafa', cursor:'pointer', transition:'all .2s' }}>
-                      {busy ? (
-                        <span style={{ fontSize:11, color:'#888' }}>⏳ Uploading…</span>
-                      ) : done ? (
-                        <span style={{ fontSize:11, color:'#00a86b', fontWeight:700 }}>✅ Saved!</span>
-                      ) : (
-                        <span style={{ fontSize:11, color:'#c8102e', fontWeight:700 }}>{url ? '🔄 Replace' : '📤 Upload'}</span>
-                      )}
-                    </div>
-                  </label>
-                  {url && (
-                    <div style={{ marginTop:6, fontSize:9, color:'#aaa', wordBreak:'break-all', lineHeight:1.4 }}>
-                      {url.split('/').pop()}
-                    </div>
-                  )}
-                </div>
-              )
-            })}
-          </div>
-        </div>
-      ))}
+                </label>
+              </div>
+            </div>
+          )
+        })}
+      </div>
     </div>
   )
 }
@@ -2831,7 +2755,6 @@ function AdminPanel({ onBack }) {
           <button onClick={()=>{setTab('orders');loadOrders()}} style={{ flexShrink:0, padding:'6px 16px', borderRadius:4, border:'none', cursor:'pointer', background:tab==='orders'?'#c8102e':'#222', color:'#fff', fontSize:12, fontWeight:700 }}>Orders</button>
           <button onClick={()=>{setTab('products');loadProducts()}} style={{ flexShrink:0, padding:'6px 16px', borderRadius:4, border:'none', cursor:'pointer', background:tab==='products'?'#c8102e':'#222', color:'#fff', fontSize:12, fontWeight:700 }}>Products</button>
           <button onClick={()=>{setTab('samples');loadSamples()}} style={{ flexShrink:0, padding:'6px 16px', borderRadius:4, border:'none', cursor:'pointer', background:tab==='samples'?'#c8102e':'#222', color:'#fff', fontSize:12, fontWeight:700 }}>Samples</button>
-          <button onClick={()=>setTab('mockups')} style={{ flexShrink:0, padding:'6px 16px', borderRadius:4, border:'none', cursor:'pointer', background:tab==='mockups'?'#c8102e':'#222', color:'#fff', fontSize:12, fontWeight:700 }}>Mockups</button>
           <button onClick={()=>{setTab('uploads');loadOrders()}} style={{ flexShrink:0, padding:'6px 16px', borderRadius:4, border:'none', cursor:'pointer', background:tab==='uploads'?'#c8102e':'#222', color:'#fff', fontSize:12, fontWeight:700 }}>Uploads</button>
         </div>
       </div>
@@ -2981,46 +2904,47 @@ function AdminPanel({ onBack }) {
 
             {/* Products List */}
             <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
-              {products.map(p => (
+              {products.map(p => {
+                const [showMockups, setShowMockups] = React.useState(false)
+                return (
                 <div key={p.id} style={{ background:'#fff', borderRadius:10, padding:'16px 20px', border:'1px solid #e8e8e8' }}>
                   {editProd===p.id ? (
                     <ProductEditRow product={p} onSave={saveProduct} onCancel={()=>setEditProd(null)} />
                   ) : (
-                    <div style={{ display:'flex', gap:16, alignItems:'center', flexWrap:'wrap' }}>
-                      <div style={{ width:60, height:60, borderRadius:8, overflow:'hidden', background:'#f8f8f8', border:'1px solid #e8e8e8', flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center' }}>
-                        {p.image_url
-                          ? <img src={p.image_url} alt={p.name} style={{ width:'100%', height:'100%', objectFit:'contain' }} />
-                          : <span style={{ fontSize:30 }}>{p.emoji}</span>}
-                      </div>
-                      <div style={{ flex:1 }}>
-                        <div style={{ fontSize:14, fontWeight:700, display:'flex', alignItems:'center', gap:8 }}>
-                          {p.name}
-                          {p.studio_only && <span style={{ fontSize:9, fontWeight:700, letterSpacing:'.1em', textTransform:'uppercase', background:'rgba(200,16,46,.1)', color:'#c8102e', border:'1px solid rgba(200,16,46,.25)', borderRadius:3, padding:'2px 7px' }}>🎨 Studio Only</span>}
+                    <div>
+                      <div style={{ display:'flex', gap:16, alignItems:'center', flexWrap:'wrap' }}>
+                        <div style={{ width:60, height:60, borderRadius:8, overflow:'hidden', background:'#f8f8f8', border:'1px solid #e8e8e8', flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center' }}>
+                          {p.image_url
+                            ? <img src={p.image_url} alt={p.name} style={{ width:'100%', height:'100%', objectFit:'contain' }} />
+                            : <span style={{ fontSize:30 }}>{p.emoji}</span>}
                         </div>
-                        <div style={{ fontSize:12, color:'#888' }}>{p.category} · ₹{Number(p.price).toLocaleString()} (MRP ₹{Number(p.mrp).toLocaleString()})</div>
-                        <div style={{ fontSize:11, color:'#aaa' }}>⭐ {p.rating} · {p.reviews} reviews · Tag: {p.tag}</div>
+                        <div style={{ flex:1 }}>
+                          <div style={{ fontSize:14, fontWeight:700, display:'flex', alignItems:'center', gap:8 }}>
+                            {p.name}
+                            {p.studio_only && <span style={{ fontSize:9, fontWeight:700, letterSpacing:'.1em', textTransform:'uppercase', background:'rgba(200,16,46,.1)', color:'#c8102e', border:'1px solid rgba(200,16,46,.25)', borderRadius:3, padding:'2px 7px' }}>🎨 Studio Only</span>}
+                          </div>
+                          <div style={{ fontSize:12, color:'#888' }}>{p.category} · ₹{Number(p.price).toLocaleString()} (MRP ₹{Number(p.mrp).toLocaleString()})</div>
+                          <div style={{ fontSize:11, color:'#aaa' }}>⭐ {p.rating} · {p.reviews} reviews · Tag: {p.tag}</div>
+                        </div>
+                        <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
+                          <button onClick={()=>setShowMockups(v=>!v)} style={{ padding:'7px 14px', fontSize:11, borderRadius:4, border:'1px solid #e0e0e0', color:'#555', background: showMockups?'#f0f0f0':'none', cursor:'pointer', fontWeight:600 }}>
+                            {showMockups ? '▲ Mockups' : '📷 Mockups'}
+                          </button>
+                          <button onClick={()=>setEditProd(p.id)} style={{ padding:'8px 16px', fontSize:12, borderRadius:4, border:'1px solid #0a1f5d', color:'#0a1f5d', background:'none', cursor:'pointer', fontWeight:600 }}>Edit</button>
+                          <button onClick={()=>deleteProduct(p.id)} style={{ padding:'8px 12px', fontSize:12, borderRadius:4, border:'1px solid #fdd', color:'#c8102e', background:'none', cursor:'pointer', fontWeight:600 }}>✕</button>
+                        </div>
                       </div>
-                      <div style={{ display:'flex', gap:8 }}>
-                        <button onClick={()=>setEditProd(p.id)} style={{ padding:'8px 16px', fontSize:12, borderRadius:4, border:'1px solid #0a1f5d', color:'#0a1f5d', background:'none', cursor:'pointer', fontWeight:600 }}>Edit</button>
-                        <button onClick={()=>deleteProduct(p.id)} style={{ padding:'8px 12px', fontSize:12, borderRadius:4, border:'1px solid #fdd', color:'#c8102e', background:'none', cursor:'pointer', fontWeight:600 }}>✕</button>
-                      </div>
+                      {showMockups && <ProductMockupSlots productId={p.id} />}
                     </div>
                   )}
                 </div>
-              ))}
+                )
+              })}
             </div>
           </div>
         )}
 
         {/* SAMPLES TAB */}
-        {/* ── MOCKUPS TAB ── */}
-        {tab==='mockups' && (
-          <div style={{ padding:20 }}>
-            <h2 style={{ fontSize:18, fontWeight:700, marginBottom:4 }}>Garment Mockup Images</h2>
-            <p style={{ fontSize:13, color:'#888', marginBottom:20 }}>Upload front, back, left & right views for each garment. Images go straight to Cloudinary and save automatically.</p>
-            <MockupUploader />
-          </div>
-        )}
 
         {tab==='uploads' && (
           <div>

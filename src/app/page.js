@@ -1710,8 +1710,10 @@ function StudioPage({ user, onNav, onAddToCart }) {
                 <button onClick={()=>setStep(3)} style={{ padding:'12px 20px', borderRadius:8, border:'1px solid rgba(255,255,255,.15)', background:'transparent', color:'rgba(255,255,255,.5)', fontSize:13, fontWeight:600, cursor:'pointer' }}>← Back</button>
                 <button onClick={()=>setStep(5)} className="btn-primary" style={{ flex:1, padding:'13px', fontSize:14 }}>Preview →</button>
               </div>
+              <div style={{ marginTop:24 }}>
+                <LivePreview previewSide={custSide} />
+              </div>
             </div>
-            <LivePreview previewSide={custSide} />
           </div>
         )}
 
@@ -1760,7 +1762,6 @@ function StudioPage({ user, onNav, onAddToCart }) {
               <button onClick={()=>setStep(6)} className="btn-primary" style={{ padding:'13px 36px', fontSize:14 }}>Place Order →</button>
             </div>
             </div>
-            <LivePreview />
           </div>
         )}
 

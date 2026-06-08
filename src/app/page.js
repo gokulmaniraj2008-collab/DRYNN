@@ -1699,46 +1699,49 @@ function StudioPage({ user, onNav, onAddToCart }) {
 
         {/* ══ STEP 5: PREVIEW ══ */}
         {step === 5 && (
-          <div>
-            <h2 style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:28, color:'#fff', letterSpacing:'.06em', marginBottom:4 }}>STEP 5 — PREVIEW YOUR DESIGN</h2>
-            <p style={{ fontSize:13, color:'rgba(255,255,255,.45)', marginBottom:20 }}>Swipe or tap thumbnails to see all angles. Your design appears on each uploaded side.</p>
+          <div style={{ display:'flex', gap:24, flexWrap:'wrap' }}>
+            <div style={{ flex:'1 1 280px' }}>
+              <h2 style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:28, color:'#fff', letterSpacing:'.06em', marginBottom:4 }}>STEP 5 — PREVIEW YOUR DESIGN</h2>
+              <p style={{ fontSize:13, color:'rgba(255,255,255,.45)', marginBottom:20 }}>Swipe or tap thumbnails to see all angles. Your design appears on each uploaded side.</p>
 
-            {/* 4-image swipe viewer */}
-            <ProductImageViewer
-              product={selectedProduct}
-              fallbackSrc={garmentImgSrc}
-              sideImgs={sideImgs}
-              sidePos={sidePos}
-              posX={posX} posY={posY} scale={scale} rotation={rotation}
-              textOn={textOn} textVal={textVal} textFont={textFont}
-              textSize={textSize} textColor={textColor}
-              textPosX={textPosX} textPosY={textPosY} textRot={textRot}
-              colorToFilter={colorToFilter}
-              color={color}
-              canvasFilter={canvasFilter}
-              garmentEmoji={GARMENT_EMOJI[garmentType]}
-              bgColor={bgColor}
-            />
+              {/* 4-image swipe viewer */}
+              <ProductImageViewer
+                product={selectedProduct}
+                fallbackSrc={garmentImgSrc}
+                sideImgs={sideImgs}
+                sidePos={sidePos}
+                posX={posX} posY={posY} scale={scale} rotation={rotation}
+                textOn={textOn} textVal={textVal} textFont={textFont}
+                textSize={textSize} textColor={textColor}
+                textPosX={textPosX} textPosY={textPosY} textRot={textRot}
+                colorToFilter={colorToFilter}
+                color={color}
+                canvasFilter={canvasFilter}
+                garmentEmoji={GARMENT_EMOJI[garmentType]}
+                bgColor={bgColor}
+              />
 
-            {/* Summary strip */}
-            <div style={{ maxWidth:420, margin:'16px auto 0', background:'rgba(255,255,255,.06)', border:'1px solid rgba(255,255,255,.1)', borderRadius:12, padding:'14px 18px', display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
-              {[
-                ['Garment', selectedProduct?.name || garmentType],
-                ['Colour',  color],
-                ['Designs', SIDES.filter(s=>sideImgs[s]).map(s=>SIDE_LABELS[s]).join(', ') || '—'],
-                ['Text',    textOn ? textVal : 'None'],
-              ].map(([k,v])=>(
-                <div key={k}>
-                  <div style={{ fontSize:9, fontWeight:700, letterSpacing:'.1em', textTransform:'uppercase', color:'rgba(255,255,255,.3)', marginBottom:2 }}>{k}</div>
-                  <div style={{ fontSize:12, fontWeight:700, color:'#fff', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{v}</div>
-                </div>
-              ))}
+              {/* Summary strip */}
+              <div style={{ margin:'16px 0 0', background:'rgba(255,255,255,.06)', border:'1px solid rgba(255,255,255,.1)', borderRadius:12, padding:'14px 18px', display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
+                {[
+                  ['Garment', selectedProduct?.name || garmentType],
+                  ['Colour',  color],
+                  ['Designs', SIDES.filter(s=>sideImgs[s]).map(s=>SIDE_LABELS[s]).join(', ') || '—'],
+                  ['Text',    textOn ? textVal : 'None'],
+                ].map(([k,v])=>(
+                  <div key={k}>
+                    <div style={{ fontSize:9, fontWeight:700, letterSpacing:'.1em', textTransform:'uppercase', color:'rgba(255,255,255,.3)', marginBottom:2 }}>{k}</div>
+                    <div style={{ fontSize:12, fontWeight:700, color:'#fff', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{v}</div>
+                  </div>
+                ))}
+              </div>
+
+              <div style={{ display:'flex', gap:10, marginTop:20 }}>
+                <button onClick={()=>setStep(4)} style={{ padding:'12px 20px', borderRadius:8, border:'1px solid rgba(255,255,255,.15)', background:'transparent', color:'rgba(255,255,255,.5)', fontSize:13, fontWeight:600, cursor:'pointer' }}>← Edit</button>
+                <button onClick={()=>setStep(6)} className="btn-primary" style={{ flex:1, padding:'13px 36px', fontSize:14 }}>Place Order →</button>
+              </div>
             </div>
-
-            <div style={{ display:'flex', gap:10, marginTop:20, justifyContent:'center' }}>
-              <button onClick={()=>setStep(4)} style={{ padding:'12px 20px', borderRadius:8, border:'1px solid rgba(255,255,255,.15)', background:'transparent', color:'rgba(255,255,255,.5)', fontSize:13, fontWeight:600, cursor:'pointer' }}>← Edit</button>
-              <button onClick={()=>setStep(6)} className="btn-primary" style={{ padding:'13px 36px', fontSize:14 }}>Place Order →</button>
-            </div>
+            <LivePreview />
           </div>
         )}
 

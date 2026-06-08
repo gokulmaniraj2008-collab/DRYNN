@@ -2485,6 +2485,7 @@ function CartPage({ cart, onRemove, onClear, user, onNav }) {
           text_pos_x:  item.isCustom ? (cd?.textPosX   || 50)                                   : null,
           text_pos_y:  item.isCustom ? (cd?.textPosY   || 75)                                   : null,
           text_rot:    item.isCustom ? (cd?.textRot    || 0)                                    : null,
+          side_text:   item.isCustom ? (cd?.sideText   ? JSON.stringify(cd.sideText) : null)    : null,
           status: 'Received',
           payment_status: 'Unpaid',
           total: grandTotal,
@@ -3195,15 +3196,15 @@ function AdminOrderPreview({ order }) {
     try { const p = JSON.parse(o.side_pos); if (typeof p === 'object') sidePos = { ...sidePos, ...p } } catch(e) {}
   }
 
-  // Text config from order
-  const textOn    = o.text_on  || false
-  const textVal   = o.text_val || ''
-  const textFont  = o.text_font  || 'Bebas Neue'
-  const textSize  = o.text_size  || 24
-  const textColor = o.text_color || '#ffffff'
-  const textPosX  = o.text_pos_x != null ? o.text_pos_x : 50
-  const textPosY  = o.text_pos_y != null ? o.text_pos_y : 75
-  const textRot   = o.text_rot   != null ? o.text_rot   : 0
+  // Text config from order — prefer side_text (all sides), fallback to legacy front-only fields
+  const DEFAULT_SIDE_TEXT = { on:false, val:'', font:'Bebas Neue', size:24, color:'#ffffff', posX:50, posY:75, rot:0 }
+  let sideText = { front:{...DEFAULT_SIDE_TEXT}, back:{...DEFAULT_SIDE_TEXT}, left:{...DEFAULT_SIDE_TEXT}, right:{...DEFAULT_SIDE_TEXT} }
+  if (o.side_text) {
+    try { const p = JSON.parse(o.side_text); if (typeof p === 'object') sideText = { ...sideText, ...p } } catch(e) {}
+  } else if (o.text_on && o.text_val) {
+    sideText.front = { on: o.text_on, val: o.text_val || '', font: o.text_font || 'Bebas Neue', size: o.text_size || 24,
+      color: o.text_color || '#ffffff', posX: o.text_pos_x ?? 50, posY: o.text_pos_y ?? 75, rot: o.text_rot ?? 0 }
+  }
 
   const [activeIdx, setActiveIdx] = React.useState(0)
   // Swipe support
@@ -3251,13 +3252,13 @@ function AdminOrderPreview({ order }) {
                   onError={e=>e.target.style.display='none'} />
               )
             })()}
-            {/* Text overlay — all sides */}
-            {textOn && textVal && (
-              <div style={{ position:'absolute', top:`${textPosY}%`, left:`${textPosX}%`,
-                transform:`translate(-50%,-50%) rotate(${textRot}deg)`,
-                fontFamily: textFont, fontSize: textSize, color: textColor, fontWeight:700,
+            {/* Text overlay — per side */}
+            {sideText[side]?.on && sideText[side]?.val && (
+              <div style={{ position:'absolute', top:`${sideText[side].posY}%`, left:`${sideText[side].posX}%`,
+                transform:`translate(-50%,-50%) rotate(${sideText[side].rot}deg)`,
+                fontFamily: sideText[side].font, fontSize: sideText[side].size, color: sideText[side].color, fontWeight:700,
                 textShadow:'0 1px 6px rgba(0,0,0,.5)', pointerEvents:'none', whiteSpace:'nowrap' }}>
-                {textVal}
+                {sideText[side].val}
               </div>
             )}
           </div>
@@ -3310,12 +3311,12 @@ function AdminOrderPreview({ order }) {
                   onError={e=>e.target.style.display='none'} />
               )
             })()}
-            {textOn && textVal && (
-              <div style={{ position:'absolute', top:`${textPosY}%`, left:`${textPosX}%`,
-                transform:`translate(-50%,-50%) rotate(${textRot}deg)`,
-                fontFamily:textFont, fontSize: Math.max(6, textSize * 0.25), color:textColor,
+            {sideText[side]?.on && sideText[side]?.val && (
+              <div style={{ position:'absolute', top:`${sideText[side].posY}%`, left:`${sideText[side].posX}%`,
+                transform:`translate(-50%,-50%) rotate(${sideText[side].rot}deg)`,
+                fontFamily:sideText[side].font, fontSize: Math.max(6, sideText[side].size * 0.25), color:sideText[side].color,
                 fontWeight:700, pointerEvents:'none', whiteSpace:'nowrap' }}>
-                {textVal}
+                {sideText[side].val}
               </div>
             )}
             {designs[side] && (
@@ -3778,7 +3779,21 @@ function AdminPanel({ onBack }) {
                               <div style={{ fontSize:11, color:'#555', marginBottom:2 }}>📞 {o.phone}</div>
                               <div style={{ fontSize:11, color:'#888', marginBottom:2 }}>👕 {o.garment} · 🎨 {o.color} · 📏 {o.size} · Qty {o.qty}</div>
                               {o.design_sides && <div style={{ fontSize:11, color:'#c8102e', marginBottom:2 }}>🖨️ Print sides: {o.design_sides}</div>}
-                              {o.custom_text  && <div style={{ fontSize:11, color:'#0a1f5d', marginBottom:2 }}>✍️ Text: "{o.custom_text}"</div>}
+                              {(() => {
+                                let textSummary = []
+                                if (o.side_text) {
+                                  try {
+                                    const st = JSON.parse(o.side_text)
+                                    const SIDE_LABELS = { front:'Front', back:'Back', left:'Left', right:'Right' }
+                                    textSummary = Object.entries(st).filter(([,t])=>t.on&&t.val).map(([s,t])=>`${SIDE_LABELS[s]}: "${t.val}"`)
+                                  } catch(e) {}
+                                } else if (o.text_on && o.text_val) {
+                                  textSummary = [`Front: "${o.text_val}"`]
+                                }
+                                return textSummary.length > 0
+                                  ? <div style={{ fontSize:11, color:'#0a1f5d', marginBottom:2 }}>✍️ Text — {textSummary.join(' · ')}</div>
+                                  : null
+                              })()}
                               {/* ── PRINT SHEET (most important for printer) ── */}
                               {o.print_sheet && (
                                 <div style={{ margin:'8px 0 6px', background:'#0a0a0a', borderRadius:8, overflow:'hidden', border:'2px solid #c8102e' }}>

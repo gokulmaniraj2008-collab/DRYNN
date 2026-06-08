@@ -547,7 +547,10 @@ function InteractiveMockup({ garmentImgSrc, designImgSrc, color, posX, posY, sca
 // ══════════════════════════════════════════════════════════════
 // PRODUCT IMAGE VIEWER — Flipkart-style 360° drag viewer (Studio Step 5)
 // ══════════════════════════════════════════════════════════════
-function ProductImageViewer({ product, fallbackSrc, designImgSrc, posX, posY, scale, rotation, textOn, textVal, textFont, textSize, textColor, textPosX=50, textPosY=75, textRot=0, colorToFilter, color, canvasFilter, garmentEmoji }) {
+function ProductImageViewer({ product, fallbackSrc, designImgSrc, sideImgs, sidePos, posX, posY, scale, rotation, textOn, textVal, textFont, textSize, textColor, textPosX=50, textPosY=75, textRot=0, colorToFilter, color, canvasFilter, garmentEmoji }) {
+  // sideImgs/sidePos take priority (Step 5 multi-side); fall back to single designImgSrc
+  const getDesign = key => sideImgs ? sideImgs[key] : (key==='front' ? designImgSrc : null)
+  const getPos    = key => sidePos  ? sidePos[key]  : { posX, posY, scale, rotation }
   const frames = React.useMemo(() => {
     if (product?.img_front || product?.img_back || product?.img_left || product?.img_right) {
       return [
@@ -669,20 +672,18 @@ function ProductImageViewer({ product, fallbackSrc, designImgSrc, posX, posY, sc
               style={{ width:'100%', display:'block', filter:colorToFilter(color), minHeight:260, objectFit:'contain' }}
               onError={e=>{ e.target.style.opacity='0.05' }}
             />
-            {/* Design overlay — front */}
-            {designImgSrc && f.key==='front' && (
-              <img src={designImgSrc} alt="design"
-                style={{ position:'absolute', top:`${posY}%`, left:`${posX}%`,
-                  transform:`translate(-50%,-50%) rotate(${rotation}deg)`,
-                  width:`${scale}%`, objectFit:'contain', pointerEvents:'none' }} />
-            )}
-            {/* Design overlay — back (mirrored, faint) */}
-            {designImgSrc && f.key==='back' && (
-              <img src={designImgSrc} alt="design"
-                style={{ position:'absolute', top:`${posY}%`, left:`${posX}%`,
-                  transform:`translate(-50%,-50%) rotate(${rotation}deg) scaleX(-1)`,
-                  width:`${scale}%`, objectFit:'contain', pointerEvents:'none', opacity:0.6 }} />
-            )}
+            {/* Design overlay — per side */}
+            {(() => {
+              const d = getDesign(f.key)
+              const p = getPos(f.key)
+              if (!d) return null
+              return (
+                <img src={d} alt="design"
+                  style={{ position:'absolute', top:`${p.posY}%`, left:`${p.posX}%`,
+                    transform:`translate(-50%,-50%) rotate(${p.rotation}deg)`,
+                    width:`${p.scale}%`, objectFit:'contain', pointerEvents:'none' }} />
+              )
+            })()}
             {/* Text overlay */}
             {textOn && textVal && f.key==='front' && (
               <div style={{ position:'absolute', top:`${textPosY}%`, left:`${textPosX}%`, transform:`translate(-50%,-50%) rotate(${textRot}deg)`,
@@ -1486,13 +1487,14 @@ function StudioPage({ user, onNav }) {
         {step === 5 && (
           <div>
             <h2 style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:28, color:'#fff', letterSpacing:'.06em', marginBottom:4 }}>STEP 5 — PREVIEW YOUR DESIGN</h2>
-            <p style={{ fontSize:13, color:'rgba(255,255,255,.45)', marginBottom:20 }}>Swipe or tap thumbnails to see all angles. Your design appears on front and back.</p>
+            <p style={{ fontSize:13, color:'rgba(255,255,255,.45)', marginBottom:20 }}>Swipe or tap thumbnails to see all angles. Your design appears on each uploaded side.</p>
 
             {/* 4-image swipe viewer */}
             <ProductImageViewer
               product={selectedProduct}
               fallbackSrc={garmentImgSrc}
-              designImgSrc={designImgSrc}
+              sideImgs={sideImgs}
+              sidePos={sidePos}
               posX={posX} posY={posY} scale={scale} rotation={rotation}
               textOn={textOn} textVal={textVal} textFont={textFont}
               textSize={textSize} textColor={textColor}

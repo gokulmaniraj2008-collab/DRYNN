@@ -913,21 +913,10 @@ function StudioPage({ user, onNav }) {
   }
   const canvasFilter = [filterFx, `brightness(${brightness}%) contrast(${contrast}%) saturate(${saturation}%)`].filter(Boolean).join(' ')
 
-  // Load admin-uploaded mockup URLs from Supabase settings
-  const [mockupUrls, setMockupUrls] = React.useState({})
-  React.useEffect(() => {
-    supabase.from('drynn_settings').select('key,value')
-      .then(({ data }) => {
-        if (!data) return
-        const map = {}
-        data.forEach(row => { if(row.key.startsWith('mockup_')) map[row.key] = row.value })
-        setMockupUrls(map)
-      })
-  }, [])
-
+  // Mockup URLs come from selected product's img_front/back/left/right columns — no drynn_settings needed
   const getMockupUrl = (garment, view) => {
-    const key = `mockup_${garment.toLowerCase().replace(' ','-')}_${view}`
-    return mockupUrls[key] || null
+    if (selectedProduct) return selectedProduct[`img_${view}`] || null
+    return null
   }
 
   // Garment image — use admin product image if available, fallback to mockup, fallback to default
@@ -3319,42 +3308,25 @@ function ProductEditRow({ product, onSave, onCancel }) {
   const [imgPct, setImgPct]   = useState(0)
   const [imgSaving, setImgSaving] = useState(false)
 
-  // Mockup view uploads (front/back/left/right) stored in drynn_settings
-  const garmentType = p.category==='Hoodies'?'T-Shirt':p.category==='Polos'?'Polo':p.category==='Joggers'?'Joggers':'T-Shirt'
+  // Mockup view uploads — saved directly to drynn_products columns (no drynn_settings)
+  const garmentType = p.category==='Hoodies'?'Hoodie':p.category==='Polos'?'Polo':p.category==='Joggers'?'Joggers':'T-Shirt'
   const VIEWS = ['front','back','left','right']
   const VIEW_LABELS = { front:'👕 Front', back:'🔙 Back', left:'💪 Left', right:'💪 Right' }
-  const [mockupUrls, setMockupUrls]       = useState({})
   const [mockupUploading, setMockupUploading] = useState({})
-  const [mockupSaved, setMockupSaved]     = useState({})
-
-  React.useEffect(() => {
-    supabase.from('drynn_settings').select('key,value')
-      .then(({ data }) => {
-        if (!data) return
-        const map = {}
-        data.forEach(row => { if (row.key.startsWith('mockup_')) map[row.key] = row.value })
-        setMockupUrls(map)
-      })
-  }, [])
+  const [mockupSaved, setMockupSaved]         = useState({})
 
   const handleMockupFile = async (view, file) => {
     if (!file) return
-    const key = `mockup_${garmentType.toLowerCase().replace(' ','-')}_${view}`
     setMockupUploading(u => ({ ...u, [view]: true }))
     try {
       const url = await uploadToCloudinary(file, () => {})
-      // Save to drynn_settings (global garment mockup)
-      await supabase.from('drynn_settings').delete().eq('key', key)
-      const { error: insertErr } = await supabase.from('drynn_settings').insert({ key, value: url })
-      if (insertErr) { alert('Save failed: ' + insertErr.message); return }
-      // Also save directly to this product's img_front/back/left/right column
-      const colName = `img_${view}`
+      const colName = `img_${view}` // img_front | img_back | img_left | img_right
       const { error: prodErr } = await supabase
         .from('drynn_products')
         .update({ [colName]: url })
         .eq('id', product.id)
-      if (prodErr) console.error('[360] Product img update failed:', prodErr.message)
-      setMockupUrls(u => ({ ...u, [key]: url }))
+      if (prodErr) { alert('Save failed: ' + prodErr.message); return }
+      setP(prev => ({ ...prev, [colName]: url }))
       setMockupSaved(s => ({ ...s, [view]: true }))
       setTimeout(() => setMockupSaved(s => ({ ...s, [view]: false })), 2500)
     } catch(e) {
@@ -3419,8 +3391,7 @@ function ProductEditRow({ product, onSave, onCancel }) {
         </label>
         <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8 }}>
           {VIEWS.map(view => {
-            const key = `mockup_${garmentType.toLowerCase().replace(' ','-')}_${view}`
-            const url = mockupUrls[key]
+            const url = p[`img_${view}`] || null  // read from product state directly
             const busy = mockupUploading[view]
             const done = mockupSaved[view]
             return (

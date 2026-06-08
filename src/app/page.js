@@ -3104,7 +3104,7 @@ function AdminOrderPreview({ order }) {
         />
         <img
           src={designUrl}
-          alt=design
+          alt="design"
           style={{ position:'absolute', top:'38%', left:'50%', transform:'translate(-50%,-50%)', width:'42%', objectFit:'contain', pointerEvents:'none' }}
           onError={e=>{ e.target.style.display='none' }}
         />

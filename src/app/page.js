@@ -923,6 +923,7 @@ function StudioPage({ user, onNav }) {
       })
       if (GOOGLE_SHEET_WEBHOOK) fetch(GOOGLE_SHEET_WEBHOOK,{ method:'POST', mode:'no-cors', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ sheet:'DRYNN_Orders', orderId, name:form.name, phone:form.phone, garment:garmentLabel, color, size, qty:form.qty, address:form.address, designUrls, placedAt }) }).catch(console.error)
       setStatus('done')
+      setTimeout(() => onNav('orders'), 3000)
     } catch(e) { setStatus(''); alert('Error: '+e.message) }
   }
 
@@ -1523,10 +1524,16 @@ function StudioPage({ user, onNav }) {
                   <div style={{ fontSize:64, marginBottom:16 }}>🎉</div>
                   <div style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:32, color:'#fff', letterSpacing:'.06em', marginBottom:8 }}>ORDER CONFIRMED!</div>
                   <p style={{ fontSize:13, color:'rgba(255,255,255,.55)', lineHeight:1.8, marginBottom:24 }}>We received your order and will WhatsApp you within 2 hours to confirm printing and delivery.</p>
-                  <button onClick={()=>{ setStep(1); setSelectedProduct(null); setSideImgs({front:null,back:null,left:null,right:null}); setSideFiles({front:null,back:null,left:null,right:null}); setSideSamples({front:null,back:null,left:null,right:null}); setActiveSide('front'); setCustSide('front'); setStatus(''); setForm({ name:user?.user_metadata?.full_name||'', phone:'', qty:1, address:'' }) }}
-                    style={{ padding:'13px 28px', borderRadius:8, border:'1px solid rgba(255,255,255,.2)', background:'rgba(255,255,255,.08)', color:'#fff', fontSize:13, fontWeight:700, cursor:'pointer' }}>
-                    Create Another Design
-                  </button>
+                  <div style={{ display:'flex', flexDirection:'column', gap:10, alignItems:'center' }}>
+                    <button onClick={()=>onNav('orders')}
+                      className="btn-primary" style={{ padding:'13px 28px', fontSize:13 }}>
+                      📦 View My Orders
+                    </button>
+                    <button onClick={()=>{ setStep(1); setSelectedProduct(null); setSideImgs({front:null,back:null,left:null,right:null}); setSideFiles({front:null,back:null,left:null,right:null}); setSideSamples({front:null,back:null,left:null,right:null}); setActiveSide('front'); setCustSide('front'); setStatus(''); setForm({ name:user?.user_metadata?.full_name||'', phone:'', qty:1, address:'' }) }}
+                      style={{ padding:'13px 28px', borderRadius:8, border:'1px solid rgba(255,255,255,.2)', background:'rgba(255,255,255,.08)', color:'#fff', fontSize:13, fontWeight:700, cursor:'pointer' }}>
+                      Create Another Design
+                    </button>
+                  </div>
                 </div>
               ) : (
                 <div style={{ display:'flex', flexDirection:'column', gap:18 }}>

@@ -820,7 +820,6 @@ function StudioPage({ user, onNav }) {
   const SIDES = ['front','back','left','right']
   const SIDE_LABELS = { front:'Front', back:'Back', left:'Left Side', right:'Right Side' }
   const [activeSide,    setActiveSide]    = useState('front')
-  const [activeSide2,   setActiveSide2]   = useState('front')
   // sideFiles[side] = File object | null
   const [sideFiles,     setSideFiles]     = useState({ front:null, back:null, left:null, right:null })
   // sideSamples[side] = sample object | null
@@ -1220,21 +1219,6 @@ function StudioPage({ user, onNav }) {
                       color:activeSide===s?'#fff':sideImgs[s]?'#00a86b':'rgba(255,255,255,.4)' }}>
                       {SIDE_LABELS[s]}
                     </span>
-                    {sideImgs[s] && <span style={{ fontSize:8, color:'#00a86b', fontWeight:700 }}>✓</span>}
-                  </button>
-                ))}
-              </div>
-
-              {/* Side selector tabs (independent — does not sync with grid above or Step 5) */}
-              <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:4, marginBottom:20 }}>
-                {SIDES.map(s=>(
-                  <button key={s} onClick={()=>setActiveSide2(s)}
-                    style={{ padding:'8px 4px', borderRadius:8, border:`2px solid ${activeSide2===s?'#c8102e':sideImgs[s]?'#00a86b':'rgba(255,255,255,.12)'}`,
-                      background:activeSide2===s?'rgba(200,16,46,.15)':sideImgs[s]?'rgba(0,168,107,.08)':'rgba(255,255,255,.04)',
-                      cursor:'pointer', display:'flex', flexDirection:'column', alignItems:'center', gap:3, transition:'all .15s' }}>
-                    <span style={{ fontSize:14 }}>{s==='front'?'👕':s==='back'?'🔙':s==='left'?'💪':'💪'}</span>
-                    <span style={{ fontSize:9, fontWeight:700, letterSpacing:'.06em', textTransform:'uppercase',
-                      color:activeSide2===s?'#fff':sideImgs[s]?'#00a86b':'rgba(255,255,255,.4)' }}>{SIDE_LABELS[s]}</span>
                     {sideImgs[s] && <span style={{ fontSize:8, color:'#00a86b', fontWeight:700 }}>✓</span>}
                   </button>
                 ))}

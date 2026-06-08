@@ -41,6 +41,10 @@ function useProducts() {
             tag_color: p.tag_color || p.tagColor || '#c8102e',
             emoji:     p.emoji || '👕',
             tag:       p.tag || 'New',
+            img_front: p.img_front || null,
+            img_back:  p.img_back  || null,
+            img_left:  p.img_left  || null,
+            img_right: p.img_right || null,
           }))
           setProducts(normalized)
         }
@@ -540,6 +544,182 @@ function InteractiveMockup({ garmentImgSrc, designImgSrc, color, posX, posY, sca
     </div>
   )
 }
+// ══════════════════════════════════════════════════════════════
+// PRODUCT IMAGE VIEWER — 4-image swipe viewer (Studio Step 5)
+// ══════════════════════════════════════════════════════════════
+function ProductImageViewer({ product, fallbackSrc, designImgSrc, posX, posY, scale, rotation, textOn, textVal, textFont, textSize, textColor, colorToFilter, color, canvasFilter, garmentEmoji }) {
+  const frames = React.useMemo(() => {
+    if (product?.img_front || product?.img_back || product?.img_left || product?.img_right) {
+      return [
+        { key:'front', label:'Front', src: product.img_front || fallbackSrc },
+        { key:'right', label:'Right', src: product.img_right || fallbackSrc },
+        { key:'back',  label:'Back',  src: product.img_back  || fallbackSrc },
+        { key:'left',  label:'Left',  src: product.img_left  || fallbackSrc },
+      ].filter(f => f.src)
+    }
+    return [{ key:'front', label:'Front', src: fallbackSrc }]
+  }, [product, fallbackSrc])
+
+  const [idx, setIdx]       = React.useState(0)
+  const [saved, setSaved]   = React.useState(false)
+  const touchRef            = React.useRef({ startX: 0, startY: 0 })
+  const current             = frames[idx] || frames[0]
+  const showDesign          = current?.key === 'front'
+  const showDesignBack      = current?.key === 'back'
+
+  const prev = () => setIdx(i => (i - 1 + frames.length) % frames.length)
+  const next = () => setIdx(i => (i + 1) % frames.length)
+
+  const onTouchStart = e => {
+    touchRef.current.startX = e.touches[0].clientX
+    touchRef.current.startY = e.touches[0].clientY
+  }
+  const onTouchEnd = e => {
+    const dx = e.changedTouches[0].clientX - touchRef.current.startX
+    const dy = e.changedTouches[0].clientY - touchRef.current.startY
+    if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 40) {
+      dx < 0 ? next() : prev()
+    }
+  }
+
+  // Save preview
+  const savePreview = async () => {
+    try {
+      const canvas = document.createElement('canvas')
+      canvas.width = 800; canvas.height = 900
+      const ctx = canvas.getContext('2d')
+      ctx.fillStyle = '#ffffff'; ctx.fillRect(0,0,800,900)
+      const loadImg = src => new Promise(res => { const i = new Image(); i.crossOrigin='anonymous'; i.onload=()=>res(i); i.onerror=()=>res(null); i.src=src })
+      const gImg = await loadImg(current.src)
+      if (gImg) ctx.drawImage(gImg, 0, 50, 800, 800)
+      if (designImgSrc && showDesign) {
+        const dImg = await loadImg(designImgSrc)
+        if (dImg) {
+          const dw = (scale/100)*800
+          const dx = (posX/100)*800 - dw/2
+          const dy = (posY/100)*800 - dw/2 + 50
+          ctx.save(); ctx.translate(dx+dw/2, dy+dw/2); ctx.rotate(rotation*Math.PI/180)
+          ctx.drawImage(dImg, -dw/2, -dw/2, dw, dw); ctx.restore()
+        }
+      }
+      canvas.toBlob(blob => {
+        const url = URL.createObjectURL(blob)
+        const a = document.createElement('a'); a.href=url; a.download='drynn-preview.png'
+        a.click(); URL.revokeObjectURL(url)
+        setSaved(true); setTimeout(()=>setSaved(false),2500)
+      }, 'image/png')
+    } catch(e) { console.error('Save failed:',e) }
+  }
+
+  return (
+    <div style={{ maxWidth:420, margin:'0 auto' }}>
+
+      {/* ── Main image ── */}
+      <div
+        onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}
+        style={{ position:'relative', borderRadius:18, overflow:'hidden', background:'#fff',
+          boxShadow:'0 12px 48px rgba(0,0,0,.5)', userSelect:'none', touchAction:'pan-y', filter:canvasFilter }}>
+
+        {/* Garment */}
+        <img src={current.src} alt={current.label}
+          style={{ width:'100%', display:'block', filter:colorToFilter(color), minHeight:260, objectFit:'contain' }}
+          onError={e=>{ e.target.style.opacity='0.05' }} />
+
+        {/* Fallback emoji */}
+        <div style={{ position:'absolute', inset:0, display:'flex', alignItems:'center', justifyContent:'center',
+          fontSize:100, opacity:0.03, pointerEvents:'none' }}>{garmentEmoji}</div>
+
+        {/* Design overlay — front only */}
+        {designImgSrc && showDesign && (
+          <img src={designImgSrc} alt="design"
+            style={{ position:'absolute', top:`${posY}%`, left:`${posX}%`,
+              transform:`translate(-50%,-50%) rotate(${rotation}deg)`,
+              width:`${scale}%`, objectFit:'contain', pointerEvents:'none' }} />
+        )}
+        {/* Design overlay — back */}
+        {designImgSrc && showDesignBack && (
+          <img src={designImgSrc} alt="design"
+            style={{ position:'absolute', top:`${posY}%`, left:`${posX}%`,
+              transform:`translate(-50%,-50%) rotate(${rotation}deg)`,
+              width:`${scale}%`, objectFit:'contain', pointerEvents:'none', opacity:0.7 }} />
+        )}
+
+        {/* Text overlay */}
+        {textOn && textVal && showDesign && (
+          <div style={{ position:'absolute', top:'65%', left:'50%', transform:'translateX(-50%)',
+            fontFamily:textFont, fontSize:textSize, color:textColor, fontWeight:700,
+            textShadow:'0 1px 6px rgba(0,0,0,.4)', pointerEvents:'none', whiteSpace:'nowrap' }}>{textVal}</div>
+        )}
+
+        {/* Frame label badge */}
+        <div style={{ position:'absolute', bottom:12, left:12, background:'rgba(0,0,0,.55)',
+          color:'#fff', fontSize:10, fontWeight:700, letterSpacing:'.12em', textTransform:'uppercase',
+          padding:'4px 10px', borderRadius:20, backdropFilter:'blur(4px)' }}>
+          {current.label}
+        </div>
+
+        {/* Arrow buttons — only if >1 frame */}
+        {frames.length > 1 && (
+          <>
+            <button onClick={prev} style={{ position:'absolute', left:10, top:'50%', transform:'translateY(-50%)',
+              background:'rgba(0,0,0,.45)', border:'none', color:'#fff', width:36, height:36,
+              borderRadius:'50%', fontSize:18, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center',
+              backdropFilter:'blur(4px)' }}>‹</button>
+            <button onClick={next} style={{ position:'absolute', right:10, top:'50%', transform:'translateY(-50%)',
+              background:'rgba(0,0,0,.45)', border:'none', color:'#fff', width:36, height:36,
+              borderRadius:'50%', fontSize:18, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center',
+              backdropFilter:'blur(4px)' }}>›</button>
+          </>
+        )}
+      </div>
+
+      {/* ── Dot indicators ── */}
+      {frames.length > 1 && (
+        <div style={{ display:'flex', justifyContent:'center', gap:8, marginTop:14 }}>
+          {frames.map((f,i) => (
+            <button key={f.key} onClick={()=>setIdx(i)}
+              style={{ width: i===idx ? 22 : 8, height:8, borderRadius:4, border:'none', cursor:'pointer',
+                background: i===idx ? '#c8102e' : 'rgba(255,255,255,.25)', transition:'all .2s', padding:0 }} />
+          ))}
+        </div>
+      )}
+
+      {/* ── Thumbnail strip ── */}
+      {frames.length > 1 && (
+        <div style={{ display:'flex', gap:8, marginTop:14, justifyContent:'center' }}>
+          {frames.map((f,i) => (
+            <button key={f.key} onClick={()=>setIdx(i)}
+              style={{ width:72, height:72, borderRadius:10, overflow:'hidden', border:'2px solid',
+                borderColor: i===idx ? '#c8102e' : 'rgba(255,255,255,.15)',
+                background:'#fff', padding:0, cursor:'pointer', transition:'border-color .15s', flexShrink:0 }}>
+              <img src={f.src} alt={f.label}
+                style={{ width:'100%', height:'100%', objectFit:'contain', filter:colorToFilter(color) }}
+                onError={e=>{ e.target.style.opacity='0.1' }} />
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* ── Swipe hint ── */}
+      {frames.length > 1 && (
+        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginTop:12, padding:'0 4px' }}>
+          <span style={{ fontSize:11, color:'rgba(255,255,255,.35)', display:'flex', alignItems:'center', gap:4 }}>← Swipe left for next</span>
+          <span style={{ fontSize:11, color:'rgba(255,255,255,.35)', display:'flex', alignItems:'center', gap:4 }}>Swipe right for prev →</span>
+        </div>
+      )}
+
+      {/* ── Save button ── */}
+      <button onClick={savePreview}
+        style={{ display:'flex', alignItems:'center', gap:8, margin:'14px auto 0', padding:'11px 28px',
+          borderRadius:8, border:'1.5px solid rgba(255,255,255,.2)',
+          background: saved ? 'rgba(0,168,107,.15)' : 'rgba(255,255,255,.07)',
+          color: saved ? '#00a86b' : '#fff', fontSize:13, fontWeight:700, cursor:'pointer', transition:'all .2s' }}>
+        {saved ? '✓ Saved!' : '📥 Save Preview Image'}
+      </button>
+    </div>
+  )
+}
+
 // ══════════════════════════════════════════════════════════════
 // ══════════════════════════════════════════════════════════════
 // LIVE T-SHIRT PREVIEW  -  canvas-based, design on fabric
@@ -1126,32 +1306,18 @@ function StudioPage({ user, onNav }) {
         {step === 5 && (
           <div>
             <h2 style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:28, color:'#fff', letterSpacing:'.06em', marginBottom:4 }}>STEP 5 — PREVIEW YOUR DESIGN</h2>
-            <p style={{ fontSize:13, color:'rgba(255,255,255,.45)', marginBottom:12 }}>This is exactly how your design will look when printed. Pinch to zoom · Drag to pan.</p>
+            <p style={{ fontSize:13, color:'rgba(255,255,255,.45)', marginBottom:20 }}>Swipe or tap thumbnails to see all angles. Your design appears on front and back.</p>
 
-            {/* Front / Back toggle */}
-            <div style={{ display:'flex', gap:8, marginBottom:16, justifyContent:'center' }}>
-              {['front','back'].map(v => (
-                <button key={v} onClick={()=>setPreviewView(v)}
-                  style={{ padding:'8px 24px', borderRadius:6, fontSize:13, fontWeight:700, cursor:'pointer', border:'1.5px solid',
-                    borderColor: previewView===v ? '#c8102e' : 'rgba(255,255,255,.15)',
-                    background:  previewView===v ? '#c8102e' : 'rgba(255,255,255,.06)',
-                    color:'#fff', transition:'all .15s', opacity: v==='back' && !getMockupUrl(garmentType,'back') ? 0.4 : 1 }}
-                  disabled={v==='back' && !getMockupUrl(garmentType,'back')}
-                  title={v==='back' && !getMockupUrl(garmentType,'back') ? 'No back mockup uploaded yet' : ''}>
-                  {v === 'front' ? '👕 Front' : '🔙 Back'}
-                </button>
-              ))}
-            </div>
-
-            {/* Interactive flat mockup */}
-            <InteractiveMockup
-              garmentImgSrc={previewView === 'back' && getMockupUrl(garmentType,'back') ? getMockupUrl(garmentType,'back') : garmentImgSrc}
-              designImgSrc={previewView === 'front' ? designImgSrc : null}
-              color={color}
+            {/* 4-image swipe viewer */}
+            <ProductImageViewer
+              product={selectedProduct}
+              fallbackSrc={garmentImgSrc}
+              designImgSrc={designImgSrc}
               posX={posX} posY={posY} scale={scale} rotation={rotation}
-              textOn={previewView === 'front' ? textOn : false} textVal={textVal} textFont={textFont}
+              textOn={textOn} textVal={textVal} textFont={textFont}
               textSize={textSize} textColor={textColor}
               colorToFilter={colorToFilter}
+              color={color}
               canvasFilter={canvasFilter}
               garmentEmoji={GARMENT_EMOJI[garmentType]}
             />
@@ -1172,7 +1338,7 @@ function StudioPage({ user, onNav }) {
             </div>
 
             <div style={{ display:'flex', gap:10, marginTop:20, justifyContent:'center' }}>
-              <button onClick={()=>{ setStep(4); setPreviewView('front') }} style={{ padding:'12px 20px', borderRadius:8, border:'1px solid rgba(255,255,255,.15)', background:'transparent', color:'rgba(255,255,255,.5)', fontSize:13, fontWeight:600, cursor:'pointer' }}>← Edit</button>
+              <button onClick={()=>setStep(4)} style={{ padding:'12px 20px', borderRadius:8, border:'1px solid rgba(255,255,255,.15)', background:'transparent', color:'rgba(255,255,255,.5)', fontSize:13, fontWeight:600, cursor:'pointer' }}>← Edit</button>
               <button onClick={()=>setStep(6)} className="btn-primary" style={{ padding:'13px 36px', fontSize:14 }}>Place Order →</button>
             </div>
           </div>

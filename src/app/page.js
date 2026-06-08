@@ -1651,12 +1651,24 @@ function HomePage({ user, onNav, cart, onAddToCart }) {
             <button className="btn-secondary" style={{ padding:'9px 18px', fontSize:12 }} onClick={()=>onNav('products')}>View All →</button>
           </div>
           <div className="products-grid" style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:16 }}>
-            {products.slice(0,4).map(p => (
-              <div key={p.id} className="product-card" onClick={()=>onNav('products')}>
+            {products.slice(0,4).map(p => {
+              const pViews = [p.img_front||p.image_url, p.img_back, p.img_left, p.img_right].filter(Boolean)
+              const [vi, setVi] = React.useState(0)
+              return (
+              <div key={p.id} className="product-card" onClick={()=>onNav('products')}
+                onMouseEnter={()=>{ if(pViews.length>1) setVi(1) }}
+                onMouseLeave={()=>setVi(0)}>
                 <div style={{ background:'#f8f8f8', height:200, display:'flex', alignItems:'center', justifyContent:'center', fontSize:80, position:'relative', overflow:'hidden' }}>
-                  {p.image_url ? <img src={p.image_url} alt={p.name} style={{ width:'100%', height:'100%', objectFit:'contain' }} /> : <svg width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="#ddd" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"><path d="M20.38 3.46L16 2a4 4 0 01-8 0L3.62 3.46a2 2 0 00-1.34 2.23l.58 3.57a1 1 0 00.99.84H6v10c0 1.1.9 2 2 2h8a2 2 0 002-2V10h2.15a1 1 0 00.99-.84l.58-3.57a2 2 0 00-1.34-2.23z"/></svg>}
+                  {pViews[vi] ? <img src={pViews[vi]} alt={p.name} style={{ width:'100%', height:'100%', objectFit:'contain', transition:'opacity .2s' }} /> : <svg width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="#ddd" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"><path d="M20.38 3.46L16 2a4 4 0 01-8 0L3.62 3.46a2 2 0 00-1.34 2.23l.58 3.57a1 1 0 00.99.84H6v10c0 1.1.9 2 2 2h8a2 2 0 002-2V10h2.15a1 1 0 00.99-.84l.58-3.57a2 2 0 00-1.34-2.23z"/></svg>}
                   <div style={{ position:'absolute', top:10, left:10, background:p.tagColor||p.tag_color||"#c8102e", color:'#fff', fontSize:9, fontWeight:700, letterSpacing:'.1em', textTransform:'uppercase', padding:'3px 8px', borderRadius:2 }}>{p.tag}</div>
                   <div style={{ position:'absolute', top:10, right:10, background:'#e8f5e9', color:'#00a86b', fontSize:10, fontWeight:700, padding:'3px 8px', borderRadius:2 }}>{disc(p.price,p.mrp)}% off</div>
+                  {pViews.length > 1 && (
+                    <div style={{ position:'absolute', bottom:6, left:0, right:0, display:'flex', justifyContent:'center', gap:4 }}>
+                      {pViews.map((_,i)=>(
+                        <div key={i} style={{ width:5, height:5, borderRadius:'50%', background: vi===i?'#c8102e':'rgba(0,0,0,.25)', transition:'background .2s' }} />
+                      ))}
+                    </div>
+                  )}
                 </div>
                 <div style={{ padding:'12px 14px' }}>
                   <p style={{ fontSize:13, fontWeight:600, marginBottom:4, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{p.name}</p>
@@ -1672,7 +1684,7 @@ function HomePage({ user, onNav, cart, onAddToCart }) {
                     onClick={e=>{ e.stopPropagation(); onAddToCart(p) }}>Add to Cart</button>
                 </div>
               </div>
-            ))}
+            )})}
           </div>
         </div>
       </div>
@@ -1734,6 +1746,18 @@ function ProductDetailPage({ product, onBack, onAddToCart }) {
   const [color,    setColor]    = useState(product.color || '#ffffff')
   const [qty,      setQty]      = useState(1)
   const [added,    setAdded]    = useState(false)
+  const [activeView, setActiveView] = useState(0)
+
+  // Build view list from available images
+  const views = React.useMemo(() => {
+    const all = [
+      { label:'Front',      src: product.img_front || product.image_url },
+      { label:'Back',       src: product.img_back },
+      { label:'Left Side',  src: product.img_left },
+      { label:'Right Side', src: product.img_right },
+    ].filter(v => v.src)
+    return all.length ? all : [{ label:'Front', src: product.image_url }]
+  }, [product])
 
   const handleAdd = () => {
     onAddToCart({ ...product, size, color, qty })
@@ -1753,12 +1777,30 @@ function ProductDetailPage({ product, onBack, onAddToCart }) {
 
       <div style={{ maxWidth:900, margin:'0 auto', padding:'24px 20px' }}>
         <div style={{ display:'flex', gap:32, flexWrap:'wrap' }}>
-          {/* Image */}
+          {/* Image gallery */}
           <div style={{ flex:'0 0 auto', width:'100%', maxWidth:340 }}>
-            <div style={{ background:'#f8f8f8', borderRadius:12, height:320, display:'flex', alignItems:'center', justifyContent:'center', fontSize:140, position:'relative', overflow:'hidden' }}>
-              {product.image_url ? <img src={product.image_url} alt={product.name} style={{ width:'100%', height:'100%', objectFit:'contain' }} /> : <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="#ddd" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round"><path d="M20.38 3.46L16 2a4 4 0 01-8 0L3.62 3.46a2 2 0 00-1.34 2.23l.58 3.57a1 1 0 00.99.84H6v10c0 1.1.9 2 2 2h8a2 2 0 002-2V10h2.15a1 1 0 00.99-.84l.58-3.57a2 2 0 00-1.34-2.23z"/></svg>}
+            {/* Main view */}
+            <div style={{ background:'#f8f8f8', borderRadius:12, height:320, display:'flex', alignItems:'center', justifyContent:'center', position:'relative', overflow:'hidden', marginBottom:10 }}>
+              {views[activeView]?.src
+                ? <img src={views[activeView].src} alt={views[activeView].label} style={{ width:'100%', height:'100%', objectFit:'contain', transition:'opacity .2s' }} />
+                : <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="#ddd" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round"><path d="M20.38 3.46L16 2a4 4 0 01-8 0L3.62 3.46a2 2 0 00-1.34 2.23l.58 3.57a1 1 0 00.99.84H6v10c0 1.1.9 2 2 2h8a2 2 0 002-2V10h2.15a1 1 0 00.99-.84l.58-3.57a2 2 0 00-1.34-2.23z"/></svg>}
               <div style={{ position:'absolute', top:14, left:14, background:product.tagColor||product.tag_color||"#c8102e", color:'#fff', fontSize:9, fontWeight:700, letterSpacing:'.1em', textTransform:'uppercase', padding:'4px 10px', borderRadius:3 }}>{product.tag}</div>
+              {views.length > 1 && (
+                <div style={{ position:'absolute', bottom:10, right:12, background:'rgba(0,0,0,.45)', color:'#fff', fontSize:10, fontWeight:700, padding:'3px 8px', borderRadius:20 }}>{views[activeView].label}</div>
+              )}
             </div>
+            {/* Thumbnails */}
+            {views.length > 1 && (
+              <div style={{ display:'flex', gap:8 }}>
+                {views.map((v, i) => (
+                  <button key={i} onClick={()=>setActiveView(i)}
+                    style={{ flex:1, background:'#f8f8f8', border:`2px solid ${activeView===i?'#c8102e':'#e8e8e8'}`, borderRadius:8, padding:4, cursor:'pointer', overflow:'hidden', transition:'border-color .15s' }}>
+                    <img src={v.src} alt={v.label} style={{ width:'100%', aspectRatio:'1', objectFit:'contain', display:'block' }} />
+                    <div style={{ fontSize:8, fontWeight:700, textAlign:'center', color:activeView===i?'#c8102e':'#aaa', marginTop:2, letterSpacing:'.04em', textTransform:'uppercase' }}>{v.label}</div>
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Info */}
@@ -1918,15 +1960,27 @@ function ProductsPage({ onAddToCart, onNav }) {
           </div>
         ) : (
           <div className="products-grid" style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:16 }}>
-            {sorted.map(p => (
-              <div key={p.id} className="product-card" onClick={()=>setSelectedProduct(p)}>
+            {sorted.map(p => {
+              const pViews = [p.img_front||p.image_url, p.img_back, p.img_left, p.img_right].filter(Boolean)
+              const [vi, setVi] = React.useState(0)
+              return (
+              <div key={p.id} className="product-card" onClick={()=>setSelectedProduct(p)}
+                onMouseEnter={()=>{ if(pViews.length>1) setVi(1) }}
+                onMouseLeave={()=>setVi(0)}>
                 <div style={{ background:'#f8f8f8', height:200, display:'flex', alignItems:'center', justifyContent:'center', fontSize:80, position:'relative', overflow:'hidden' }}>
-                  {p.image_url ? <img src={p.image_url} alt={p.name} style={{ width:'100%', height:'100%', objectFit:'contain' }} /> : <svg width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="#ddd" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"><path d="M20.38 3.46L16 2a4 4 0 01-8 0L3.62 3.46a2 2 0 00-1.34 2.23l.58 3.57a1 1 0 00.99.84H6v10c0 1.1.9 2 2 2h8a2 2 0 002-2V10h2.15a1 1 0 00.99-.84l.58-3.57a2 2 0 00-1.34-2.23z"/></svg>}
+                  {pViews[vi] ? <img src={pViews[vi]} alt={p.name} style={{ width:'100%', height:'100%', objectFit:'contain', transition:'opacity .2s' }} /> : <svg width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="#ddd" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"><path d="M20.38 3.46L16 2a4 4 0 01-8 0L3.62 3.46a2 2 0 00-1.34 2.23l.58 3.57a1 1 0 00.99.84H6v10c0 1.1.9 2 2 2h8a2 2 0 002-2V10h2.15a1 1 0 00.99-.84l.58-3.57a2 2 0 00-1.34-2.23z"/></svg>}
                   <div style={{ position:'absolute', top:10, left:10, background:p.tagColor||p.tag_color||"#c8102e", color:'#fff', fontSize:9, fontWeight:700, letterSpacing:'.1em', textTransform:'uppercase', padding:'3px 8px', borderRadius:2 }}>{p.tag}</div>
                   <button onClick={e=>{ e.stopPropagation(); setWishlist(w=>w.includes(p.id)?w.filter(x=>x!==p.id):[...w,p.id]) }}
                     style={{ position:'absolute', top:8, right:8, background:'#fff', border:'none', borderRadius:'50%', width:30, height:30, display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', fontSize:16, boxShadow:'0 2px 8px rgba(0,0,0,.1)' }}>
                     {wishlist.includes(p.id)?'♥':'♡'}
                   </button>
+                  {pViews.length > 1 && (
+                    <div style={{ position:'absolute', bottom:6, left:0, right:0, display:'flex', justifyContent:'center', gap:4 }}>
+                      {pViews.map((_,i)=>(
+                        <div key={i} style={{ width:5, height:5, borderRadius:'50%', background: vi===i?'#c8102e':'rgba(0,0,0,.25)', transition:'background .2s' }} />
+                      ))}
+                    </div>
+                  )}
                 </div>
                 <div style={{ padding:'12px 14px' }}>
                   <p style={{ fontSize:13, fontWeight:600, marginBottom:4 }}>{p.name}</p>
@@ -1942,7 +1996,7 @@ function ProductsPage({ onAddToCart, onNav }) {
                   <button className="btn-primary" style={{ width:'100%', padding:'9px', fontSize:12 }} onClick={e=>{ e.stopPropagation(); onAddToCart(p) }}>Add to Cart</button>
                 </div>
               </div>
-            ))}
+            )})}
           </div>
         )}
       </div>

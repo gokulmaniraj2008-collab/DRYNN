@@ -2412,6 +2412,7 @@ function CartPage({ cart, onRemove, onClear, user, onNav }) {
           size: item.size || form.size || 'Various',
           qty: item.qty,
           design_file: item.isCustom ? (cd?.designUrls ? JSON.stringify(cd.designUrls) : '') : 'catalog-order',
+          side_pos: item.isCustom ? (cd?.sidePos ? JSON.stringify(cd.sidePos) : null) : null,
           status: 'Received',
           payment_status: 'Unpaid',
           total: grandTotal,
@@ -3112,6 +3113,28 @@ function AdminOrderPreview({ order }) {
   const activeSides = ['front','back','left','right'].filter(s => designs[s])
   const [activeIdx, setActiveIdx] = React.useState(0)
 
+  // Parse saved position data — use exact customer positions if available
+  const DEFAULT_POS = { posX: 50, posY: 38, scale: 38 }
+  let sidePos = { front: DEFAULT_POS, back: DEFAULT_POS, left: DEFAULT_POS, right: DEFAULT_POS }
+  if (o.side_pos) {
+    try { const p = JSON.parse(o.side_pos); if (typeof p === 'object') sidePos = { ...sidePos, ...p } } catch(e) {}
+  }
+
+  const getStyle = (side) => {
+    const p = sidePos[side] || DEFAULT_POS
+    // posY/posX are % of the print area. The garment img has ~10% top collar space,
+    // so we add 6% offset. Scale maps directly to width%.
+    return {
+      position: 'absolute',
+      top:  `${p.posY * 0.9 + 6}%`,
+      left: `${p.posX}%`,
+      transform: `translate(-50%,-50%) rotate(${p.rotation || 0}deg)`,
+      width: `${p.scale}%`,
+      objectFit: 'contain',
+      pointerEvents: 'none',
+    }
+  }
+
   if (activeSides.length === 0) return null
   const activeSide = activeSides[activeIdx] || 'front'
   const color = o.color || '#ffffff'
@@ -3126,7 +3149,7 @@ function AdminOrderPreview({ order }) {
           style={{ width:'100%', display:'block', filter:colorToFilter(color) }}
           onError={e=>{ e.target.src = GARMENT_DEFAULTS[garmentKey] }} />
         <img src={designs[activeSide]} alt="design"
-          style={{ position:'absolute', top:'38%', left:'50%', transform:'translate(-50%,-50%)', width:'42%', objectFit:'contain', pointerEvents:'none' }}
+          style={getStyle(activeSide)}
           onError={e=>{ e.target.style.display='none' }} />
         <div style={{ position:'absolute', top:8, right:8, display:'flex', alignItems:'center', gap:4, background:'rgba(255,255,255,.92)', borderRadius:20, padding:'3px 8px', fontSize:9, fontWeight:700 }}>
           <div style={{ width:10, height:10, borderRadius:'50%', background:color, border:'1px solid #ccc' }} />
@@ -3142,7 +3165,7 @@ function AdminOrderPreview({ order }) {
                 style={{ width:'100%', height:'100%', objectFit:'contain', filter:colorToFilter(color) }}
                 onError={e=>e.target.src=GARMENT_DEFAULTS[garmentKey]} />
               <img src={designs[side]} alt="d"
-                style={{ position:'absolute', top:'38%', left:'50%', transform:'translate(-50%,-50%)', width:'42%', objectFit:'contain', pointerEvents:'none' }}
+                style={getStyle(side)}
                 onError={e=>e.target.style.display='none'} />
               <div style={{ position:'absolute', bottom:0, left:0, right:0, textAlign:'center', fontSize:8, fontWeight:700, color:i===activeIdx?'#c8102e':'#888', background:'rgba(255,255,255,.88)', padding:'2px 0' }}>
                 {SIDE_LABELS[side]}
@@ -3785,7 +3808,7 @@ function AdminPanel({ onBack }) {
                           <div style={{ position:'relative', borderRadius:8, overflow:'hidden' }}>
                             <img src={gi} alt={gk} style={{ width:'100%', display:'block' }} onError={e=>e.target.style.opacity='0.1'} />
                             <img src={pd.front || Object.values(pd)[0] || ''} alt="design"
-                              style={{ position:'absolute', top:'38%', left:'50%', transform:'translate(-50%,-50%)', width:'42%', objectFit:'contain', pointerEvents:'none' }}
+                              style={{ position:'absolute', top:'44%', left:'50%', transform:'translate(-50%,-50%)', width:'38%', objectFit:'contain', pointerEvents:'none' }}
                               onError={e=>e.target.style.display='none'} />
                           </div>
                           {sides.length > 1 && (
@@ -4530,7 +4553,7 @@ function CreateGroupOrder({ user, selectedProduct, onChangeProduct }) {
               style={{ width:220, height:220, objectFit:'contain', display:'block' }} />
             {created.design_url && (
               <img src={created.design_url} alt="design"
-                style={{ position:'absolute', top:'38%', left:'50%', transform:'translate(-50%,-50%)', width:'42%', objectFit:'contain', pointerEvents:'none' }} />
+                style={{ position:'absolute', top:'44%', left:'50%', transform:'translate(-50%,-50%)', width:'38%', objectFit:'contain', pointerEvents:'none' }} />
             )}
           </div>
           <div style={{ fontSize:12, color:'#555', marginTop:6, fontWeight:600 }}>{created.garment}</div>
@@ -4621,7 +4644,7 @@ function CreateGroupOrder({ user, selectedProduct, onChangeProduct }) {
                     onError={e=>e.target.style.opacity='0.1'} />
                   {designImg && (
                     <img src={designImg} alt="design overlay"
-                      style={{ position:'absolute', top:'38%', left:'50%', transform:'translate(-50%,-50%)', width:'42%', objectFit:'contain', pointerEvents:'none' }} />
+                      style={{ position:'absolute', top:'44%', left:'50%', transform:'translate(-50%,-50%)', width:'38%', objectFit:'contain', pointerEvents:'none' }} />
                   )}
                   {!designImg && (
                     <div style={{ position:'absolute', inset:0, display:'flex', alignItems:'center', justifyContent:'center', fontSize:9, color:'#ccc', pointerEvents:'none' }}>design here</div>
@@ -4763,7 +4786,7 @@ function JoinGroupOrder({ user }) {
                     onError={e=>e.target.style.opacity='0.1'} />
                   {group.design_url && (
                     <img src={group.design_url} alt="design"
-                      style={{ position:'absolute', top:'38%', left:'50%', transform:'translate(-50%,-50%)', width:'42%', objectFit:'contain', pointerEvents:'none' }} />
+                      style={{ position:'absolute', top:'44%', left:'50%', transform:'translate(-50%,-50%)', width:'38%', objectFit:'contain', pointerEvents:'none' }} />
                   )}
                 </div>
                 {group.product_price && <div style={{ fontSize:13, fontWeight:700, color:'#c8102e', marginTop:4 }}>₹{Number(group.product_price).toLocaleString()} per piece</div>}

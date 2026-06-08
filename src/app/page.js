@@ -547,7 +547,7 @@ function InteractiveMockup({ garmentImgSrc, designImgSrc, color, posX, posY, sca
 // ══════════════════════════════════════════════════════════════
 // PRODUCT IMAGE VIEWER — Flipkart-style 360° drag viewer (Studio Step 5)
 // ══════════════════════════════════════════════════════════════
-function ProductImageViewer({ product, fallbackSrc, designImgSrc, sideImgs, sidePos, posX, posY, scale, rotation, textOn, textVal, textFont, textSize, textColor, textPosX=50, textPosY=75, textRot=0, colorToFilter, color, canvasFilter, garmentEmoji }) {
+function ProductImageViewer({ product, fallbackSrc, designImgSrc, sideImgs, sidePos, posX, posY, scale, rotation, textOn, textVal, textFont, textSize, textColor, textPosX=50, textPosY=75, textRot=0, colorToFilter, color, canvasFilter, garmentEmoji, user }) {
   // sideImgs/sidePos take priority (Step 5 multi-side); fall back to single designImgSrc
   const getDesign = key => sideImgs ? sideImgs[key] : (key==='front' ? designImgSrc : null)
   const getPos    = key => sidePos  ? sidePos[key]  : { posX, posY, scale, rotation }
@@ -616,58 +616,92 @@ function ProductImageViewer({ product, fallbackSrc, designImgSrc, sideImgs, side
 
   const onUp = React.useCallback(() => { setDragging(false); dragX.current = null }, [])
 
-  // Save preview — uses the currently visible side + its design/position
+  // Save preview — renders ALL available sides, downloads each to device,
+  // uploads each to Cloudinary, then saves all preview URLs to Supabase drynn_previews
   const savePreview = async () => {
     try {
-      const canvas = document.createElement('canvas')
-      canvas.width = 800; canvas.height = 900
-      const ctx = canvas.getContext('2d')
-      ctx.fillStyle = '#ffffff'; ctx.fillRect(0,0,800,900)
       const loadImg = src => new Promise(res => {
         const i = new Image(); i.crossOrigin='anonymous'
         i.onload=()=>res(i); i.onerror=()=>res(null); i.src=src
       })
 
-      // Draw garment for the CURRENT visible side
-      const gImg = await loadImg(current.src)
-      if (gImg) ctx.drawImage(gImg, 0, 50, 800, 800)
+      // Render one side to a blob
+      const renderSide = (frame) => new Promise(async (resolve) => {
+        const canvas = document.createElement('canvas')
+        canvas.width = 800; canvas.height = 900
+        const ctx = canvas.getContext('2d')
+        ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, 800, 900)
 
-      // Get design and position for the CURRENT side (not always front)
-      const currentDesign = getDesign(current.key)
-      const currentP      = getPos(current.key)
+        const gImg = await loadImg(frame.src)
+        if (gImg) ctx.drawImage(gImg, 0, 50, 800, 800)
 
-      if (currentDesign) {
-        const dImg = await loadImg(currentDesign)
-        if (dImg) {
-          const dw = (currentP.scale/100) * 800
-          const dx = (currentP.posX/100) * 800 - dw/2
-          const dy = (currentP.posY/100) * 800 - dw/2 + 50
-          ctx.save()
-          ctx.translate(dx + dw/2, dy + dw/2)
-          ctx.rotate((currentP.rotation || 0) * Math.PI / 180)
-          ctx.drawImage(dImg, -dw/2, -dw/2, dw, dw)
-          ctx.restore()
+        const d = getDesign(frame.key)
+        const p = getPos(frame.key)
+        if (d) {
+          const dImg = await loadImg(d)
+          if (dImg) {
+            const dw = (p.scale/100) * 800
+            const dx = (p.posX/100) * 800 - dw/2
+            const dy = (p.posY/100) * 800 - dw/2 + 50
+            ctx.save()
+            ctx.translate(dx + dw/2, dy + dw/2)
+            ctx.rotate((p.rotation || 0) * Math.PI / 180)
+            ctx.drawImage(dImg, -dw/2, -dw/2, dw, dw)
+            ctx.restore()
+          }
         }
-      }
 
-      // Text overlay (front side only)
-      if (textOn && textVal && current.key === 'front') {
-        ctx.font = 'bold ' + textSize + 'px ' + textFont
-        ctx.fillStyle = textColor; ctx.textAlign = 'center'
-        ctx.fillText(textVal, 400, (textPosY/100)*800 + 50)
-      }
+        if (textOn && textVal && frame.key === 'front') {
+          ctx.font = 'bold ' + textSize + 'px ' + textFont
+          ctx.fillStyle = textColor; ctx.textAlign = 'center'
+          ctx.fillText(textVal, 400, (textPosY/100)*800 + 50)
+        }
 
-      canvas.toBlob(async blob => {
+        canvas.toBlob(blob => resolve(blob), 'image/png')
+      })
+
+      // Render all frames in parallel
+      const blobs = await Promise.all(frames.map(f => renderSide(f)))
+
+      // 1 - Download all sides to customer device
+      blobs.forEach((blob, i) => {
         const url = URL.createObjectURL(blob)
         const a = document.createElement('a')
-        a.href = url; a.download = 'drynn-preview-' + current.key + '.png'
-        a.click(); URL.revokeObjectURL(url)
+        a.href = url; a.download = 'drynn-preview-' + frames[i].key + '.png'
+        a.click()
+        URL.revokeObjectURL(url)
+      })
+
+      // 2 - Upload all sides to Cloudinary + save URLs to Supabase drynn_previews
+      const sessionId = Date.now().toString(36)
+      const previewUrls = {}
+      await Promise.all(blobs.map(async (blob, i) => {
+        const key  = frames[i].key
+        const file = new File([blob], 'drynn-preview-' + key + '-' + sessionId + '.png', { type:'image/png' })
         try {
-          const file = new File([blob], 'drynn-preview-' + current.key + '.png', { type:'image/png' })
-          await uploadToCloudinary(file, () => {})
-        } catch(uploadErr) { console.error('Cloudinary upload failed:', uploadErr) }
-        setSaved(true); setTimeout(()=>setSaved(false), 2500)
-      }, 'image/png')
+          const cloudUrl = await uploadToCloudinary(file, () => {})
+          previewUrls[key] = cloudUrl
+        } catch(uploadErr) {
+          console.error('[Preview] Cloudinary upload failed for ' + key + ':', uploadErr)
+        }
+      }))
+
+      if (Object.keys(previewUrls).length > 0) {
+        const { error: dbErr } = await supabase.from('drynn_previews').insert({
+          user_id:       user?.id   || null,
+          user_email:    user?.email || null,
+          product_name:  product?.name || '',
+          color,
+          preview_front: previewUrls['front'] || null,
+          preview_back:  previewUrls['back']  || null,
+          preview_left:  previewUrls['left']  || null,
+          preview_right: previewUrls['right'] || null,
+          created_at:    new Date().toISOString(),
+        })
+        if (dbErr) console.error('[Preview] Supabase save failed:', dbErr.message)
+      }
+
+      setSaved(true); setTimeout(() => setSaved(false), 2500)
     } catch(e) { console.error('Save failed:', e) }
   }
 
@@ -1656,6 +1690,7 @@ function StudioPage({ user, onNav, onAddToCart }) {
               color={color}
               canvasFilter={canvasFilter}
               garmentEmoji={GARMENT_EMOJI[garmentType]}
+              user={user}
             />
 
             {/* Summary strip */}

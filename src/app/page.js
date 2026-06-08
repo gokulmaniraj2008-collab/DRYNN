@@ -554,6 +554,7 @@ function StudioPage({ user, onNav }) {
   // ── Step tracking ─────────────────────────────────────────
   const STEPS_LIST = ['Product','Colour','Design','Customise','Preview','Order']
   const [step, setStep] = useState(1)
+  const [previewView, setPreviewView] = useState('front')
 
   // ── Step 1: Product ───────────────────────────────────────
   const [selectedProduct, setSelectedProduct] = useState(null)
@@ -1125,15 +1126,30 @@ function StudioPage({ user, onNav }) {
         {step === 5 && (
           <div>
             <h2 style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:28, color:'#fff', letterSpacing:'.06em', marginBottom:4 }}>STEP 5 — PREVIEW YOUR DESIGN</h2>
-            <p style={{ fontSize:13, color:'rgba(255,255,255,.45)', marginBottom:16 }}>This is exactly how your design will look when printed. Pinch to zoom · Drag to pan.</p>
+            <p style={{ fontSize:13, color:'rgba(255,255,255,.45)', marginBottom:12 }}>This is exactly how your design will look when printed. Pinch to zoom · Drag to pan.</p>
+
+            {/* Front / Back toggle */}
+            <div style={{ display:'flex', gap:8, marginBottom:16, justifyContent:'center' }}>
+              {['front','back'].map(v => (
+                <button key={v} onClick={()=>setPreviewView(v)}
+                  style={{ padding:'8px 24px', borderRadius:6, fontSize:13, fontWeight:700, cursor:'pointer', border:'1.5px solid',
+                    borderColor: previewView===v ? '#c8102e' : 'rgba(255,255,255,.15)',
+                    background:  previewView===v ? '#c8102e' : 'rgba(255,255,255,.06)',
+                    color:'#fff', transition:'all .15s', opacity: v==='back' && !getMockupUrl(garmentType,'back') ? 0.4 : 1 }}
+                  disabled={v==='back' && !getMockupUrl(garmentType,'back')}
+                  title={v==='back' && !getMockupUrl(garmentType,'back') ? 'No back mockup uploaded yet' : ''}>
+                  {v === 'front' ? '👕 Front' : '🔙 Back'}
+                </button>
+              ))}
+            </div>
 
             {/* Interactive flat mockup */}
             <InteractiveMockup
-              garmentImgSrc={garmentImgSrc}
-              designImgSrc={designImgSrc}
+              garmentImgSrc={previewView === 'back' && getMockupUrl(garmentType,'back') ? getMockupUrl(garmentType,'back') : garmentImgSrc}
+              designImgSrc={previewView === 'front' ? designImgSrc : null}
               color={color}
               posX={posX} posY={posY} scale={scale} rotation={rotation}
-              textOn={textOn} textVal={textVal} textFont={textFont}
+              textOn={previewView === 'front' ? textOn : false} textVal={textVal} textFont={textFont}
               textSize={textSize} textColor={textColor}
               colorToFilter={colorToFilter}
               canvasFilter={canvasFilter}
@@ -1156,7 +1172,7 @@ function StudioPage({ user, onNav }) {
             </div>
 
             <div style={{ display:'flex', gap:10, marginTop:20, justifyContent:'center' }}>
-              <button onClick={()=>setStep(4)} style={{ padding:'12px 20px', borderRadius:8, border:'1px solid rgba(255,255,255,.15)', background:'transparent', color:'rgba(255,255,255,.5)', fontSize:13, fontWeight:600, cursor:'pointer' }}>← Edit</button>
+              <button onClick={()=>{ setStep(4); setPreviewView('front') }} style={{ padding:'12px 20px', borderRadius:8, border:'1px solid rgba(255,255,255,.15)', background:'transparent', color:'rgba(255,255,255,.5)', fontSize:13, fontWeight:600, cursor:'pointer' }}>← Edit</button>
               <button onClick={()=>setStep(6)} className="btn-primary" style={{ padding:'13px 36px', fontSize:14 }}>Place Order →</button>
             </div>
           </div>
@@ -2670,7 +2686,6 @@ function AdminPanel({ onBack }) {
       category: p.category, emoji: p.emoji,
       rating: Number(p.rating), reviews: Number(p.reviews),
       image_url: p.image_url || null,
-      studio_only: p.studio_only || false,
     }, { onConflict: 'id' })
     if (error) {
       alert('Save failed: ' + error.message)
@@ -2696,7 +2711,6 @@ function AdminPanel({ onBack }) {
       emoji: newProduct.emoji,
       rating: Number(newProduct.rating) || 4.5,
       reviews: Number(newProduct.reviews) || 0,
-      studio_only: newProduct.studio_only || false,
     }
     const { error } = await supabase.from('drynn_products').insert(product)
     if (error) { alert('Failed to add product: ' + error.message); setAddingProduct(false); return }

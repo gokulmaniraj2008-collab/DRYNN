@@ -1927,6 +1927,20 @@ function ProductsPage({ onAddToCart, onNav }) {
         </div>
       </div>
 
+      {/* Group Order Banner */}
+      <div style={{ background:'linear-gradient(90deg,#00a86b,#0a7a4a)', padding:'0 20px' }}>
+        <div style={{ maxWidth:1100, margin:'0 auto' }}>
+          <div style={{ display:'flex', alignItems:'center', gap:14, padding:'14px 0', cursor:'pointer' }} onClick={()=>onNav('group')}>
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.9)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink:0 }}><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
+            <div style={{ flex:1 }}>
+              <span style={{ fontSize:13, fontWeight:800, color:'#fff', letterSpacing:'.02em' }}>GROUP ORDER? </span>
+              <span style={{ fontSize:12, color:'rgba(255,255,255,.8)' }}>Bulk discount for 10+ pieces · Teams, colleges, events</span>
+            </div>
+            <span style={{ color:'rgba(255,255,255,.7)', fontSize:18, flexShrink:0 }}>›</span>
+          </div>
+        </div>
+      </div>
+
       {/* Search + Tabs + Sort */}
       <div style={{ background:'#fff', borderBottom:'1px solid #f0f0f0', position:'sticky', top:56, zIndex:10 }}>
         {/* Search bar */}
@@ -2253,6 +2267,8 @@ function CartPage({ cart, onRemove, onClear, user, onNav }) {
           qty: item.qty,
           design_file: item.isCustom ? (cd?.designUrls?.front || '') : 'catalog-order',
           status: 'Received',
+          payment_status: 'Unpaid',
+          total: grandTotal,
           placed_at: placedAt,
         })
         if (dbErr) {
@@ -3015,6 +3031,11 @@ function AdminPanel({ onBack }) {
   const [sampleFile, setSampleFile]   = useState(null)
   const [sampleUploadPct, setSamplePct] = useState(0)
   const [sampleSaving, setSampleSaving] = useState(false)
+  // Group orders state
+  const [groupOrders, setGroupOrders]         = useState([])
+  const [groupOrdersLoading, setGroupOrdersLoading] = useState(false)
+  const [expandedGroup, setExpandedGroup]     = useState(null)
+  const [groupMembers, setGroupMembers]       = useState({}) // { group_code: [...members] }
 
   const showToast = (m) => { setToast(m); setTimeout(()=>setToast(''),2500) }
 
@@ -3040,6 +3061,29 @@ function AdminPanel({ onBack }) {
     const { data, error } = await supabase.from('drynn_samples').select('*').order('created_at', { ascending: false })
     if (!error) setSamples(data || [])
     setSamplesLoading(false)
+  }
+
+  const loadGroupOrders = async () => {
+    setGroupOrdersLoading(true)
+    const { data, error } = await supabase.from('drynn_group_orders').select('*').order('created_at', { ascending: false })
+    if (!error && data) setGroupOrders(data)
+    else if (error) console.error('[Admin] Group orders load error:', error.message)
+    setGroupOrdersLoading(false)
+  }
+
+  const loadGroupMembers = async (group_code) => {
+    if (groupMembers[group_code]) { setExpandedGroup(expandedGroup===group_code?null:group_code); return }
+    const { data, error } = await supabase.from('drynn_group_members').select('*').eq('group_code', group_code).order('joined_at', { ascending: true })
+    if (!error && data) setGroupMembers(m => ({ ...m, [group_code]: data }))
+    setExpandedGroup(expandedGroup===group_code ? null : group_code)
+  }
+
+  const deleteGroupOrder = async (id, group_code) => {
+    if (!confirm('Delete this group order and all its members?')) return
+    await supabase.from('drynn_group_members').delete().eq('group_code', group_code)
+    const { error } = await supabase.from('drynn_group_orders').delete().eq('id', id)
+    if (!error) { setGroupOrders(g => g.filter(x => x.id !== id)); showToast('Group order deleted') }
+    else alert('Delete failed: ' + error.message)
   }
 
   const handleSampleFile = e => {
@@ -3094,6 +3138,13 @@ function AdminPanel({ onBack }) {
   const updateOrderStatus = async (id, status) => {
     const { error } = await supabase.from('drynn_orders').update({ status }).eq('id', id)
     if (!error) { setOrders(o => o.map(x => x.id===id ? {...x, status} : x)); showToast('Status updated') }
+  }
+
+  const togglePaymentStatus = async (id, current) => {
+    const next = current === 'Paid' ? 'Unpaid' : 'Paid'
+    const { error } = await supabase.from('drynn_orders').update({ payment_status: next }).eq('id', id)
+    if (!error) { setOrders(o => o.map(x => x.id===id ? {...x, payment_status: next} : x)); showToast(`Marked as ${next}`) }
+    else alert('Update failed: ' + error.message)
   }
 
   const deleteOrder = async (id) => {
@@ -3201,6 +3252,8 @@ function AdminPanel({ onBack }) {
           <button onClick={()=>{setTab('products');loadProducts()}} style={{ flexShrink:0, padding:'6px 16px', borderRadius:4, border:'none', cursor:'pointer', background:tab==='products'?'#c8102e':'#222', color:'#fff', fontSize:12, fontWeight:700 }}>Products</button>
           <button onClick={()=>{setTab('samples');loadSamples()}} style={{ flexShrink:0, padding:'6px 16px', borderRadius:4, border:'none', cursor:'pointer', background:tab==='samples'?'#c8102e':'#222', color:'#fff', fontSize:12, fontWeight:700 }}>Samples</button>
           <button onClick={()=>{setTab('uploads');loadOrders()}} style={{ flexShrink:0, padding:'6px 16px', borderRadius:4, border:'none', cursor:'pointer', background:tab==='uploads'?'#c8102e':'#222', color:'#fff', fontSize:12, fontWeight:700 }}>Uploads</button>
+          <button onClick={()=>{setTab('analytics');loadOrders()}} style={{ flexShrink:0, padding:'6px 16px', borderRadius:4, border:'none', cursor:'pointer', background:tab==='analytics'?'#c8102e':'#222', color:'#fff', fontSize:12, fontWeight:700 }}>📊 Analytics</button>
+          <button onClick={()=>{setTab('grouporders');loadGroupOrders()}} style={{ flexShrink:0, padding:'6px 16px', borderRadius:4, border:'none', cursor:'pointer', background:tab==='grouporders'?'#c8102e':'#222', color:'#fff', fontSize:12, fontWeight:700 }}>👥 Group Orders</button>
         </div>
       </div>
 
@@ -3256,6 +3309,7 @@ function AdminPanel({ onBack }) {
                           <div style={{ fontSize:11, color:'#888' }}>{o.phone} · {o.garment} · {o.size} · Qty {o.qty}</div>
                           <div style={{ fontSize:10, color:'#aaa', marginTop:2 }}>{o.address}</div>
                           <div style={{ fontSize:10, color:'#aaa' }}>{new Date(o.placed_at||o.created_at).toLocaleString('en-IN')}</div>
+                          {o.total && <div style={{ fontSize:12, fontWeight:700, color:'#0a1f5d', marginTop:4 }}>₹{Number(o.total).toLocaleString()}</div>}
                           {o.design_file && o.design_file.startsWith('http') && (
                             <a href={o.design_file} target="_blank" rel="noopener noreferrer"
                               style={{ fontSize:10, color:'#0a1f5d', textDecoration:'underline', display:'inline-block', marginTop:3 }}>
@@ -3267,6 +3321,20 @@ function AdminPanel({ onBack }) {
                           <span style={{ fontSize:11, fontWeight:700, padding:'4px 10px', borderRadius:50, background:STATUS_COLORS[o.status||'Received']+'22', color:STATUS_COLORS[o.status||'Received'] }}>
                             {o.status||'Received'}
                           </span>
+                          {/* Payment status badge + toggle */}
+                          <button onClick={()=>togglePaymentStatus(o.id, o.payment_status||'Unpaid')}
+                            style={{ padding:'4px 10px', fontSize:11, fontWeight:700, borderRadius:50, border:'none', cursor:'pointer',
+                              background: o.payment_status==='Paid' ? '#e6f9f0' : '#fff3f3',
+                              color: o.payment_status==='Paid' ? '#00a86b' : '#c8102e' }}>
+                            {o.payment_status==='Paid' ? '✓ Paid' : '✗ Unpaid'}
+                          </button>
+                          {/* WhatsApp quick-dial */}
+                          {o.phone && (
+                            <a href={`https://wa.me/91${o.phone.replace(/\D/g,'').replace(/^91/,'')}`} target="_blank" rel="noopener noreferrer"
+                              style={{ padding:'6px 12px', fontSize:11, borderRadius:4, border:'1px solid #00a86b', color:'#00a86b', background:'none', cursor:'pointer', fontWeight:700, textDecoration:'none', display:'flex', alignItems:'center', gap:4 }}>
+                              💬 WhatsApp
+                            </a>
+                          )}
                           <button onClick={()=>setEditOrder(o.id)} style={{ padding:'6px 14px', fontSize:11, borderRadius:4, border:'1px solid #0a1f5d', color:'#0a1f5d', background:'none', cursor:'pointer', fontWeight:600 }}>Edit Status</button>
                           <button onClick={()=>deleteOrder(o.id)} style={{ padding:'6px 12px', fontSize:11, borderRadius:4, border:'1px solid #fdd', color:'#c8102e', background:'none', cursor:'pointer', fontWeight:600 }}>Delete</button>
                         </div>
@@ -3480,6 +3548,183 @@ function AdminPanel({ onBack }) {
             )}
           </div>
         )}
+
+        {/* GROUP ORDERS TAB */}
+        {tab==='grouporders' && (
+          <div>
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16 }}>
+              <h2 style={{ fontSize:18, fontWeight:700 }}>👥 Group Orders</h2>
+              <button className="btn-secondary" style={{ padding:'8px 16px', fontSize:12 }} onClick={loadGroupOrders}>↻ Refresh</button>
+            </div>
+            {groupOrdersLoading ? (
+              <div style={{ textAlign:'center', padding:40, color:'#888' }}>Loading…</div>
+            ) : groupOrders.length === 0 ? (
+              <div style={{ textAlign:'center', padding:60, background:'#fff', borderRadius:12, color:'#888', fontSize:13 }}>No group orders yet.</div>
+            ) : (
+              <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
+                {groupOrders.map(g => {
+                  const members = groupMembers[g.group_code] || []
+                  const isOpen = expandedGroup === g.group_code
+                  return (
+                    <div key={g.id} style={{ background:'#fff', borderRadius:10, border:'1px solid #e8e8e8', overflow:'hidden', boxShadow:'0 1px 4px rgba(0,0,0,.04)' }}>
+                      {/* Group header row */}
+                      <div style={{ padding:'16px 20px', display:'flex', gap:14, alignItems:'center', flexWrap:'wrap' }}>
+                        <div style={{ flex:1, minWidth:180 }}>
+                          <div style={{ fontSize:14, fontWeight:700, marginBottom:3 }}>{g.title}</div>
+                          <div style={{ fontSize:11, color:'#888' }}>{g.garment} · Organizer: {g.organizer_name} · {g.organizer_phone}</div>
+                          <div style={{ fontSize:10, color:'#aaa', marginTop:2 }}>
+                            Code: <strong style={{ color:'#0a1f5d', letterSpacing:'.08em' }}>{g.group_code}</strong>
+                            {g.deadline && ` · Deadline: ${new Date(g.deadline).toLocaleDateString('en-IN')}`}
+                            {g.created_at && ` · Created: ${new Date(g.created_at).toLocaleDateString('en-IN')}`}
+                          </div>
+                        </div>
+                        <div style={{ display:'flex', alignItems:'center', gap:10, flexWrap:'wrap' }}>
+                          <span style={{ fontSize:11, fontWeight:700, padding:'4px 10px', borderRadius:50,
+                            background: g.status==='open'?'#e6f9f0':'#f4f4f4',
+                            color: g.status==='open'?'#00a86b':'#888' }}>
+                            {g.status==='open'?'● Open':'○ Closed'}
+                          </span>
+                          {/* WhatsApp organizer */}
+                          {g.organizer_phone && (
+                            <a href={`https://wa.me/91${g.organizer_phone.replace(/\D/g,'').replace(/^91/,'')}`}
+                              target="_blank" rel="noopener noreferrer"
+                              style={{ padding:'6px 12px', fontSize:11, borderRadius:4, border:'1px solid #00a86b', color:'#00a86b', background:'none', fontWeight:700, textDecoration:'none', display:'flex', alignItems:'center', gap:4 }}>
+                              💬 WhatsApp
+                            </a>
+                          )}
+                          <button onClick={()=>loadGroupMembers(g.group_code)}
+                            style={{ padding:'6px 14px', fontSize:11, borderRadius:4, border:'1px solid #0a1f5d', color:'#0a1f5d', background:'none', cursor:'pointer', fontWeight:600 }}>
+                            {isOpen ? '▲ Hide Members' : `▼ View Members${members.length?` (${members.length})`:''}`}
+                          </button>
+                          <button onClick={()=>deleteGroupOrder(g.id, g.group_code)}
+                            style={{ padding:'6px 12px', fontSize:11, borderRadius:4, border:'1px solid #fdd', color:'#c8102e', background:'none', cursor:'pointer', fontWeight:600 }}>Delete</button>
+                        </div>
+                      </div>
+
+                      {/* Members list */}
+                      {isOpen && (
+                        <div style={{ borderTop:'1px solid #f0f0f0', background:'#fafafa', padding:'14px 20px' }}>
+                          {members.length === 0 ? (
+                            <p style={{ fontSize:13, color:'#aaa', textAlign:'center', padding:'12px 0' }}>No members have joined yet.</p>
+                          ) : (
+                            <div>
+                              <div style={{ fontSize:11, fontWeight:700, color:'#888', letterSpacing:'.1em', textTransform:'uppercase', marginBottom:10 }}>
+                                {members.length} Member{members.length!==1?'s':''}
+                              </div>
+                              <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+                                {members.map((m,i) => (
+                                  <div key={m.id||i} style={{ display:'flex', gap:12, alignItems:'center', background:'#fff', borderRadius:8, padding:'10px 14px', border:'1px solid #eee', flexWrap:'wrap' }}>
+                                    <div style={{ width:28, height:28, borderRadius:'50%', background:'#0a1f5d', color:'#fff', display:'flex', alignItems:'center', justifyContent:'center', fontSize:12, fontWeight:700, flexShrink:0 }}>
+                                      {i+1}
+                                    </div>
+                                    <div style={{ flex:1, minWidth:140 }}>
+                                      <div style={{ fontSize:13, fontWeight:700 }}>{m.member_name}</div>
+                                      <div style={{ fontSize:11, color:'#888' }}>{m.member_phone} · Size: <strong>{m.size}</strong></div>
+                                      {m.address && <div style={{ fontSize:10, color:'#aaa', marginTop:1 }}>{m.address}</div>}
+                                    </div>
+                                    <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+                                      <span style={{ fontSize:11, fontWeight:700, padding:'3px 9px', borderRadius:50,
+                                        background: m.payment_status==='paid'?'#e6f9f0':'#fff3f3',
+                                        color: m.payment_status==='paid'?'#00a86b':'#c8102e' }}>
+                                        {m.payment_status==='paid'?'✓ Paid':'✗ Unpaid'}
+                                      </span>
+                                      {m.member_phone && (
+                                        <a href={`https://wa.me/91${m.member_phone.replace(/\D/g,'').replace(/^91/,'')}`}
+                                          target="_blank" rel="noopener noreferrer"
+                                          style={{ fontSize:11, padding:'3px 9px', borderRadius:4, border:'1px solid #00a86b', color:'#00a86b', fontWeight:700, textDecoration:'none' }}>
+                                          💬
+                                        </a>
+                                      )}
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ANALYTICS TAB */}
+        {tab==='analytics' && (() => {
+          const totalOrders    = orders.length
+          const paid           = orders.filter(o=>o.payment_status==='Paid').length
+          const unpaid         = totalOrders - paid
+          const revenue        = orders.filter(o=>o.payment_status==='Paid').reduce((s,o)=>s+Number(o.total||0),0)
+          const pending        = orders.filter(o=>o.payment_status!=='Paid').reduce((s,o)=>s+Number(o.total||0),0)
+          const delivered      = orders.filter(o=>o.status==='Delivered').length
+          const statusCounts   = ORDER_STATUSES.map(s=>({ s, count: orders.filter(o=>(o.status||'Received')===s).length }))
+
+          const dayMap = {}
+          for (let i=6;i>=0;i--) {
+            const d = new Date(); d.setDate(d.getDate()-i)
+            dayMap[d.toLocaleDateString('en-IN',{day:'2-digit',month:'short'})] = 0
+          }
+          orders.forEach(o => {
+            const d = new Date(o.placed_at||o.created_at)
+            const key = d.toLocaleDateString('en-IN',{day:'2-digit',month:'short'})
+            if (key in dayMap) dayMap[key]++
+          })
+          const days = Object.entries(dayMap)
+          const maxDay = Math.max(...days.map(([,v])=>v), 1)
+
+          return (
+            <div>
+              <h2 style={{ fontSize:18, fontWeight:700, marginBottom:20 }}>📊 Analytics & Revenue</h2>
+
+              <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(160px,1fr))', gap:12, marginBottom:24 }}>
+                {[
+                  { label:'Total Orders',      value:totalOrders,                               color:'#0a1f5d', bg:'#f0f3ff' },
+                  { label:'Revenue Collected', value:`₹${revenue.toLocaleString('en-IN')}`,     color:'#00a86b', bg:'#e6f9f0' },
+                  { label:'Pending Payment',   value:`₹${pending.toLocaleString('en-IN')}`,     color:'#c8102e', bg:'#fff3f3' },
+                  { label:'Paid Orders',       value:paid,                                      color:'#00a86b', bg:'#e6f9f0' },
+                  { label:'Unpaid Orders',     value:unpaid,                                    color:'#c8102e', bg:'#fff3f3' },
+                  { label:'Delivered',         value:delivered,                                 color:'#9b59b6', bg:'#f5eeff' },
+                ].map(c => (
+                  <div key={c.label} style={{ background:c.bg, borderRadius:10, padding:'16px 18px' }}>
+                    <div style={{ fontSize:10, fontWeight:700, letterSpacing:'.1em', textTransform:'uppercase', color:'#888', marginBottom:6 }}>{c.label}</div>
+                    <div style={{ fontSize:22, fontWeight:800, color:c.color }}>{c.value}</div>
+                  </div>
+                ))}
+              </div>
+
+              <div style={{ background:'#fff', borderRadius:12, padding:'20px', marginBottom:16, border:'1px solid #e8e8e8' }}>
+                <div style={{ fontSize:13, fontWeight:700, marginBottom:16 }}>Orders by Status</div>
+                <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
+                  {statusCounts.map(({s,count}) => (
+                    <div key={s} style={{ display:'flex', alignItems:'center', gap:12 }}>
+                      <div style={{ width:80, fontSize:12, fontWeight:600, color:STATUS_COLORS[s] }}>{s}</div>
+                      <div style={{ flex:1, background:'#f4f4f4', borderRadius:4, height:18, overflow:'hidden' }}>
+                        <div style={{ height:'100%', width:`${totalOrders?(count/totalOrders)*100:0}%`, background:STATUS_COLORS[s], borderRadius:4, transition:'width .4s' }} />
+                      </div>
+                      <div style={{ width:28, fontSize:12, fontWeight:700, textAlign:'right' }}>{count}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div style={{ background:'#fff', borderRadius:12, padding:'20px', border:'1px solid #e8e8e8' }}>
+                <div style={{ fontSize:13, fontWeight:700, marginBottom:16 }}>Orders — Last 7 Days</div>
+                <div style={{ display:'flex', alignItems:'flex-end', gap:8, height:100 }}>
+                  {days.map(([day, count]) => (
+                    <div key={day} style={{ flex:1, display:'flex', flexDirection:'column', alignItems:'center', gap:4 }}>
+                      <div style={{ fontSize:11, fontWeight:700, color:'#0a1f5d' }}>{count||''}</div>
+                      <div style={{ width:'100%', background:'#c8102e', borderRadius:'4px 4px 0 0', height:`${(count/maxDay)*72}px`, minHeight:count?4:0, transition:'height .4s' }} />
+                      <div style={{ fontSize:9, color:'#aaa', textAlign:'center', lineHeight:1.2 }}>{day}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )
+        })()}
+
       </div>
 
       {toast && <div className="toast" style={{ bottom:20 }}>{toast}</div>}

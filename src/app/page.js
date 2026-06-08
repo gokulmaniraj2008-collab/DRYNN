@@ -911,6 +911,135 @@ function StudioPage({ user, onNav, onAddToCart }) {
 
   // ── Step 5 (Preview): 3D ─────────────────────────────────
   // Step 5 preview handled by InteractiveMockup component
+  const [printSheetUrl,  setPrintSheetUrl]  = useState(null)
+  const [sheetGenerating, setSheetGenerating] = useState(false)
+
+  // ── generatePrintSheet ────────────────────────────────────
+  // Composites all 4 sides into a single 4-panel PNG, uploads to
+  // Cloudinary, and saves the URL to printSheetUrl state.
+  const generatePrintSheet = async () => {
+    setSheetGenerating(true)
+    try {
+      // Resolve garment images for all 4 sides
+      const SIDE_KEYS = ['front','back','left','right']
+      const SIDE_LABELS_PRINT = { front:'FRONT', back:'BACK', left:'LEFT', right:'RIGHT' }
+
+      // Panel: 500 × 560 each. Sheet: 2000 × 1120 (2×2 grid) + 40px bottom label strip
+      const PANEL_W = 500
+      const PANEL_H = 560
+      const COLS    = 2
+      const ROWS    = 2
+      const LABEL_H = 40
+      const SHEET_W = PANEL_W * COLS   // 1000
+      const SHEET_H = PANEL_H * ROWS + LABEL_H  // 1160
+
+      const canvas = document.createElement('canvas')
+      canvas.width  = SHEET_W
+      canvas.height = SHEET_H
+      const ctx = canvas.getContext('2d')
+
+      // White background
+      ctx.fillStyle = '#ffffff'
+      ctx.fillRect(0, 0, SHEET_W, SHEET_H)
+
+      const loadImg = src => new Promise(res => {
+        const img = new Image()
+        img.crossOrigin = 'anonymous'
+        img.onload = () => res(img)
+        img.onerror = () => res(null)
+        img.src = src
+      })
+
+      // Draw each panel
+      for (let i = 0; i < SIDE_KEYS.length; i++) {
+        const side  = SIDE_KEYS[i]
+        const col   = i % COLS
+        const row   = Math.floor(i / COLS)
+        const baseX = col * PANEL_W
+        const baseY = row * PANEL_H
+
+        // Thin grid divider
+        ctx.fillStyle = '#e8e8e8'
+        if (col > 0) ctx.fillRect(baseX, baseY, 1, PANEL_H)
+        if (row > 0) ctx.fillRect(baseX, baseY, PANEL_W, 1)
+
+        // Garment image for this side
+        const garmentUrl = selectedProduct
+          ? (selectedProduct[`img_${side}`] || selectedProduct.image_url || null)
+          : null
+        const fallbackUrl = GARMENT_DEFAULTS[garmentType]
+
+        if (garmentUrl || fallbackUrl) {
+          const gImg = await loadImg(garmentUrl || fallbackUrl)
+          if (gImg) ctx.drawImage(gImg, baseX + 40, baseY + 40, PANEL_W - 80, PANEL_H - 80)
+        }
+
+        // Design overlay for this side
+        const designUrl = sideImgs[side]
+        if (designUrl) {
+          const dImg = await loadImg(designUrl)
+          if (dImg) {
+            const pos   = sidePos[side]
+            const dw    = (pos.scale / 100) * (PANEL_W - 80)
+            const dx    = baseX + 40 + (pos.posX / 100) * (PANEL_W - 80) - dw / 2
+            const dy    = baseY + 40 + (pos.posY / 100) * (PANEL_H - 80) - dw / 2
+            ctx.save()
+            ctx.translate(dx + dw / 2, dy + dw / 2)
+            ctx.rotate((pos.rotation || 0) * Math.PI / 180)
+            ctx.drawImage(dImg, -dw / 2, -dw / 2, dw, dw)
+            ctx.restore()
+          }
+        }
+
+        // Text overlay (front side only)
+        if (side === 'front' && textOn && textVal) {
+          ctx.font      = `bold ${Math.round(textSize * (PANEL_W / 420))}px ${textFont}`
+          ctx.fillStyle = textColor
+          ctx.textAlign = 'center'
+          ctx.fillText(textVal, baseX + PANEL_W / 2, baseY + (textPosY / 100) * PANEL_H + 40)
+        }
+
+        // Side label inside each panel (top-left corner)
+        ctx.fillStyle = 'rgba(0,0,0,0.55)'
+        ctx.fillRect(baseX + 8, baseY + 8, 68, 22)
+        ctx.fillStyle = '#ffffff'
+        ctx.font      = 'bold 11px Arial'
+        ctx.textAlign = 'left'
+        ctx.fillText(SIDE_LABELS_PRINT[side], baseX + 14, baseY + 23)
+
+        // Shade panels with no design
+        if (!sideImgs[side]) {
+          ctx.fillStyle = 'rgba(0,0,0,0.04)'
+          ctx.fillRect(baseX + 1, baseY + 1, PANEL_W - 2, PANEL_H - 2)
+        }
+      }
+
+      // Bottom label strip
+      const garmentLabel = selectedProduct ? selectedProduct.name : garmentType
+      const customerName  = form.name || 'Customer'
+      ctx.fillStyle = '#0a0a0a'
+      ctx.fillRect(0, PANEL_H * ROWS, SHEET_W, LABEL_H)
+      ctx.fillStyle = '#ffffff'
+      ctx.font      = 'bold 13px Arial'
+      ctx.textAlign = 'center'
+      ctx.fillText(
+        `DRYNN PRINT SHEET — ${customerName} — ${garmentLabel} — ${color}`,
+        SHEET_W / 2,
+        PANEL_H * ROWS + 26
+      )
+
+      // Convert to blob and upload to Cloudinary
+      const blob = await new Promise(res => canvas.toBlob(res, 'image/png'))
+      const file = new File([blob], `drynn-printsheet-${Date.now()}.png`, { type: 'image/png' })
+      const url  = await uploadToCloudinary(file, () => {})
+      setPrintSheetUrl(url)
+    } catch (e) {
+      console.error('[PrintSheet] Generation failed:', e)
+    } finally {
+      setSheetGenerating(false)
+    }
+  }
+
   // ── Step 6: Order ─────────────────────────────────────────
   const [size,       setSize]     = useState('M')
   const [form,       setForm]     = useState({ name:user?.user_metadata?.full_name||'', phone:'', qty:1, address:'' })
@@ -945,14 +1074,15 @@ function StudioPage({ user, onNav, onAddToCart }) {
         image_url: designUrls.front || selectedProduct?.image_url || null,
         isCustom:  true,
         customDetails: {
-          garment:    garmentLabel,
-          sides:      sidesLabel,
+          garment:       garmentLabel,
+          sides:         sidesLabel,
           designUrls,
           sidePos,
-          name:       form.name,
-          phone:      form.phone,
-          address:    form.address,
+          name:          form.name,
+          phone:         form.phone,
+          address:       form.address,
           textOn, textVal,
+          printSheetUrl: printSheetUrl || null,
         },
       }
       onAddToCart(customItem)
@@ -994,6 +1124,13 @@ function StudioPage({ user, onNav, onAddToCart }) {
     ? (selectedProduct.category==='Hoodies'?'Hoodie':selectedProduct.category==='Polos'?'Polo':selectedProduct.category==='Joggers'?'Joggers':'T-Shirt')
     : 'T-Shirt'
   const garmentImgSrc = selectedProduct?.image_url || getMockupUrl(garmentType,'front') || GARMENT_DEFAULTS[garmentType]
+
+  // Auto-generate print sheet when customer reaches Step 5
+  useEffect(() => {
+    if (step === 5 && !printSheetUrl && !sheetGenerating) {
+      generatePrintSheet()
+    }
+  }, [step]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const canGoNext = () => {
     if (step===1) return true  // product optional
@@ -2277,6 +2414,7 @@ function CartPage({ cart, onRemove, onClear, user, onNav }) {
           design_sides: item.isCustom ? (cd?.sides || '') : '',
           custom_text:  item.isCustom ? (cd?.textOn ? cd?.textVal : '') : '',
           side_pos:     item.isCustom ? (cd?.sidePos || null) : null,
+          print_sheet:  item.isCustom ? (cd?.printSheetUrl || null) : null,
           product_name: item.name,
           product_image: item.image_url || item.img_front || '',
           product_category: item.category || '',
@@ -3418,6 +3556,21 @@ function AdminPanel({ onBack }) {
                               <div style={{ fontSize:11, color:'#888', marginBottom:2 }}>👕 {o.garment} · 🎨 {o.color} · 📏 {o.size} · Qty {o.qty}</div>
                               {o.design_sides && <div style={{ fontSize:11, color:'#c8102e', marginBottom:2 }}>🖨️ Print sides: {o.design_sides}</div>}
                               {o.custom_text  && <div style={{ fontSize:11, color:'#0a1f5d', marginBottom:2 }}>✍️ Text: "{o.custom_text}"</div>}
+                              {/* ── PRINT SHEET (most important for printer) ── */}
+                              {o.print_sheet && (
+                                <div style={{ margin:'8px 0 6px', background:'#0a0a0a', borderRadius:8, overflow:'hidden', border:'2px solid #c8102e' }}>
+                                  <div style={{ background:'#c8102e', padding:'4px 10px', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+                                    <span style={{ fontSize:10, fontWeight:700, letterSpacing:'.12em', textTransform:'uppercase', color:'#fff' }}>🖨️ Print-Ready Sheet</span>
+                                    <a href={o.print_sheet} target="_blank" rel="noopener noreferrer"
+                                      style={{ fontSize:10, fontWeight:700, color:'#fff', textDecoration:'underline', cursor:'pointer' }}>Open Full Size ↗</a>
+                                  </div>
+                                  <a href={o.print_sheet} target="_blank" rel="noopener noreferrer">
+                                    <img src={o.print_sheet} alt="Print Sheet"
+                                      style={{ width:'100%', display:'block', maxHeight:200, objectFit:'contain', background:'#fff' }}
+                                      onError={e=>e.target.style.display='none'} />
+                                  </a>
+                                </div>
+                              )}
                               {(() => {
                                 // Show placement info per side if saved
                                 const pos = o.side_pos || (o.custom_details && o.custom_details.sidePos)

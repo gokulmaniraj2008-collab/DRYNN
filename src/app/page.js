@@ -616,59 +616,37 @@ function ProductImageViewer({ product, fallbackSrc, designImgSrc, sideImgs, side
 
   const onUp = React.useCallback(() => { setDragging(false); dragX.current = null }, [])
 
-  // Save preview — uses the currently visible side + its design/position
+  // Save preview
   const savePreview = async () => {
     try {
       const canvas = document.createElement('canvas')
       canvas.width = 800; canvas.height = 900
       const ctx = canvas.getContext('2d')
       ctx.fillStyle = '#ffffff'; ctx.fillRect(0,0,800,900)
-      const loadImg = src => new Promise(res => {
-        const i = new Image(); i.crossOrigin='anonymous'
-        i.onload=()=>res(i); i.onerror=()=>res(null); i.src=src
-      })
-
-      // Draw garment for the CURRENT visible side
+      const loadImg = src => new Promise(res => { const i = new Image(); i.crossOrigin='anonymous'; i.onload=()=>res(i); i.onerror=()=>res(null); i.src=src })
       const gImg = await loadImg(current.src)
       if (gImg) ctx.drawImage(gImg, 0, 50, 800, 800)
-
-      // Get design and position for the CURRENT side (not always front)
-      const currentDesign = getDesign(current.key)
-      const currentP      = getPos(current.key)
-
-      if (currentDesign) {
-        const dImg = await loadImg(currentDesign)
+      if (designImgSrc && showDesign) {
+        const dImg = await loadImg(designImgSrc)
         if (dImg) {
-          const dw = (currentP.scale/100) * 800
-          const dx = (currentP.posX/100) * 800 - dw/2
-          const dy = (currentP.posY/100) * 800 - dw/2 + 50
-          ctx.save()
-          ctx.translate(dx + dw/2, dy + dw/2)
-          ctx.rotate((currentP.rotation || 0) * Math.PI / 180)
-          ctx.drawImage(dImg, -dw/2, -dw/2, dw, dw)
-          ctx.restore()
+          const dw = (scale/100)*800
+          const dx = (posX/100)*800 - dw/2
+          const dy = (posY/100)*800 - dw/2 + 50
+          ctx.save(); ctx.translate(dx+dw/2, dy+dw/2); ctx.rotate(rotation*Math.PI/180)
+          ctx.drawImage(dImg, -dw/2, -dw/2, dw, dw); ctx.restore()
         }
       }
-
-      // Text overlay (front side only)
-      if (textOn && textVal && current.key === 'front') {
-        ctx.font = 'bold ' + textSize + 'px ' + textFont
-        ctx.fillStyle = textColor; ctx.textAlign = 'center'
-        ctx.fillText(textVal, 400, (textPosY/100)*800 + 50)
-      }
-
       canvas.toBlob(async blob => {
         const url = URL.createObjectURL(blob)
-        const a = document.createElement('a')
-        a.href = url; a.download = 'drynn-preview-' + current.key + '.png'
+        const a = document.createElement('a'); a.href=url; a.download='drynn-preview.png'
         a.click(); URL.revokeObjectURL(url)
         try {
-          const file = new File([blob], 'drynn-preview-' + current.key + '.png', { type:'image/png' })
+          const file = new File([blob], 'drynn-preview.png', { type: 'image/png' })
           await uploadToCloudinary(file, () => {})
         } catch(uploadErr) { console.error('Cloudinary upload failed:', uploadErr) }
-        setSaved(true); setTimeout(()=>setSaved(false), 2500)
+        setSaved(true); setTimeout(()=>setSaved(false),2500)
       }, 'image/png')
-    } catch(e) { console.error('Save failed:', e) }
+    } catch(e) { console.error('Save failed:',e) }
   }
 
   return (
@@ -917,6 +895,62 @@ function StudioPage({ user, onNav, onAddToCart }) {
   const [status,     setStatus]   = useState('')
   const [uploadPct,  setUploadPct]= useState(0)
 
+  // ── Placement zone helper ─────────────────────────────────
+  const getPlacementZone = (posX, posY, scale) => {
+    const x = Number(posX), y = Number(posY), s = Number(scale)
+    if (y < 30) return s > 50 ? 'Full Front Top' : 'Chest ' + (x < 40 ? 'Left' : x > 60 ? 'Right' : 'Center')
+    if (y < 55) return s > 55 ? 'Full Front' : 'Chest ' + (x < 40 ? 'Left' : x > 60 ? 'Right' : 'Center')
+    if (y < 75) return s > 50 ? 'Full Front Bottom' : 'Stomach ' + (x < 40 ? 'Left' : x > 60 ? 'Right' : 'Center')
+    return 'Lower Front'
+  }
+
+  // ── Canvas snapshot helper ────────────────────────────────
+  const captureSnapshot = (side) => {
+    return new Promise((resolve) => {
+      const pImg = sideImgs[side]
+      if (!pImg) { resolve(null); return }
+      const pp = sidePos[side]
+      const canvas = document.createElement('canvas')
+      canvas.width = 400; canvas.height = 480
+      const ctx = canvas.getContext('2d')
+      // Draw garment background color
+      ctx.fillStyle = color || '#ffffff'
+      ctx.fillRect(0, 0, 400, 480)
+      const garmentImg = new Image(); garmentImg.crossOrigin = 'anonymous'
+      const sp = selectedProduct
+      garmentImg.src = (sp ? (sp[`img_${side}`] || sp.image_url) : null) || GARMENT_DEFAULTS[garmentType] || ''
+      const drawDesign = () => {
+        const designImg = new Image(); designImg.crossOrigin = 'anonymous'
+        designImg.src = pImg
+        designImg.onload = () => {
+          const cx = (pp.posX / 100) * 400, cy = (pp.posY / 100) * 480
+          const w = (pp.scale / 100) * 400
+          const h = w * (designImg.height / (designImg.width || 1))
+          ctx.save()
+          ctx.translate(cx, cy)
+          ctx.rotate((pp.rotation * Math.PI) / 180)
+          ctx.drawImage(designImg, -w/2, -h/2, w, h)
+          ctx.restore()
+          resolve(canvas.toDataURL('image/jpeg', 0.75))
+        }
+        designImg.onerror = () => resolve(null)
+      }
+      garmentImg.onload = () => { ctx.drawImage(garmentImg, 0, 0, 400, 480); drawDesign() }
+      garmentImg.onerror = () => drawDesign()
+      if (!garmentImg.src) drawDesign()
+    })
+  }
+
+  // ── Upload snapshot (base64) to Cloudinary ────────────────
+  const uploadSnapshot = async (base64, side) => {
+    if (!base64) return null
+    try {
+      const blob = await (await fetch(base64)).blob()
+      const file = new File([blob], `snapshot_${side}_${Date.now()}.jpg`, { type: 'image/jpeg' })
+      return await uploadToCloudinary(file, () => {})
+    } catch { return null }
+  }
+
   const handleSubmit = async () => {
     if (!form.name||!form.phone||!form.address) { alert('Please fill all fields.'); return }
     setStatus('uploading')
@@ -930,9 +964,55 @@ function StudioPage({ user, onNav, onAddToCart }) {
           designUrls[side] = sideSamples[side].image_url
         }
       }
+
+      // Capture canvas snapshots for all sides that have a design
       setStatus('saving')
+      const snapshots = {}, placementZones = {}, coords = {}
+      for (const side of SIDES) {
+        if (sideImgs[side]) {
+          const base64 = await captureSnapshot(side)
+          snapshots[side] = await uploadSnapshot(base64, side)
+          const pp = sidePos[side]
+          placementZones[side] = getPlacementZone(pp.posX, pp.posY, pp.scale)
+          coords[side] = { x: pp.posX, y: pp.posY, w: pp.scale, r: pp.rotation }
+        }
+      }
+
       const garmentLabel = selectedProduct ? selectedProduct.name : 'Custom Garment'
       const sidesLabel   = SIDES.filter(s=>sideImgs[s]).map(s=>SIDE_LABELS[s]).join(', ')
+
+      // Save studio order directly to Supabase with full placement data
+      await supabase.from('drynn_orders').insert({
+        id: crypto.randomUUID(),
+        user_id: user?.id || null,
+        name: form.name,
+        phone: form.phone,
+        address: form.address,
+        garment: garmentLabel,
+        size,
+        color,
+        qty: Number(form.qty) || 1,
+        order_type: 'custom',
+        design_file:  designUrls.front  || null,
+        design_back:  designUrls.back   || null,
+        design_left:  designUrls.left   || null,
+        design_right: designUrls.right  || null,
+        snapshot_front: snapshots.front  || null,
+        snapshot_back:  snapshots.back   || null,
+        snapshot_left:  snapshots.left   || null,
+        snapshot_right: snapshots.right  || null,
+        placement_zone_front: placementZones.front || null,
+        placement_zone_back:  placementZones.back  || null,
+        placement_zone_left:  placementZones.left  || null,
+        placement_zone_right: placementZones.right || null,
+        coords_front: coords.front || null,
+        coords_back:  coords.back  || null,
+        coords_left:  coords.left  || null,
+        coords_right: coords.right || null,
+        status: 'Received',
+        placed_at: new Date().toISOString(),
+      }).catch(e => console.error('[Studio] Supabase save error:', e.message))
+
       // Build a cart item representing this custom order
       const customItem = {
         id:        `custom_${Date.now()}`,
@@ -948,6 +1028,9 @@ function StudioPage({ user, onNav, onAddToCart }) {
           garment:    garmentLabel,
           sides:      sidesLabel,
           designUrls,
+          snapshots,
+          placementZones,
+          coords,
           name:       form.name,
           phone:      form.phone,
           address:    form.address,
@@ -3328,17 +3411,27 @@ function AdminPanel({ onBack }) {
 
                             {/* Design images for custom / Product image for catalog */}
                             {isCustom && designSides.length > 0 ? (
-                              <div style={{ display:'flex', gap:8, flexShrink:0 }}>
-                                {designSides.map(s => (
-                                  <a key={s.label} href={s.url} target="_blank" rel="noopener noreferrer" style={{ textDecoration:'none' }}>
-                                    <div style={{ textAlign:'center' }}>
-                                      <img src={s.url} alt={s.label}
-                                        style={{ width:56, height:56, objectFit:'contain', borderRadius:8, border:'1.5px solid #e0e0e0', background:'#f8f8f8', display:'block' }}
-                                        onError={e=>e.target.style.display='none'} />
-                                      <div style={{ fontSize:9, color:'#888', marginTop:3, fontWeight:600 }}>{s.label}</div>
-                                    </div>
-                                  </a>
-                                ))}
+                              <div style={{ display:'flex', gap:8, flexShrink:0, flexWrap:'wrap' }}>
+                                {designSides.map(s => {
+                                  const sideKey = s.label.toLowerCase()
+                                  const zone   = o['placement_zone_' + sideKey]
+                                  const snap   = o['snapshot_' + sideKey]
+                                  const coords = o['coords_' + sideKey]
+                                  const displayUrl = snap || s.url
+                                  return (
+                                    <a key={s.label} href={s.url} target="_blank" rel="noopener noreferrer" style={{ textDecoration:'none' }}>
+                                      <div style={{ textAlign:'center', maxWidth:72 }}>
+                                        <img src={displayUrl} alt={s.label}
+                                          style={{ width:72, height:72, objectFit:'contain', borderRadius:8, border: snap ? '1.5px solid #00a86b' : '1.5px solid #e0e0e0', background:'#f8f8f8', display:'block' }}
+                                          onError={e=>e.target.style.display='none'} />
+                                        <div style={{ fontSize:9, color:'#888', marginTop:3, fontWeight:600 }}>{s.label}</div>
+                                        {zone && <div style={{ fontSize:8, color:'#0a1f5d', fontWeight:700, marginTop:1, lineHeight:1.2 }}>{zone}</div>}
+                                        {coords && <div style={{ fontSize:7, color:'#aaa', marginTop:1 }}>x{Math.round(coords.x)}% y{Math.round(coords.y)}%</div>}
+                                        {snap && <div style={{ fontSize:7, color:'#00a86b', marginTop:1 }}>snapshot</div>}
+                                      </div>
+                                    </a>
+                                  )
+                                })}
                               </div>
                             ) : o.product_image ? (
                               <div style={{ flexShrink:0, textAlign:'center' }}>
@@ -3602,96 +3695,158 @@ function AdminPanel({ onBack }) {
         {tab==='grouporders' && (
           <div>
             <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16 }}>
-              <h2 style={{ fontSize:18, fontWeight:700 }}>👥 Group Orders</h2>
-              <button className="btn-secondary" style={{ padding:'8px 16px', fontSize:12 }} onClick={loadGroupOrders}>↻ Refresh</button>
+              <h2 style={{ fontSize:18, fontWeight:700 }}>Group Orders</h2>
+              <button className="btn-secondary" style={{ padding:'8px 16px', fontSize:12 }} onClick={loadGroupOrders}>Refresh</button>
             </div>
             {groupOrdersLoading ? (
-              <div style={{ textAlign:'center', padding:40, color:'#888' }}>Loading…</div>
+              <div style={{ textAlign:'center', padding:40, color:'#888' }}>Loading...</div>
             ) : groupOrders.length === 0 ? (
               <div style={{ textAlign:'center', padding:60, background:'#fff', borderRadius:12, color:'#888', fontSize:13 }}>No group orders yet.</div>
             ) : (
-              <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
+              <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
                 {groupOrders.map(g => {
                   const members = groupMembers[g.group_code] || []
                   const isOpen = expandedGroup === g.group_code
+                  const designSides = [
+                    { label:'Front', url: g.design_front },
+                    { label:'Back',  url: g.design_back  },
+                    { label:'Left',  url: g.design_left  },
+                    { label:'Right', url: g.design_right },
+                  ].filter(s => s.url)
+                  const STATUS_STYLE = {
+                    pending:  { color:'#f5a623', bg:'#fff8ec', label:'Pending Review' },
+                    approved: { color:'#00a86b', bg:'#e6f9f0', label:'Approved' },
+                    rejected: { color:'#c8102e', bg:'#fff3f3', label:'Rejected' },
+                    open:     { color:'#0a1f5d', bg:'#f0f3ff', label:'Open' },
+                  }
+                  const ss = STATUS_STYLE[g.status] || { color:'#888', bg:'#f4f4f4', label: g.status||'Unknown' }
+
+                  const updateGroupStatus = async (id, status) => {
+                    const { error } = await supabase.from('drynn_group_orders').update({ status }).eq('id', id)
+                    if (!error) { setGroupOrders(gs => gs.map(x => x.id===id ? {...x, status} : x)); showToast('Group order marked as ' + status) }
+                    else alert('Update failed: ' + error.message)
+                  }
+
                   return (
-                    <div key={g.id} style={{ background:'#fff', borderRadius:10, border:'1px solid #e8e8e8', overflow:'hidden', boxShadow:'0 1px 4px rgba(0,0,0,.04)' }}>
-                      {/* Group header row */}
-                      <div style={{ padding:'16px 20px', display:'flex', gap:14, alignItems:'center', flexWrap:'wrap' }}>
-                        <div style={{ flex:1, minWidth:180 }}>
-                          <div style={{ fontSize:14, fontWeight:700, marginBottom:3 }}>{g.title}</div>
-                          <div style={{ fontSize:11, color:'#888' }}>{g.garment} · Organizer: {g.organizer_name} · {g.organizer_phone}</div>
-                          <div style={{ fontSize:10, color:'#aaa', marginTop:2 }}>
-                            Code: <strong style={{ color:'#0a1f5d', letterSpacing:'.08em' }}>{g.group_code}</strong>
-                            {g.deadline && ` · Deadline: ${new Date(g.deadline).toLocaleDateString('en-IN')}`}
-                            {g.created_at && ` · Created: ${new Date(g.created_at).toLocaleDateString('en-IN')}`}
-                          </div>
-                        </div>
-                        <div style={{ display:'flex', alignItems:'center', gap:10, flexWrap:'wrap' }}>
-                          <span style={{ fontSize:11, fontWeight:700, padding:'4px 10px', borderRadius:50,
-                            background: g.status==='open'?'#e6f9f0':'#f4f4f4',
-                            color: g.status==='open'?'#00a86b':'#888' }}>
-                            {g.status==='open'?'● Open':'○ Closed'}
-                          </span>
-                          {/* WhatsApp organizer */}
-                          {g.organizer_phone && (
-                            <a href={`https://wa.me/91${g.organizer_phone.replace(/\D/g,'').replace(/^91/,'')}`}
-                              target="_blank" rel="noopener noreferrer"
-                              style={{ padding:'6px 12px', fontSize:11, borderRadius:4, border:'1px solid #00a86b', color:'#00a86b', background:'none', fontWeight:700, textDecoration:'none', display:'flex', alignItems:'center', gap:4 }}>
-                              💬 WhatsApp
-                            </a>
-                          )}
-                          <button onClick={()=>loadGroupMembers(g.group_code)}
-                            style={{ padding:'6px 14px', fontSize:11, borderRadius:4, border:'1px solid #0a1f5d', color:'#0a1f5d', background:'none', cursor:'pointer', fontWeight:600 }}>
-                            {isOpen ? '▲ Hide Members' : `▼ View Members${members.length?` (${members.length})`:''}`}
-                          </button>
-                          <button onClick={()=>deleteGroupOrder(g.id, g.group_code)}
-                            style={{ padding:'6px 12px', fontSize:11, borderRadius:4, border:'1px solid #fdd', color:'#c8102e', background:'none', cursor:'pointer', fontWeight:600 }}>Delete</button>
-                        </div>
+                    <div key={g.id} style={{ background:'#fff', borderRadius:12, border:'1px solid #e8e8e8', overflow:'hidden', boxShadow:'0 1px 4px rgba(0,0,0,.04)' }}>
+                      {/* Status banner */}
+                      <div style={{ padding:'6px 16px', background: ss.bg, borderBottom:'1px solid #f0f0f0', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+                        <span style={{ fontSize:10, fontWeight:700, letterSpacing:'.08em', textTransform:'uppercase', color: ss.color }}>{ss.label}</span>
+                        <span style={{ fontSize:10, color:'#bbb' }}>{g.created_at && new Date(g.created_at).toLocaleString('en-IN')}</span>
                       </div>
 
-                      {/* Members list */}
-                      {isOpen && (
-                        <div style={{ borderTop:'1px solid #f0f0f0', background:'#fafafa', padding:'14px 20px' }}>
-                          {members.length === 0 ? (
-                            <p style={{ fontSize:13, color:'#aaa', textAlign:'center', padding:'12px 0' }}>No members have joined yet.</p>
-                          ) : (
-                            <div>
-                              <div style={{ fontSize:11, fontWeight:700, color:'#888', letterSpacing:'.1em', textTransform:'uppercase', marginBottom:10 }}>
-                                {members.length} Member{members.length!==1?'s':''}
-                              </div>
-                              <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
-                                {members.map((m,i) => (
-                                  <div key={m.id||i} style={{ display:'flex', gap:12, alignItems:'center', background:'#fff', borderRadius:8, padding:'10px 14px', border:'1px solid #eee', flexWrap:'wrap' }}>
-                                    <div style={{ width:28, height:28, borderRadius:'50%', background:'#0a1f5d', color:'#fff', display:'flex', alignItems:'center', justifyContent:'center', fontSize:12, fontWeight:700, flexShrink:0 }}>
-                                      {i+1}
+                      <div style={{ padding:'16px 20px' }}>
+                        <div style={{ display:'flex', gap:16, flexWrap:'wrap' }}>
+
+                          {/* 4-Side Design Previews */}
+                          {designSides.length > 0 ? (
+                            <div style={{ display:'flex', gap:8, flexShrink:0, flexWrap:'wrap' }}>
+                              {designSides.map(s => (
+                                <a key={s.label} href={s.url} target="_blank" rel="noopener noreferrer" style={{ textDecoration:'none' }}>
+                                  <div style={{ textAlign:'center' }}>
+                                    <div style={{ width:72, height:72, borderRadius:8, border:'1.5px solid #e0e0e0', background:'#f8f8f8', overflow:'hidden', display:'flex', alignItems:'center', justifyContent:'center' }}>
+                                      <img src={s.url} alt={s.label} style={{ width:'100%', height:'100%', objectFit:'contain' }} onError={e=>e.target.style.display='none'} />
                                     </div>
-                                    <div style={{ flex:1, minWidth:140 }}>
-                                      <div style={{ fontSize:13, fontWeight:700 }}>{m.member_name}</div>
-                                      <div style={{ fontSize:11, color:'#888' }}>{m.member_phone} · Size: <strong>{m.size}</strong></div>
-                                      {m.address && <div style={{ fontSize:10, color:'#aaa', marginTop:1 }}>{m.address}</div>}
-                                    </div>
-                                    <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-                                      <span style={{ fontSize:11, fontWeight:700, padding:'3px 9px', borderRadius:50,
-                                        background: m.payment_status==='paid'?'#e6f9f0':'#fff3f3',
-                                        color: m.payment_status==='paid'?'#00a86b':'#c8102e' }}>
-                                        {m.payment_status==='paid'?'✓ Paid':'✗ Unpaid'}
-                                      </span>
-                                      {m.member_phone && (
-                                        <a href={`https://wa.me/91${m.member_phone.replace(/\D/g,'').replace(/^91/,'')}`}
-                                          target="_blank" rel="noopener noreferrer"
-                                          style={{ fontSize:11, padding:'3px 9px', borderRadius:4, border:'1px solid #00a86b', color:'#00a86b', fontWeight:700, textDecoration:'none' }}>
-                                          💬
-                                        </a>
-                                      )}
-                                    </div>
+                                    <div style={{ fontSize:9, color:'#888', marginTop:3, fontWeight:600 }}>{s.label}</div>
                                   </div>
-                                ))}
-                              </div>
+                                </a>
+                              ))}
+                            </div>
+                          ) : (
+                            <div style={{ width:72, height:72, borderRadius:8, border:'1.5px dashed #e0e0e0', background:'#f8f8f8', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+                              <span style={{ fontSize:10, color:'#bbb', textAlign:'center', lineHeight:1.3 }}>No Design</span>
                             </div>
                           )}
+
+                          {/* Group info */}
+                          <div style={{ flex:1, minWidth:160 }}>
+                            <div style={{ fontSize:15, fontWeight:700, marginBottom:4 }}>{g.title}</div>
+                            <div style={{ fontSize:12, color:'#888', marginBottom:2 }}>
+                              {g.garment}
+                              {g.color && <span style={{ display:'inline-block', width:10, height:10, borderRadius:'50%', background:g.color, border:'1px solid #ddd', marginLeft:6, verticalAlign:'middle' }} />}
+                            </div>
+                            <div style={{ fontSize:12, color:'#555', marginBottom:2 }}>Organizer: {g.organizer_name} | {g.organizer_phone}</div>
+                            <div style={{ fontSize:10, color:'#aaa' }}>
+                              Code: <strong style={{ color:'#0a1f5d', letterSpacing:'.08em' }}>{g.group_code}</strong>
+                              {g.deadline && ' | Deadline: ' + new Date(g.deadline).toLocaleDateString('en-IN')}
+                            </div>
+                          </div>
+
+                          {/* Action buttons */}
+                          <div style={{ display:'flex', flexDirection:'column', gap:6, flexShrink:0 }}>
+                            {g.status !== 'approved' && (
+                              <button onClick={()=>updateGroupStatus(g.id, 'approved')}
+                                style={{ padding:'7px 14px', fontSize:11, borderRadius:4, border:'none', background:'#00a86b', color:'#fff', cursor:'pointer', fontWeight:700 }}>
+                                Approve
+                              </button>
+                            )}
+                            {g.status !== 'rejected' && (
+                              <button onClick={()=>updateGroupStatus(g.id, 'rejected')}
+                                style={{ padding:'7px 14px', fontSize:11, borderRadius:4, border:'1px solid #fdd', background:'#fff', color:'#c8102e', cursor:'pointer', fontWeight:700 }}>
+                                Reject
+                              </button>
+                            )}
+                            {g.organizer_phone && (
+                              <a href={'https://wa.me/91' + g.organizer_phone.replace(/\D/g,'').replace(/^91/,'')}
+                                target="_blank" rel="noopener noreferrer"
+                                style={{ padding:'7px 14px', fontSize:11, borderRadius:4, border:'1px solid #00a86b', color:'#00a86b', background:'none', fontWeight:700, textDecoration:'none', textAlign:'center' }}>
+                                WhatsApp
+                              </a>
+                            )}
+                            <button onClick={()=>loadGroupMembers(g.group_code)}
+                              style={{ padding:'7px 14px', fontSize:11, borderRadius:4, border:'1px solid #0a1f5d', color:'#0a1f5d', background:'none', cursor:'pointer', fontWeight:600 }}>
+                              {isOpen ? 'Hide' : 'Members' + (members.length ? ' (' + members.length + ')' : '')}
+                            </button>
+                            <button onClick={()=>deleteGroupOrder(g.id, g.group_code)}
+                              style={{ padding:'7px 12px', fontSize:11, borderRadius:4, border:'1px solid #fdd', color:'#c8102e', background:'none', cursor:'pointer', fontWeight:600 }}>
+                              Delete
+                            </button>
+                          </div>
                         </div>
-                      )}
+
+                        {/* Members expandable list */}
+                        {isOpen && (
+                          <div style={{ marginTop:14, borderTop:'1px solid #f0f0f0', paddingTop:14 }}>
+                            {members.length === 0 ? (
+                              <p style={{ fontSize:13, color:'#aaa', textAlign:'center', padding:'12px 0' }}>No members have joined yet.</p>
+                            ) : (
+                              <div>
+                                <div style={{ fontSize:11, fontWeight:700, color:'#888', letterSpacing:'.1em', textTransform:'uppercase', marginBottom:10 }}>
+                                  {members.length} Member{members.length!==1?'s':''}
+                                </div>
+                                <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+                                  {members.map((m,i) => (
+                                    <div key={m.id||i} style={{ display:'flex', gap:12, alignItems:'center', background:'#fafafa', borderRadius:8, padding:'10px 14px', border:'1px solid #eee', flexWrap:'wrap' }}>
+                                      <div style={{ width:28, height:28, borderRadius:'50%', background:'#0a1f5d', color:'#fff', display:'flex', alignItems:'center', justifyContent:'center', fontSize:12, fontWeight:700, flexShrink:0 }}>
+                                        {i+1}
+                                      </div>
+                                      <div style={{ flex:1, minWidth:140 }}>
+                                        <div style={{ fontSize:13, fontWeight:700 }}>{m.member_name}</div>
+                                        <div style={{ fontSize:11, color:'#888' }}>{m.member_phone} | Size: <strong>{m.size}</strong></div>
+                                        {m.address && <div style={{ fontSize:10, color:'#aaa', marginTop:1 }}>{m.address}</div>}
+                                      </div>
+                                      <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+                                        <span style={{ fontSize:11, fontWeight:700, padding:'3px 9px', borderRadius:50,
+                                          background: m.payment_status==='paid'?'#e6f9f0':'#fff3f3',
+                                          color: m.payment_status==='paid'?'#00a86b':'#c8102e' }}>
+                                          {m.payment_status==='paid'?'Paid':'Unpaid'}
+                                        </span>
+                                        {m.member_phone && (
+                                          <a href={'https://wa.me/91' + m.member_phone.replace(/\D/g,'').replace(/^91/,'')}
+                                            target="_blank" rel="noopener noreferrer"
+                                            style={{ fontSize:11, padding:'3px 9px', borderRadius:4, border:'1px solid #00a86b', color:'#00a86b', fontWeight:700, textDecoration:'none' }}>
+                                            WA
+                                          </a>
+                                        )}
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
                     </div>
                   )
                 })}
@@ -3699,7 +3854,6 @@ function AdminPanel({ onBack }) {
             )}
           </div>
         )}
-
         {/* ANALYTICS TAB */}
         {tab==='analytics' && (() => {
           const totalOrders    = orders.length
@@ -4091,30 +4245,48 @@ function CreateGroupOrder({ user }) {
   const [form, setForm]     = useState({ title:'', garment:'T-Shirt', color:'#ffffff', deadline:'', organizer: user?.user_metadata?.full_name||'', phone:'' })
   const [created, setCreated] = useState(null)
   const [saving, setSaving]   = useState(false)
+  const GROUP_SIDES = ['front','back','left','right']
+  const GROUP_SIDE_LABELS = { front:'Front', back:'Back', left:'Left Side', right:'Right Side' }
+  const [groupDesignFiles, setGroupDesignFiles] = useState({ front:null, back:null, left:null, right:null })
+  const [groupDesignPreviews, setGroupDesignPreviews] = useState({ front:null, back:null, left:null, right:null })
+  const [uploadProgress, setUploadProgress] = useState('')
+  const [activeSideUpload, setActiveSideUpload] = useState('front')
 
   const GARMENTS_LIST = ['T-Shirt','Hoodie','Polo','Joggers']
+
+  const handleGroupDesignFile = (side, file) => {
+    if (!file) return
+    setGroupDesignFiles(p => ({ ...p, [side]: file }))
+    setGroupDesignPreviews(p => ({ ...p, [side]: URL.createObjectURL(file) }))
+  }
 
   const create = async () => {
     if (!form.title||!form.organizer||!form.phone) { alert('Fill all required fields'); return }
     setSaving(true)
     const id = crypto.randomUUID()
     const code = Math.random().toString(36).slice(2,8).toUpperCase()
+    const designUrls = { front:null, back:null, left:null, right:null }
+    for (const side of GROUP_SIDES) {
+      if (groupDesignFiles[side]) {
+        try {
+          setUploadProgress(`Uploading ${GROUP_SIDE_LABELS[side]} design…`)
+          designUrls[side] = await uploadToCloudinary(groupDesignFiles[side], ()=>{})
+        } catch(e) {
+          setSaving(false); setUploadProgress('')
+          alert(`Upload failed for ${side}: ${e.message}`); return
+        }
+      }
+    }
+    setUploadProgress('')
     const groupData = {
-      id,
-      group_code: code,
-      title: form.title,
-      garment: form.garment,
-      color: form.color,
-      deadline: form.deadline || null,
-      organizer_name: form.organizer,
-      organizer_phone: form.phone,
-      organizer_user_id: user?.id || null,
-      created_at: new Date().toISOString(),
-      status: 'open',
+      id, group_code: code, title: form.title, garment: form.garment, color: form.color,
+      deadline: form.deadline || null, organizer_name: form.organizer, organizer_phone: form.phone,
+      organizer_user_id: user?.id || null, created_at: new Date().toISOString(), status: 'pending',
+      design_front: designUrls.front, design_back: designUrls.back,
+      design_left: designUrls.left,   design_right: designUrls.right,
     }
     const { error } = await supabase.from('drynn_group_orders').insert(groupData).catch(()=>({ error:{message:'Table may not exist'} }))
     setSaving(false)
-    // Even if DB fails (table doesn't exist yet), show success UI for demo
     setCreated({ ...groupData, error: error?.message })
   }
 
@@ -4167,6 +4339,53 @@ function CreateGroupOrder({ user }) {
               </div>
             </div>
           </div>
+
+          {/* ── 4-Side Design Upload ── */}
+          <div>
+            <label style={{ fontSize:11, fontWeight:700, letterSpacing:'.12em', textTransform:'uppercase', color:'#555', display:'block', marginBottom:10 }}>Upload Your Design (up to 4 sides)</label>
+            {/* Side tabs */}
+            <div style={{ display:'flex', gap:6, marginBottom:12, flexWrap:'wrap' }}>
+              {GROUP_SIDES.map(side => (
+                <button key={side} onClick={()=>setActiveSideUpload(side)}
+                  style={{ padding:'6px 14px', borderRadius:4, border:'none', cursor:'pointer', fontSize:12, fontWeight:700,
+                    background: activeSideUpload===side ? '#0a1f5d' : '#f0f0f0',
+                    color: activeSideUpload===side ? '#fff' : '#555',
+                    position:'relative' }}>
+                  {GROUP_SIDE_LABELS[side]}
+                  {groupDesignPreviews[side] && <span style={{ position:'absolute', top:-4, right:-4, width:10, height:10, borderRadius:'50%', background:'#00a86b', border:'2px solid #fff' }} />}
+                </button>
+              ))}
+            </div>
+            {/* Upload zone for active side */}
+            <label style={{ display:'block', cursor:'pointer' }}>
+              <input type="file" accept=".png,.jpg,.jpeg,.svg" style={{ display:'none' }}
+                onChange={e=>handleGroupDesignFile(activeSideUpload, e.target.files[0])} />
+              {groupDesignPreviews[activeSideUpload] ? (
+                <div style={{ position:'relative', borderRadius:8, overflow:'hidden', border:'2px solid #00a86b', background:'#f8f8f8', textAlign:'center' }}>
+                  <img src={groupDesignPreviews[activeSideUpload]} alt={activeSideUpload}
+                    style={{ maxHeight:140, maxWidth:'100%', objectFit:'contain', display:'block', margin:'0 auto', padding:8 }} />
+                  <div style={{ padding:'6px 0 10px', fontSize:11, color:'#00a86b', fontWeight:700 }}>✅ {GROUP_SIDE_LABELS[activeSideUpload]} uploaded · Tap to replace</div>
+                </div>
+              ) : (
+                <div className="upload-zone">
+                  <div style={{ fontSize:28, marginBottom:6 }}>📤</div>
+                  <div style={{ fontSize:13, fontWeight:600, marginBottom:4 }}>Upload {GROUP_SIDE_LABELS[activeSideUpload]} Design</div>
+                  <div style={{ fontSize:11, color:'#aaa' }}>PNG, JPG, SVG · Max 20MB</div>
+                </div>
+              )}
+            </label>
+            {/* Mini previews of all sides */}
+            <div style={{ display:'flex', gap:8, marginTop:10 }}>
+              {GROUP_SIDES.map(side => groupDesignPreviews[side] && (
+                <div key={side} style={{ textAlign:'center' }}>
+                  <img src={groupDesignPreviews[side]} alt={side}
+                    style={{ width:48, height:48, objectFit:'contain', borderRadius:6, border:'1.5px solid #00a86b', background:'#f8f8f8' }} />
+                  <div style={{ fontSize:9, color:'#888', marginTop:2 }}>{GROUP_SIDE_LABELS[side]}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+
           <div>
             <label style={{ fontSize:11, fontWeight:700, letterSpacing:'.12em', textTransform:'uppercase', color:'#555', display:'block', marginBottom:7 }}>Order Deadline (optional)</label>
             <input className="input-field" type="date" value={form.deadline} onChange={e=>setForm({...form,deadline:e.target.value})} style={{ maxWidth:200 }} />
@@ -4181,6 +4400,11 @@ function CreateGroupOrder({ user }) {
               <input className="input-field" placeholder="+91 00000 00000" value={form.phone} onChange={e=>setForm({...form,phone:e.target.value})} />
             </div>
           </div>
+          {uploadProgress && (
+            <div style={{ background:'rgba(10,31,93,.06)', border:'1px solid rgba(10,31,93,.15)', borderRadius:6, padding:'10px 14px', fontSize:12, color:'#0a1f5d', fontWeight:600 }}>
+              ⏳ {uploadProgress}
+            </div>
+          )}
           <button className="btn-primary" style={{ padding:14, fontSize:13, opacity:saving?.6:1 }} onClick={create} disabled={saving}>
             {saving ? 'Creating…' : 'Create Group Order'}
           </button>
@@ -4188,7 +4412,7 @@ function CreateGroupOrder({ user }) {
       </div>
       <div style={{ background:'linear-gradient(135deg,rgba(0,168,107,.06),rgba(10,31,93,.06))', border:'1px solid rgba(0,168,107,.2)', borderRadius:12, padding:'20px 24px' }}>
         <div style={{ fontSize:13, fontWeight:700, marginBottom:10 }}>How Group Orders Work</div>
-        {[['1.','Create a group order with your event name and garment.'],['2.','Share the unique link/code with your group.'],['3.','Everyone selects their size and pays individually.'],['4.','DRYNN prints and delivers all pieces together.']].map(([e,t])=>(
+        {[['1.','Create a group order with your event name, garment and design.'],['2.','Share the unique link/code with your group.'],['3.','Everyone selects their size and pays individually.'],['4.','DRYNN prints and delivers all pieces together.']].map(([e,t])=>(
           <div key={e} style={{ display:'flex', gap:10, marginBottom:8, fontSize:13, color:'#555' }}><span>{e}</span><span>{t}</span></div>
         ))}
       </div>

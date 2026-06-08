@@ -1431,10 +1431,8 @@ function StudioPage({ user, onNav, onAddToCart }) {
                 <button onClick={()=>setStep(1)} style={{ padding:'12px 20px', borderRadius:8, border:'1px solid rgba(255,255,255,.15)', background:'transparent', color:'rgba(255,255,255,.5)', fontSize:13, fontWeight:600, cursor:'pointer' }}>← Back</button>
                 <button onClick={()=>setStep(3)} className="btn-primary" style={{ flex:1, padding:'13px', fontSize:14 }}>Continue →</button>
               </div>
-              <div style={{ marginTop:24 }}>
-                <LivePreview />
-              </div>
             </div>
+            <LivePreview />
           </div>
         )}
 
@@ -1553,10 +1551,8 @@ function StudioPage({ user, onNav, onAddToCart }) {
                   {SIDES.filter(s=>sideImgs[s]).length > 0 ? `Continue (${SIDES.filter(s=>sideImgs[s]).length} side${SIDES.filter(s=>sideImgs[s]).length>1?'s':''}) →` : 'Continue →'}
                 </button>
               </div>
-              <div style={{ marginTop:24 }}>
-                <LivePreview previewSide={activeSide} />
-              </div>
             </div>
+            <LivePreview previewSide={activeSide} />
           </div>
         )}
 
@@ -1596,66 +1592,20 @@ function StudioPage({ user, onNav, onAddToCart }) {
               {/* Position */}
               {custTab==='position' && (
                 <div>
-                  {/* Arrow position controls */}
-                  <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:14 }}>
-                    <span style={{ fontSize:11, fontWeight:700, letterSpacing:'.1em', textTransform:'uppercase', color:'rgba(255,255,255,.45)' }}>Position</span>
-                    <div style={{ display:'flex', gap:6 }}>
-                      {[
-                        { icon:'←', action:()=>setPosX(v=>Math.max(15,v-2)) },
-                        { icon:'↑', action:()=>setPosY(v=>Math.max(15,v-2)) },
-                        { icon:'↓', action:()=>setPosY(v=>Math.min(75,v+2)) },
-                        { icon:'→', action:()=>setPosX(v=>Math.min(85,v+2)) },
-                      ].map(({icon,action})=>(
-                        <button key={icon} onClick={action}
-                          style={{ width:38, height:38, borderRadius:8, border:'1px solid rgba(255,255,255,.18)', background:'rgba(255,255,255,.08)', color:'#fff', fontSize:16, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', fontWeight:700, transition:'background .15s' }}
-                          onMouseEnter={e=>e.currentTarget.style.background='rgba(255,255,255,.18)'}
-                          onMouseLeave={e=>e.currentTarget.style.background='rgba(255,255,255,.08)'}>
-                          {icon}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Z Rotation tick slider */}
-                  <div style={{ marginBottom:20 }}>
-                    <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:8 }}>
-                      <span style={{ fontSize:11, fontWeight:700, letterSpacing:'.1em', textTransform:'uppercase', background:'rgba(149,128,255,.18)', color:'#a78bfa', border:'1.5px solid #a78bfa', borderRadius:6, padding:'3px 10px' }}>Z Rotation</span>
-                      <span style={{ fontSize:13, color:'#fff', fontWeight:700 }}>{rotation}°</span>
-                    </div>
-                    <div style={{ position:'relative', height:36, display:'flex', alignItems:'center' }}>
-                      {/* Tick marks */}
-                      <div style={{ position:'absolute', inset:0, display:'flex', alignItems:'center', pointerEvents:'none', gap:0 }}>
-                        {Array.from({length:37}).map((_,i)=>(
-                          <div key={i} style={{ flex:1, display:'flex', justifyContent:'center' }}>
-                            <div style={{ width:1.5, height: i%4===0 ? 18 : 10, background: i===Math.round((rotation+45)/90*36) ? '#a78bfa' : 'rgba(255,255,255,.25)', borderRadius:1, transition:'background .1s' }} />
-                          </div>
-                        ))}
+                  {[
+                    ['Up / Down',    posY,      setPosY,      15, 75],
+                    ['Left / Right', posX,      setPosX,      15, 85],
+                    ['Size',         scale,     setScale,     10, 70],
+                    ['Rotation',     rotation,  setRotation, -45, 45],
+                  ].map(([label, val, setter, min, max])=>(
+                    <div key={label} style={{ marginBottom:18 }}>
+                      <div style={{ display:'flex', justifyContent:'space-between', marginBottom:6 }}>
+                        <span style={{ fontSize:11, fontWeight:700, letterSpacing:'.1em', textTransform:'uppercase', color:'rgba(255,255,255,.45)' }}>{label}</span>
+                        <span style={{ fontSize:12, color:'#fff', fontWeight:700 }}>{val}{label==='Rotation'?'°':'%'}</span>
                       </div>
-                      <input type="range" min={-45} max={45} value={rotation} onChange={e=>setRotation(Number(e.target.value))}
-                        style={{ width:'100%', accentColor:'#a78bfa', opacity:0, position:'absolute', inset:0, cursor:'pointer', height:'100%', margin:0 }} />
+                      <input type="range" min={min} max={max} value={val} onChange={e=>setter(Number(e.target.value))} style={{ width:'100%', accentColor:'#c8102e' }} />
                     </div>
-                  </div>
-
-                  {/* Zoom tick slider */}
-                  <div style={{ marginBottom:20 }}>
-                    <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:8 }}>
-                      <span style={{ fontSize:11, fontWeight:700, letterSpacing:'.1em', textTransform:'uppercase', color:'rgba(255,255,255,.45)' }}>◆ Zoom</span>
-                      <span style={{ fontSize:13, color:'#fff', fontWeight:700 }}>{scale}</span>
-                    </div>
-                    <div style={{ position:'relative', height:36, display:'flex', alignItems:'center' }}>
-                      {/* Tick marks */}
-                      <div style={{ position:'absolute', inset:0, display:'flex', alignItems:'center', pointerEvents:'none' }}>
-                        {Array.from({length:61}).map((_,i)=>(
-                          <div key={i} style={{ flex:1, display:'flex', justifyContent:'center' }}>
-                            <div style={{ width:1.5, height: i%4===0 ? 18 : 10, background: i===Math.round((scale-10)/60*60) ? '#a78bfa' : 'rgba(255,255,255,.25)', borderRadius:1, transition:'background .1s' }} />
-                          </div>
-                        ))}
-                      </div>
-                      <input type="range" min={10} max={70} value={scale} onChange={e=>setScale(Number(e.target.value))}
-                        style={{ width:'100%', accentColor:'#a78bfa', opacity:0, position:'absolute', inset:0, cursor:'pointer', height:'100%', margin:0 }} />
-                    </div>
-                  </div>
-
+                  ))}
                   <button onClick={()=>{setPosY(38);setPosX(50);setScale(38);setRotation(0)}}
                     style={{ width:'100%', padding:10, background:'rgba(255,255,255,.06)', border:'1px solid rgba(255,255,255,.12)', borderRadius:6, color:'rgba(255,255,255,.5)', fontSize:12, fontWeight:700, cursor:'pointer' }}>
                     ↺ Reset Position
@@ -1760,10 +1710,8 @@ function StudioPage({ user, onNav, onAddToCart }) {
                 <button onClick={()=>setStep(3)} style={{ padding:'12px 20px', borderRadius:8, border:'1px solid rgba(255,255,255,.15)', background:'transparent', color:'rgba(255,255,255,.5)', fontSize:13, fontWeight:600, cursor:'pointer' }}>← Back</button>
                 <button onClick={()=>setStep(5)} className="btn-primary" style={{ flex:1, padding:'13px', fontSize:14 }}>Preview →</button>
               </div>
-              <div style={{ marginTop:24 }}>
-                <LivePreview previewSide={custSide} />
-              </div>
             </div>
+            <LivePreview previewSide={custSide} />
           </div>
         )}
 
@@ -1812,6 +1760,7 @@ function StudioPage({ user, onNav, onAddToCart }) {
               <button onClick={()=>setStep(6)} className="btn-primary" style={{ padding:'13px 36px', fontSize:14 }}>Place Order →</button>
             </div>
             </div>
+            <LivePreview />
           </div>
         )}
 
@@ -1868,10 +1817,8 @@ function StudioPage({ user, onNav, onAddToCart }) {
                   <p style={{ fontSize:11, color:'rgba(255,255,255,.3)', textAlign:'center' }}>Our team will WhatsApp you within 2 hours · Pay via UPI link</p>
                 </div>
               )}
-              <div style={{ marginTop:24 }}>
-                <LivePreview />
-              </div>
             </div>
+            <LivePreview />
           </div>
         )}
 

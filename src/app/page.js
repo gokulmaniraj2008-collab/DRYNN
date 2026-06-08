@@ -1209,7 +1209,7 @@ function StudioPage({ user, onNav, onAddToCart }) {
       ? (selectedProduct[`img_${ps}`] || selectedProduct.image_url || GARMENT_DEFAULTS[garmentType])
       : GARMENT_DEFAULTS[garmentType]
     return (
-    <div style={{ position:'sticky', top:72, flex:'0 0 280px', maxWidth:280, display:'flex', flexDirection:'column', gap:10 }}>
+    <div style={{ position:'sticky', top:72, width:'100%', maxWidth:420, margin:'0 auto', display:'flex', flexDirection:'column', gap:10 }}>
       <div style={{ fontSize:10, fontWeight:700, letterSpacing:'.14em', textTransform:'uppercase', color:'rgba(255,255,255,.35)', textAlign:'center', marginBottom:4 }}>Live Preview — {SIDE_LABELS[ps]}</div>
       <div style={{ position:'relative', borderRadius:14, overflow:'hidden', background:bgColor, boxShadow:'0 8px 32px rgba(0,0,0,.5)', filter:canvasFilter }}>
         {/* Garment base — switches per selected side tab */}
@@ -1383,8 +1383,9 @@ function StudioPage({ user, onNav, onAddToCart }) {
 
         {/* ══ STEP 2: COLOUR ══ */}
         {step === 2 && (
-          <div style={{ display:'flex', gap:24, flexWrap:'wrap' }}>
-            <div style={{ flex:'1 1 280px' }}>
+          <div style={{ display:'flex', flexDirection:'column', gap:24 }}>
+            <LivePreview />
+            <div>
               <h2 style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:28, color:'#fff', letterSpacing:'.06em', marginBottom:6 }}>STEP 2 — CHOOSE COLOUR</h2>
               <p style={{ fontSize:13, color:'rgba(255,255,255,.45)', marginBottom:24 }}>Select the garment colour. The live preview updates instantly.</p>
 
@@ -1432,14 +1433,14 @@ function StudioPage({ user, onNav, onAddToCart }) {
                 <button onClick={()=>setStep(3)} className="btn-primary" style={{ flex:1, padding:'13px', fontSize:14 }}>Continue →</button>
               </div>
             </div>
-            <LivePreview />
           </div>
         )}
 
         {/* ══ STEP 3: DESIGN ══ */}
         {step === 3 && (
-          <div style={{ display:'flex', gap:24, flexWrap:'wrap' }}>
-            <div style={{ flex:'1 1 280px' }}>
+          <div style={{ display:'flex', flexDirection:'column', gap:24 }}>
+            <LivePreview previewSide={activeSide} />
+            <div>
               <h2 style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:28, color:'#fff', letterSpacing:'.06em', marginBottom:6 }}>STEP 3 — ADD YOUR DESIGN</h2>
               <p style={{ fontSize:13, color:'rgba(255,255,255,.45)', marginBottom:16 }}>Upload for Front (main) or add designs for other sides too — optional.</p>
 
@@ -1552,14 +1553,14 @@ function StudioPage({ user, onNav, onAddToCart }) {
                 </button>
               </div>
             </div>
-            <LivePreview previewSide={activeSide} />
           </div>
         )}
 
         {/* ══ STEP 4: CUSTOMISE ══ */}
         {step === 4 && (
-          <div style={{ display:'flex', gap:24, flexWrap:'wrap' }}>
-            <div style={{ flex:'1 1 280px' }}>
+          <div style={{ display:'flex', flexDirection:'column', gap:24 }}>
+            <LivePreview previewSide={custSide} />
+            <div>
               <h2 style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:28, color:'#fff', letterSpacing:'.06em', marginBottom:6 }}>STEP 4 — CUSTOMISE</h2>
               <p style={{ fontSize:13, color:'rgba(255,255,255,.45)', marginBottom:16 }}>Select a side to customise its position. Add text and effects below.</p>
 
@@ -1711,7 +1712,6 @@ function StudioPage({ user, onNav, onAddToCart }) {
                 <button onClick={()=>setStep(5)} className="btn-primary" style={{ flex:1, padding:'13px', fontSize:14 }}>Preview →</button>
               </div>
             </div>
-            <LivePreview previewSide={custSide} />
           </div>
         )}
 
@@ -1760,14 +1760,14 @@ function StudioPage({ user, onNav, onAddToCart }) {
               <button onClick={()=>setStep(6)} className="btn-primary" style={{ padding:'13px 36px', fontSize:14 }}>Place Order →</button>
             </div>
             </div>
-            <LivePreview />
           </div>
         )}
 
         {/* ══ STEP 6: ORDER ══ */}
         {step === 6 && (
-          <div style={{ display:'flex', gap:24, flexWrap:'wrap' }}>
-            <div style={{ flex:'1 1 280px' }}>
+          <div style={{ display:'flex', flexDirection:'column', gap:24 }}>
+            <LivePreview />
+            <div>
               <h2 style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:28, color:'#fff', letterSpacing:'.06em', marginBottom:6 }}>STEP 6 — PLACE YOUR ORDER</h2>
               <p style={{ fontSize:13, color:'rgba(255,255,255,.45)', marginBottom:24 }}>Fill your details. We'll WhatsApp you within 2 hours to confirm.</p>
 
@@ -1818,7 +1818,6 @@ function StudioPage({ user, onNav, onAddToCart }) {
                 </div>
               )}
             </div>
-            <LivePreview />
           </div>
         )}
 

@@ -4186,11 +4186,11 @@ function CreateGroupOrder({ user }) {
         {created.design_url && (
           <div style={{ marginBottom:16 }}>
             <div style={{ fontSize:11, fontWeight:700, letterSpacing:'.1em', textTransform:'uppercase', color:'#888', marginBottom:8 }}>Design Preview</div>
-            <div style={{ position:'relative', display:'inline-block', width:160, height:160 }}>
+            <div style={{ position:'relative', display:'inline-block', width:220, height:220 }}>
               <img src={GARMENT_DEFAULTS[created.garment] || GARMENT_DEFAULTS['T-Shirt']} alt="garment"
-                style={{ width:160, height:160, objectFit:'contain', borderRadius:8, border:'1px solid #e0e0e0', background:'#f8f8f8' }} />
+                style={{ width:220, height:220, objectFit:'contain', display:'block' }} />
               <img src={created.design_url} alt="design"
-                style={{ position:'absolute', top:'25%', left:'50%', transform:'translate(-50%,-50%)', width:'45%', objectFit:'contain', pointerEvents:'none' }} />
+                style={{ position:'absolute', top:'38%', left:'50%', transform:'translate(-50%,-50%)', width:'42%', objectFit:'contain', pointerEvents:'none' }} />
             </div>
           </div>
         )}
@@ -4253,14 +4253,14 @@ function CreateGroupOrder({ user }) {
                 </div>
               </label>
               {/* Live garment preview */}
-              <div style={{ flex:'0 0 130px', textAlign:'center' }}>
+              <div style={{ flex:'0 0 150px', textAlign:'center' }}>
                 <div style={{ fontSize:9, fontWeight:700, letterSpacing:'.1em', textTransform:'uppercase', color:'#aaa', marginBottom:4 }}>Preview</div>
-                <div style={{ position:'relative', width:120, height:120, margin:'0 auto' }}>
+                <div style={{ position:'relative', width:140, height:140, margin:'0 auto' }}>
                   <img src={GARMENT_DEFAULTS[form.garment] || GARMENT_DEFAULTS['T-Shirt']} alt="garment"
-                    style={{ width:120, height:120, objectFit:'contain', borderRadius:8, border:'1px solid #e0e0e0', background:'#f8f8f8', display:'block' }} />
+                    style={{ width:140, height:140, objectFit:'contain', display:'block' }} />
                   {designImg && (
                     <img src={designImg} alt="design overlay"
-                      style={{ position:'absolute', top:'25%', left:'50%', transform:'translate(-50%,-50%)', width:'45%', objectFit:'contain', pointerEvents:'none' }} />
+                      style={{ position:'absolute', top:'38%', left:'50%', transform:'translate(-50%,-50%)', width:'42%', objectFit:'contain', pointerEvents:'none' }} />
                   )}
                   {!designImg && (
                     <div style={{ position:'absolute', inset:0, display:'flex', alignItems:'center', justifyContent:'center', fontSize:9, color:'#ccc', pointerEvents:'none' }}>
@@ -4386,16 +4386,16 @@ function JoinGroupOrder({ user }) {
             {group.design_url && (
               <div style={{ marginTop:14, textAlign:'center' }}>
                 <div style={{ fontSize:10, fontWeight:700, letterSpacing:'.1em', textTransform:'uppercase', color:'#888', marginBottom:6 }}>Your Design Preview</div>
-                <div style={{ position:'relative', display:'inline-block', width:130, height:130 }}>
+                <div style={{ position:'relative', display:'inline-block', width:200, height:200 }}>
                   <img src={{
                     'T-Shirt': 'https://res.cloudinary.com/dfhdyp4oq/image/upload/drynn/products/tshirt_white.png',
                     'Hoodie':  'https://res.cloudinary.com/dfhdyp4oq/image/upload/drynn/products/hoodie_navy.png',
                     'Polo':    'https://res.cloudinary.com/dfhdyp4oq/image/upload/drynn/products/polo_white.png',
                     'Joggers': 'https://res.cloudinary.com/dfhdyp4oq/image/upload/drynn/products/joggers_black.png',
                   }[group.garment] || 'https://res.cloudinary.com/dfhdyp4oq/image/upload/drynn/products/tshirt_white.png'}
-                    alt="garment" style={{ width:130, height:130, objectFit:'contain', borderRadius:8, border:'1px solid #e0e0e0', background:'#f8f8f8', display:'block' }} />
+                    alt="garment" style={{ width:200, height:200, objectFit:'contain', display:'block' }} />
                   <img src={group.design_url} alt="design"
-                    style={{ position:'absolute', top:'25%', left:'50%', transform:'translate(-50%,-50%)', width:'45%', objectFit:'contain', pointerEvents:'none' }} />
+                    style={{ position:'absolute', top:'38%', left:'50%', transform:'translate(-50%,-50%)', width:'42%', objectFit:'contain', pointerEvents:'none' }} />
                 </div>
                 <div style={{ fontSize:11, color:'#00a86b', marginTop:6, fontWeight:600 }}>This is what will be printed on your {group.garment}</div>
               </div>

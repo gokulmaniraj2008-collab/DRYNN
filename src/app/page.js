@@ -495,16 +495,10 @@ function InteractiveMockup({ garmentImgSrc, designImgSrc, color, posX, posY, sca
         ctx.font = `bold ${textSize} ${textFont}`; ctx.fillStyle = textColor
         ctx.textAlign = 'center'; ctx.fillText(textVal, 400, 680)
       }
-      canvas.toBlob(async blob => {
-        // Download to device
+      canvas.toBlob(blob => {
         const url = URL.createObjectURL(blob)
         const a = document.createElement('a'); a.href=url; a.download='drynn-preview.png'
         a.click(); URL.revokeObjectURL(url)
-        // Upload to Cloudinary
-        try {
-          const file = new File([blob], 'drynn-preview.png', { type: 'image/png' })
-          await uploadToCloudinary(file, () => {})
-        } catch(uploadErr) { console.error('Cloudinary upload failed:', uploadErr) }
         setSaved(true); setTimeout(()=>setSaved(false), 2500)
       }, 'image/png')
     } catch(e) { console.error('Save failed:', e) }
@@ -551,42 +545,73 @@ function InteractiveMockup({ garmentImgSrc, designImgSrc, color, posX, posY, sca
   )
 }
 // ══════════════════════════════════════════════════════════════
-// PRODUCT IMAGE VIEWER — 4-image swipe viewer (Studio Step 5)
+// PRODUCT IMAGE VIEWER — Flipkart-style 360° drag viewer (Studio Step 5)
 // ══════════════════════════════════════════════════════════════
 function ProductImageViewer({ product, fallbackSrc, designImgSrc, posX, posY, scale, rotation, textOn, textVal, textFont, textSize, textColor, colorToFilter, color, canvasFilter, garmentEmoji }) {
   const frames = React.useMemo(() => {
     if (product?.img_front || product?.img_back || product?.img_left || product?.img_right) {
       return [
-        { key:'front', label:'Front', src: product.img_front || fallbackSrc },
-        { key:'right', label:'Right', src: product.img_right || fallbackSrc },
-        { key:'back',  label:'Back',  src: product.img_back  || fallbackSrc },
-        { key:'left',  label:'Left',  src: product.img_left  || fallbackSrc },
+        { key:'front', label:'Front',      src: product.img_front || fallbackSrc },
+        { key:'right', label:'Right Side', src: product.img_right || fallbackSrc },
+        { key:'back',  label:'Back',       src: product.img_back  || fallbackSrc },
+        { key:'left',  label:'Left Side',  src: product.img_left  || fallbackSrc },
       ].filter(f => f.src)
     }
     return [{ key:'front', label:'Front', src: fallbackSrc }]
   }, [product, fallbackSrc])
 
-  const [idx, setIdx]       = React.useState(0)
-  const [saved, setSaved]   = React.useState(false)
-  const touchRef            = React.useRef({ startX: 0, startY: 0 })
-  const current             = frames[idx] || frames[0]
-  const showDesign          = current?.key === 'front'
-  const showDesignBack      = current?.key === 'back'
+  const TOTAL = frames.length
+  const [idx, setIdx]         = React.useState(0)
+  const [saved, setSaved]     = React.useState(false)
+  const [hint, setHint]       = React.useState(true)
+  const [dragging, setDragging] = React.useState(false)
+  const dragX   = React.useRef(null)
+  const accum   = React.useRef(0)
+  const autoRef = React.useRef(null)
+  const DRAG_PX = 52
 
-  const prev = () => setIdx(i => (i - 1 + frames.length) % frames.length)
-  const next = () => setIdx(i => (i + 1) % frames.length)
+  const current    = frames[idx] || frames[0]
+  const showDesign = current?.key === 'front'
+  const showBack   = current?.key === 'back'
+  const deg        = Math.round((idx / TOTAL) * 360)
 
-  const onTouchStart = e => {
-    touchRef.current.startX = e.touches[0].clientX
-    touchRef.current.startY = e.touches[0].clientY
-  }
-  const onTouchEnd = e => {
-    const dx = e.changedTouches[0].clientX - touchRef.current.startX
-    const dy = e.changedTouches[0].clientY - touchRef.current.startY
-    if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 40) {
-      dx < 0 ? next() : prev()
+  const dismiss = React.useCallback(() => setHint(false), [])
+  const getX    = e => e.touches ? e.touches[0].clientX : e.clientX
+
+  // Auto-spin once on mount
+  React.useEffect(() => {
+    if (TOTAL < 2) return
+    let i = 0
+    autoRef.current = setInterval(() => {
+      i++
+      setIdx(f => (f + 1) % TOTAL)
+      if (i >= TOTAL) clearInterval(autoRef.current)
+    }, 220)
+    return () => clearInterval(autoRef.current)
+  }, [TOTAL])
+
+  const onDown = React.useCallback(e => {
+    if (TOTAL < 2) return
+    clearInterval(autoRef.current)
+    dismiss()
+    dragX.current = getX(e)
+    accum.current = 0
+    setDragging(true)
+  }, [TOTAL, dismiss])
+
+  const onMove = React.useCallback(e => {
+    if (!dragging || dragX.current === null) return
+    const dx = getX(e) - dragX.current
+    dragX.current = getX(e)
+    accum.current += dx
+    const steps = Math.trunc(accum.current / DRAG_PX)
+    if (steps !== 0) {
+      setIdx(f => ((f + steps) % TOTAL + TOTAL) % TOTAL)
+      accum.current -= steps * DRAG_PX
     }
-  }
+  }, [dragging, TOTAL])
+
+  const onUp = React.useCallback(() => { setDragging(false); dragX.current = null }, [])
 
   // Save preview
   const savePreview = async () => {
@@ -609,11 +634,9 @@ function ProductImageViewer({ product, fallbackSrc, designImgSrc, posX, posY, sc
         }
       }
       canvas.toBlob(async blob => {
-        // Download to device
         const url = URL.createObjectURL(blob)
         const a = document.createElement('a'); a.href=url; a.download='drynn-preview.png'
         a.click(); URL.revokeObjectURL(url)
-        // Upload to Cloudinary
         try {
           const file = new File([blob], 'drynn-preview.png', { type: 'image/png' })
           await uploadToCloudinary(file, () => {})
@@ -626,97 +649,134 @@ function ProductImageViewer({ product, fallbackSrc, designImgSrc, posX, posY, sc
   return (
     <div style={{ maxWidth:420, margin:'0 auto' }}>
 
-      {/* ── Main image ── */}
+      {/* ── 360° Stage ── */}
       <div
-        onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}
-        style={{ position:'relative', borderRadius:18, overflow:'hidden', background:'#fff',
-          boxShadow:'0 12px 48px rgba(0,0,0,.5)', userSelect:'none', touchAction:'pan-y', filter:canvasFilter }}>
+        onMouseDown={onDown} onMouseMove={onMove} onMouseUp={onUp} onMouseLeave={onUp}
+        onTouchStart={onDown} onTouchMove={onMove} onTouchEnd={onUp}
+        style={{
+          position:'relative', borderRadius:18, overflow:'hidden',
+          background:'radial-gradient(ellipse at 50% 40%,#2a2a2a,#111)',
+          boxShadow:'0 12px 48px rgba(0,0,0,.6)',
+          userSelect:'none', touchAction:'none', cursor: TOTAL>1 ? (dragging?'grabbing':'grab') : 'default',
+          filter:canvasFilter,
+        }}>
 
-        {/* Garment */}
-        <img src={current.src} alt={current.label}
-          style={{ width:'100%', display:'block', filter:colorToFilter(color), minHeight:260, objectFit:'contain' }}
-          onError={e=>{ e.target.style.opacity='0.05' }} />
+        {/* All frames stacked, only active one visible */}
+        {frames.map((f, i) => (
+          <div key={f.key} style={{ position: i===0?'relative':'absolute', inset:0, opacity: i===idx?1:0, transition:'opacity .07s ease', pointerEvents:'none' }}>
+            <img
+              src={f.src} alt={f.label}
+              style={{ width:'100%', display:'block', filter:colorToFilter(color), minHeight:260, objectFit:'contain' }}
+              onError={e=>{ e.target.style.opacity='0.05' }}
+            />
+            {/* Design overlay — front */}
+            {designImgSrc && f.key==='front' && (
+              <img src={designImgSrc} alt="design"
+                style={{ position:'absolute', top:`${posY}%`, left:`${posX}%`,
+                  transform:`translate(-50%,-50%) rotate(${rotation}deg)`,
+                  width:`${scale}%`, objectFit:'contain', pointerEvents:'none' }} />
+            )}
+            {/* Design overlay — back (mirrored, faint) */}
+            {designImgSrc && f.key==='back' && (
+              <img src={designImgSrc} alt="design"
+                style={{ position:'absolute', top:`${posY}%`, left:`${posX}%`,
+                  transform:`translate(-50%,-50%) rotate(${rotation}deg) scaleX(-1)`,
+                  width:`${scale}%`, objectFit:'contain', pointerEvents:'none', opacity:0.6 }} />
+            )}
+            {/* Text overlay */}
+            {textOn && textVal && f.key==='front' && (
+              <div style={{ position:'absolute', top:'65%', left:'50%', transform:'translateX(-50%)',
+                fontFamily:textFont, fontSize:textSize, color:textColor, fontWeight:700,
+                textShadow:'0 1px 6px rgba(0,0,0,.5)', pointerEvents:'none', whiteSpace:'nowrap' }}>{textVal}</div>
+            )}
+          </div>
+        ))}
 
-        {/* Fallback emoji */}
+        {/* Fallback emoji watermark */}
         <div style={{ position:'absolute', inset:0, display:'flex', alignItems:'center', justifyContent:'center',
-          fontSize:100, opacity:0.03, pointerEvents:'none' }}>{garmentEmoji}</div>
+          fontSize:100, opacity:0.025, pointerEvents:'none' }}>{garmentEmoji}</div>
 
-        {/* Design overlay — front only */}
-        {designImgSrc && showDesign && (
-          <img src={designImgSrc} alt="design"
-            style={{ position:'absolute', top:`${posY}%`, left:`${posX}%`,
-              transform:`translate(-50%,-50%) rotate(${rotation}deg)`,
-              width:`${scale}%`, objectFit:'contain', pointerEvents:'none' }} />
-        )}
-        {/* Design overlay — back */}
-        {designImgSrc && showDesignBack && (
-          <img src={designImgSrc} alt="design"
-            style={{ position:'absolute', top:`${posY}%`, left:`${posX}%`,
-              transform:`translate(-50%,-50%) rotate(${rotation}deg)`,
-              width:`${scale}%`, objectFit:'contain', pointerEvents:'none', opacity:0.7 }} />
-        )}
+        {/* 3D badge */}
+        <div style={{ position:'absolute', top:12, left:12, background:'rgba(10,10,10,.85)',
+          color:'#fff', fontFamily:'Bebas Neue,sans-serif', fontSize:13, letterSpacing:'.14em',
+          padding:'4px 10px', borderRadius:6, backdropFilter:'blur(6px)' }}>3D</div>
 
-        {/* Text overlay */}
-        {textOn && textVal && showDesign && (
-          <div style={{ position:'absolute', top:'65%', left:'50%', transform:'translateX(-50%)',
-            fontFamily:textFont, fontSize:textSize, color:textColor, fontWeight:700,
-            textShadow:'0 1px 6px rgba(0,0,0,.4)', pointerEvents:'none', whiteSpace:'nowrap' }}>{textVal}</div>
+        {/* Degree counter */}
+        {TOTAL > 1 && (
+          <div style={{ position:'absolute', top:12, right:12, background:'rgba(10,10,10,.65)',
+            color:'rgba(255,255,255,.8)', fontSize:11, fontWeight:700, letterSpacing:'.06em',
+            padding:'4px 10px', borderRadius:20, backdropFilter:'blur(6px)' }}>
+            {deg}°
+          </div>
         )}
 
-        {/* Frame label badge */}
-        <div style={{ position:'absolute', bottom:12, left:12, background:'rgba(0,0,0,.55)',
-          color:'#fff', fontSize:10, fontWeight:700, letterSpacing:'.12em', textTransform:'uppercase',
-          padding:'4px 10px', borderRadius:20, backdropFilter:'blur(4px)' }}>
-          {current.label}
-        </div>
-
-        {/* Arrow buttons — only if >1 frame */}
-        {frames.length > 1 && (
-          <>
-            <button onClick={prev} style={{ position:'absolute', left:10, top:'50%', transform:'translateY(-50%)',
-              background:'rgba(0,0,0,.45)', border:'none', color:'#fff', width:36, height:36,
-              borderRadius:'50%', fontSize:18, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center',
-              backdropFilter:'blur(4px)' }}>‹</button>
-            <button onClick={next} style={{ position:'absolute', right:10, top:'50%', transform:'translateY(-50%)',
-              background:'rgba(0,0,0,.45)', border:'none', color:'#fff', width:36, height:36,
-              borderRadius:'50%', fontSize:18, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center',
-              backdropFilter:'blur(4px)' }}>›</button>
-          </>
+        {/* Drag hint — auto-hides after first drag */}
+        {TOTAL > 1 && (
+          <div style={{ position:'absolute', bottom:14, left:'50%', transform:'translateX(-50%)',
+            background:'rgba(10,10,10,.72)', backdropFilter:'blur(10px)',
+            color:'#fff', fontSize:12, fontWeight:600, padding:'8px 16px', borderRadius:99,
+            display:'flex', alignItems:'center', gap:7, whiteSpace:'nowrap',
+            letterSpacing:'.02em', pointerEvents:'none',
+            opacity: hint ? 1 : 0, transition:'opacity .4s' }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3">
+              <path d="M18 11V6.5a2.5 2.5 0 0 0-5 0v.5M13 7a2.5 2.5 0 0 0-5 0V11M8 11V7.5a2.5 2.5 0 0 0-5 0V17a6 6 0 0 0 6 6h5a5 5 0 0 0 5-5v-2.5a2.5 2.5 0 0 0-5 0"/>
+            </svg>
+            Drag to see 360°
+          </div>
         )}
       </div>
 
-      {/* ── Dot indicators ── */}
-      {frames.length > 1 && (
-        <div style={{ display:'flex', justifyContent:'center', gap:8, marginTop:14 }}>
-          {frames.map((f,i) => (
-            <button key={f.key} onClick={()=>setIdx(i)}
-              style={{ width: i===idx ? 22 : 8, height:8, borderRadius:4, border:'none', cursor:'pointer',
-                background: i===idx ? '#c8102e' : 'rgba(255,255,255,.25)', transition:'all .2s', padding:0 }} />
-          ))}
+      {/* ── View label + progress bar ── */}
+      {TOTAL > 1 && (
+        <div style={{ marginTop:12, padding:'0 2px' }}>
+          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:6 }}>
+            <span style={{ fontSize:10, fontWeight:700, letterSpacing:'.12em', textTransform:'uppercase', color:'rgba(255,255,255,.4)' }}>
+              {current.label}
+            </span>
+            <span style={{ fontSize:10, color:'rgba(255,255,255,.3)', letterSpacing:'.06em' }}>
+              {idx+1} / {TOTAL}
+            </span>
+          </div>
+          {/* Progress track */}
+          <div style={{ height:2, background:'rgba(255,255,255,.1)', borderRadius:2 }}>
+            <div style={{ height:'100%', width:`${((idx)/(TOTAL-1))*100}%`, background:'#c8102e', borderRadius:2, transition:'width .12s ease' }} />
+          </div>
+        </div>
+      )}
+
+      {/* ── Controls row ── */}
+      {TOTAL > 1 && (
+        <div style={{ display:'flex', alignItems:'center', gap:10, marginTop:12 }}>
+          <button onClick={()=>{ dismiss(); setIdx(i=>(i-1+TOTAL)%TOTAL) }}
+            style={{ width:36, height:36, borderRadius:'50%', border:'1.5px solid rgba(255,255,255,.15)', background:'rgba(255,255,255,.07)', color:'#fff', fontSize:16, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', transition:'all .15s', flexShrink:0 }}>‹</button>
+
+          {/* Dot strip */}
+          <div style={{ flex:1, display:'flex', justifyContent:'center', gap:7 }}>
+            {frames.map((f,i)=>(
+              <button key={f.key} onClick={()=>{ dismiss(); setIdx(i) }}
+                style={{ width: i===idx?22:8, height:8, borderRadius:4, border:'none', cursor:'pointer', padding:0,
+                  background: i===idx?'#c8102e':'rgba(255,255,255,.2)', transition:'all .2s' }} />
+            ))}
+          </div>
+
+          <button onClick={()=>{ dismiss(); setIdx(i=>(i+1)%TOTAL) }}
+            style={{ width:36, height:36, borderRadius:'50%', border:'1.5px solid rgba(255,255,255,.15)', background:'rgba(255,255,255,.07)', color:'#fff', fontSize:16, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', transition:'all .15s', flexShrink:0 }}>›</button>
         </div>
       )}
 
       {/* ── Thumbnail strip ── */}
-      {frames.length > 1 && (
-        <div style={{ display:'flex', gap:8, marginTop:14, justifyContent:'center' }}>
+      {TOTAL > 1 && (
+        <div style={{ display:'flex', gap:8, marginTop:12, justifyContent:'center' }}>
           {frames.map((f,i) => (
-            <button key={f.key} onClick={()=>setIdx(i)}
-              style={{ width:72, height:72, borderRadius:10, overflow:'hidden', border:'2px solid',
-                borderColor: i===idx ? '#c8102e' : 'rgba(255,255,255,.15)',
+            <button key={f.key} onClick={()=>{ dismiss(); setIdx(i) }}
+              style={{ width:64, height:64, borderRadius:10, overflow:'hidden', border:'2px solid',
+                borderColor: i===idx ? '#c8102e' : 'rgba(255,255,255,.12)',
                 background:'#fff', padding:0, cursor:'pointer', transition:'border-color .15s', flexShrink:0 }}>
               <img src={f.src} alt={f.label}
                 style={{ width:'100%', height:'100%', objectFit:'contain', filter:colorToFilter(color) }}
                 onError={e=>{ e.target.style.opacity='0.1' }} />
             </button>
           ))}
-        </div>
-      )}
-
-      {/* ── Swipe hint ── */}
-      {frames.length > 1 && (
-        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginTop:12, padding:'0 4px' }}>
-          <span style={{ fontSize:11, color:'rgba(255,255,255,.35)', display:'flex', alignItems:'center', gap:4 }}>← Swipe left for next</span>
-          <span style={{ fontSize:11, color:'rgba(255,255,255,.35)', display:'flex', alignItems:'center', gap:4 }}>Swipe right for prev →</span>
         </div>
       )}
 
@@ -3283,10 +3343,17 @@ function ProductEditRow({ product, onSave, onCancel }) {
     setMockupUploading(u => ({ ...u, [view]: true }))
     try {
       const url = await uploadToCloudinary(file, () => {})
-      // delete existing row first, then insert fresh — avoids onConflict issues
+      // Save to drynn_settings (global garment mockup)
       await supabase.from('drynn_settings').delete().eq('key', key)
       const { error: insertErr } = await supabase.from('drynn_settings').insert({ key, value: url })
       if (insertErr) { alert('Save failed: ' + insertErr.message); return }
+      // Also save directly to this product's img_front/back/left/right column
+      const colName = `img_${view}`
+      const { error: prodErr } = await supabase
+        .from('drynn_products')
+        .update({ [colName]: url })
+        .eq('id', product.id)
+      if (prodErr) console.error('[360] Product img update failed:', prodErr.message)
       setMockupUrls(u => ({ ...u, [key]: url }))
       setMockupSaved(s => ({ ...s, [view]: true }))
       setTimeout(() => setMockupSaved(s => ({ ...s, [view]: false })), 2500)

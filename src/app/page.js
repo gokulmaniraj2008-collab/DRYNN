@@ -911,16 +911,16 @@ function StudioPage({ user, onNav, onAddToCart }) {
 
   // ── Step 5 (Preview): 3D ─────────────────────────────────
   // Step 5 preview handled by InteractiveMockup component
-  const [printSheetUrl,  setPrintSheetUrl]  = useState(null)
-  const [sheetGenerating, setSheetGenerating] = useState(false)
+  // printSheetUrl is generated on-demand in handleSubmit and passed directly
 
   // ── generatePrintSheet ────────────────────────────────────
   // Composites all 4 sides into a single 4-panel PNG, uploads to
-  // Cloudinary, and saves the URL to printSheetUrl state.
-  const generatePrintSheet = async () => {
-    setSheetGenerating(true)
+  // Cloudinary, and returns the URL.
+  // resolvedDesignUrls: { front, back, left, right } — must be real HTTPS
+  // URLs (never blob: URLs), so always pass the Cloudinary URLs from
+  // handleSubmit after upload is complete.
+  const generatePrintSheet = async (resolvedDesignUrls = {}) => {
     try {
-      // Resolve garment images for all 4 sides
       const SIDE_KEYS = ['front','back','left','right']
       const SIDE_LABELS_PRINT = { front:'FRONT', back:'BACK', left:'LEFT', right:'RIGHT' }
 
@@ -974,8 +974,8 @@ function StudioPage({ user, onNav, onAddToCart }) {
           if (gImg) ctx.drawImage(gImg, baseX + 40, baseY + 40, PANEL_W - 80, PANEL_H - 80)
         }
 
-        // Design overlay for this side
-        const designUrl = sideImgs[side]
+        // Design overlay for this side — use resolved HTTPS URLs only
+        const designUrl = resolvedDesignUrls[side]
         if (designUrl) {
           const dImg = await loadImg(designUrl)
           if (dImg) {
@@ -1032,11 +1032,10 @@ function StudioPage({ user, onNav, onAddToCart }) {
       const blob = await new Promise(res => canvas.toBlob(res, 'image/png'))
       const file = new File([blob], `drynn-printsheet-${Date.now()}.png`, { type: 'image/png' })
       const url  = await uploadToCloudinary(file, () => {})
-      setPrintSheetUrl(url)
+      return url
     } catch (e) {
       console.error('[PrintSheet] Generation failed:', e)
-    } finally {
-      setSheetGenerating(false)
+      return null
     }
   }
 
@@ -1062,6 +1061,11 @@ function StudioPage({ user, onNav, onAddToCart }) {
       setStatus('saving')
       const garmentLabel = selectedProduct ? selectedProduct.name : 'Custom Garment'
       const sidesLabel   = SIDES.filter(s=>sideImgs[s]).map(s=>SIDE_LABELS[s]).join(', ')
+
+      // Generate print sheet using the just-uploaded Cloudinary URLs (never blob: URLs)
+      setStatus('sheet')
+      const sheetUrl = await generatePrintSheet(designUrls)
+
       // Build a cart item representing this custom order
       const customItem = {
         id:        `custom_${Date.now()}`,
@@ -1082,7 +1086,7 @@ function StudioPage({ user, onNav, onAddToCart }) {
           phone:         form.phone,
           address:       form.address,
           textOn, textVal,
-          printSheetUrl: printSheetUrl || null,
+          printSheetUrl: sheetUrl || null,
         },
       }
       onAddToCart(customItem)
@@ -1124,13 +1128,6 @@ function StudioPage({ user, onNav, onAddToCart }) {
     ? (selectedProduct.category==='Hoodies'?'Hoodie':selectedProduct.category==='Polos'?'Polo':selectedProduct.category==='Joggers'?'Joggers':'T-Shirt')
     : 'T-Shirt'
   const garmentImgSrc = selectedProduct?.image_url || getMockupUrl(garmentType,'front') || GARMENT_DEFAULTS[garmentType]
-
-  // Auto-generate print sheet when customer reaches Step 5
-  useEffect(() => {
-    if (step === 5 && !printSheetUrl && !sheetGenerating) {
-      generatePrintSheet()
-    }
-  }, [step]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const canGoNext = () => {
     if (step===1) return true  // product optional
@@ -1741,9 +1738,9 @@ function StudioPage({ user, onNav, onAddToCart }) {
 
                   <div style={{ display:'flex', gap:10 }}>
                     <button onClick={()=>setStep(5)} style={{ padding:'12px 20px', borderRadius:8, border:'1px solid rgba(255,255,255,.15)', background:'transparent', color:'rgba(255,255,255,.5)', fontSize:13, fontWeight:600, cursor:'pointer' }}>← Preview</button>
-                    <button className="btn-primary" style={{ flex:1, padding:'14px', fontSize:14, letterSpacing:'.04em', opacity:(status==='saving'||status==='uploading')?.6:1 }}
-                      onClick={handleSubmit} disabled={status==='saving'||status==='uploading'}>
-                      {status==='uploading'?`Uploading… ${uploadPct}%`:status==='saving'?'Placing Order…':'🛒 Place Custom Order'}
+                    <button className="btn-primary" style={{ flex:1, padding:'14px', fontSize:14, letterSpacing:'.04em', opacity:(status==='saving'||status==='uploading'||status==='sheet')?.6:1 }}
+                      onClick={handleSubmit} disabled={status==='saving'||status==='uploading'||status==='sheet'}>
+                      {status==='uploading'?`Uploading… ${uploadPct}%`:status==='saving'?'Placing Order…':status==='sheet'?'Generating print sheet…':'🛒 Place Custom Order'}
                     </button>
                   </div>
                   <p style={{ fontSize:11, color:'rgba(255,255,255,.3)', textAlign:'center' }}>Our team will WhatsApp you within 2 hours · Pay via UPI link</p>

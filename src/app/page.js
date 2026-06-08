@@ -822,13 +822,13 @@ function ProductImageViewer({ product, fallbackSrc, designImgSrc, sideImgs, side
 // ══════════════════════════════════════════════════════════════
 // DRYNN UNIFIED STUDIO  — 6-step flow
 // ══════════════════════════════════════════════════════════════
-function StudioPage({ user, onNav, onAddToCart, initialStep = 1 }) {
+function StudioPage({ user, onNav, onAddToCart }) {
   // ── All admin products ────────────────────────────────────
   const allProducts = useProducts()
 
   // ── Step tracking ─────────────────────────────────────────
   const STEPS_LIST = ['Product','Colour','Design','Customise','Preview','Order']
-  const [step, setStep] = useState(initialStep)
+  const [step, setStep] = useState(1)
   const [previewView, setPreviewView] = useState('front')
 
   // ── Step 1: Product ───────────────────────────────────────
@@ -910,8 +910,34 @@ function StudioPage({ user, onNav, onAddToCart, initialStep = 1 }) {
   const [custTab,    setCustTab]     = useState('position')
 
   // ── Step 5 (Preview): 3D ─────────────────────────────────
-  // Step 5 preview handled by InteractiveMockup component
-  // printSheetUrl is generated on-demand in handleSubmit and passed directly
+  // printSheetUrl is auto-generated when customer reaches Step 5
+  const [printSheetUrl,     setPrintSheetUrl]     = useState(null)
+  const [printSheetLoading, setPrintSheetLoading] = useState(false)
+
+  // Auto-trigger print sheet generation when step becomes 5
+  React.useEffect(() => {
+    if (step !== 5) return
+    if (!sideImgs.front) return   // need at least a front design
+    if (printSheetUrl) return     // already generated
+    ;(async () => {
+      setPrintSheetLoading(true)
+      try {
+        // Upload blob: URLs to Cloudinary first so generatePrintSheet gets real HTTPS URLs
+        const resolvedUrls = {}
+        for (const side of SIDES) {
+          if (sideFiles[side]) {
+            try { resolvedUrls[side] = await uploadToCloudinary(sideFiles[side], () => {}) }
+            catch(e) { console.error('[PrintSheet] Upload failed for', side, e) }
+          } else if (sideSamples[side]) {
+            resolvedUrls[side] = sideSamples[side].image_url
+          }
+        }
+        const url = await generatePrintSheet(resolvedUrls)
+        setPrintSheetUrl(url)
+      } catch(e) { console.error('[PrintSheet] Auto-generate failed:', e) }
+      finally { setPrintSheetLoading(false) }
+    })()
+  }, [step])  // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── generatePrintSheet ────────────────────────────────────
   // Composites all 4 sides into a single 4-panel PNG, uploads to
@@ -1062,9 +1088,9 @@ function StudioPage({ user, onNav, onAddToCart, initialStep = 1 }) {
       const garmentLabel = selectedProduct ? selectedProduct.name : 'Custom Garment'
       const sidesLabel   = SIDES.filter(s=>sideImgs[s]).map(s=>SIDE_LABELS[s]).join(', ')
 
-      // Generate print sheet using the just-uploaded Cloudinary URLs (never blob: URLs)
+      // Generate print sheet — reuse already-generated URL from Step 5 if available
       setStatus('sheet')
-      const sheetUrl = await generatePrintSheet(designUrls)
+      const sheetUrl = printSheetUrl || await generatePrintSheet(designUrls)
 
       // Build a cart item representing this custom order
       const customItem = {
@@ -1671,6 +1697,37 @@ function StudioPage({ user, onNav, onAddToCart, initialStep = 1 }) {
                   <div style={{ fontSize:12, fontWeight:700, color:'#fff', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{v}</div>
                 </div>
               ))}
+            </div>
+
+            {/* ── Print Sheet Preview ── */}
+            <div style={{ maxWidth:420, margin:'16px auto 0', background:'rgba(255,255,255,.04)', border:'1px solid rgba(255,255,255,.1)', borderRadius:12, overflow:'hidden' }}>
+              <div style={{ padding:'10px 16px', background:'rgba(200,16,46,.15)', borderBottom:'1px solid rgba(200,16,46,.3)', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+                <span style={{ fontSize:10, fontWeight:700, letterSpacing:'.14em', textTransform:'uppercase', color:'#fff' }}>🖨️ Print-Ready Sheet</span>
+                {printSheetUrl && (
+                  <a href={printSheetUrl} target="_blank" rel="noopener noreferrer"
+                    style={{ fontSize:10, fontWeight:700, color:'rgba(255,255,255,.7)', textDecoration:'underline' }}>Open Full ↗</a>
+                )}
+              </div>
+              {printSheetLoading && (
+                <div style={{ padding:'24px', textAlign:'center' }}>
+                  <div style={{ display:'inline-flex', gap:5, alignItems:'center' }}>
+                    <div style={{ width:6, height:6, borderRadius:'50%', background:'#c8102e', animation:'drynn-dot 1.3s 0s ease-in-out infinite' }} />
+                    <div style={{ width:6, height:6, borderRadius:'50%', background:'#c8102e', animation:'drynn-dot 1.3s .2s ease-in-out infinite' }} />
+                    <div style={{ width:6, height:6, borderRadius:'50%', background:'#c8102e', animation:'drynn-dot 1.3s .4s ease-in-out infinite' }} />
+                  </div>
+                  <div style={{ fontSize:11, color:'rgba(255,255,255,.4)', marginTop:8 }}>Generating print sheet…</div>
+                </div>
+              )}
+              {!printSheetLoading && printSheetUrl && (
+                <a href={printSheetUrl} target="_blank" rel="noopener noreferrer">
+                  <img src={printSheetUrl} alt="Print Sheet"
+                    style={{ width:'100%', display:'block', background:'#fff' }}
+                    onError={e=>e.target.style.display='none'} />
+                </a>
+              )}
+              {!printSheetLoading && !printSheetUrl && (
+                <div style={{ padding:'16px', fontSize:11, color:'rgba(255,255,255,.3)', textAlign:'center' }}>Print sheet will be ready after order is placed.</div>
+              )}
             </div>
 
             <div style={{ display:'flex', gap:10, marginTop:20, justifyContent:'center' }}>
@@ -3438,6 +3495,22 @@ function AdminPanel({ onBack }) {
                         </div>
 
                         <div style={{ padding:'14px 16px' }}>
+                          {/* ── PRINT SHEET — top of card, most prominent for printer ── */}
+                          {isCustom && o.print_sheet && (
+                            <div style={{ marginBottom:16, background:'#0a0a0a', borderRadius:10, overflow:'hidden', border:'2.5px solid #c8102e' }}>
+                              <div style={{ background:'#c8102e', padding:'6px 12px', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+                                <span style={{ fontSize:11, fontWeight:700, letterSpacing:'.12em', textTransform:'uppercase', color:'#fff' }}>🖨️ Print-Ready Sheet</span>
+                                <a href={o.print_sheet} target="_blank" rel="noopener noreferrer"
+                                  style={{ fontSize:11, fontWeight:700, color:'#fff', textDecoration:'underline', cursor:'pointer' }}>Open Full Size ↗</a>
+                              </div>
+                              <a href={o.print_sheet} target="_blank" rel="noopener noreferrer">
+                                <img src={o.print_sheet} alt="Print Sheet"
+                                  style={{ width:'100%', display:'block', background:'#fff' }}
+                                  onError={e=>e.target.style.display='none'} />
+                              </a>
+                            </div>
+                          )}
+
                           {/* 4-Panel Print Sheet for custom orders */}
                           {isCustom && (
                             <div style={{ marginBottom:14 }}>
@@ -3530,21 +3603,7 @@ function AdminPanel({ onBack }) {
                               <div style={{ fontSize:11, color:'#888', marginBottom:2 }}>👕 {o.garment} · 🎨 {o.color} · 📏 {o.size} · Qty {o.qty}</div>
                               {o.design_sides && <div style={{ fontSize:11, color:'#c8102e', marginBottom:2 }}>🖨️ Print sides: {o.design_sides}</div>}
                               {o.custom_text  && <div style={{ fontSize:11, color:'#0a1f5d', marginBottom:2 }}>✍️ Text: "{o.custom_text}"</div>}
-                              {/* ── PRINT SHEET (most important for printer) ── */}
-                              {o.print_sheet && (
-                                <div style={{ margin:'8px 0 6px', background:'#0a0a0a', borderRadius:8, overflow:'hidden', border:'2px solid #c8102e' }}>
-                                  <div style={{ background:'#c8102e', padding:'4px 10px', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
-                                    <span style={{ fontSize:10, fontWeight:700, letterSpacing:'.12em', textTransform:'uppercase', color:'#fff' }}>🖨️ Print-Ready Sheet</span>
-                                    <a href={o.print_sheet} target="_blank" rel="noopener noreferrer"
-                                      style={{ fontSize:10, fontWeight:700, color:'#fff', textDecoration:'underline', cursor:'pointer' }}>Open Full Size ↗</a>
-                                  </div>
-                                  <a href={o.print_sheet} target="_blank" rel="noopener noreferrer">
-                                    <img src={o.print_sheet} alt="Print Sheet"
-                                      style={{ width:'100%', display:'block', maxHeight:200, objectFit:'contain', background:'#fff' }}
-                                      onError={e=>e.target.style.display='none'} />
-                                  </a>
-                                </div>
-                              )}
+                              {/* ── PRINT SHEET — shown at top of card (see above) ── */}
                               {(() => {
                                 // Show placement info per side if saved
                                 const pos = o.side_pos || (o.custom_details && o.custom_details.sidePos)
@@ -4259,7 +4318,7 @@ function OrderTrackingPage({ onNav }) {
 // ══════════════════════════════════════════════════════════════
 // GROUP ORDER PAGE
 // ══════════════════════════════════════════════════════════════
-function GroupOrderPage({ user, onNav, onNavStudio }) {
+function GroupOrderPage({ user, onNav }) {
   const [tab, setTab] = useState('create') // create | join
   const allProducts = usePublicProducts()
   const [selectedProduct, setSelectedProduct] = useState(null)
@@ -4348,7 +4407,7 @@ function GroupOrderPage({ user, onNav, onNavStudio }) {
               </button>
             </div>
           ) : (
-            <CreateGroupOrder user={user} selectedProduct={selectedProduct} onChangeProduct={()=>setStep('pick')} onNavStudio={onNavStudio} />
+            <CreateGroupOrder user={user} selectedProduct={selectedProduct} onChangeProduct={()=>setStep('pick')} />
           )
         ) : (
           <JoinGroupOrder user={user} />
@@ -4358,7 +4417,7 @@ function GroupOrderPage({ user, onNav, onNavStudio }) {
   )
 }
 
-function CreateGroupOrder({ user, selectedProduct, onChangeProduct, onNavStudio }) {
+function CreateGroupOrder({ user, selectedProduct, onChangeProduct }) {
   const [form, setForm]         = useState({ title:'', color:'#ffffff', deadline:'', organizer: user?.user_metadata?.full_name||'', phone:'' })
   const [created, setCreated]   = useState(null)
   const [saving, setSaving]     = useState(false)
@@ -4525,16 +4584,7 @@ function CreateGroupOrder({ user, selectedProduct, onChangeProduct, onNavStudio 
 
           {/* Design upload + live preview */}
           <div>
-            <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:7 }}>
-              <label style={{ fontSize:11, fontWeight:700, letterSpacing:'.12em', textTransform:'uppercase', color:'#555' }}>Design / Logo (optional)</label>
-              {onNavStudio && (
-                <button onClick={()=>onNavStudio(2)}
-                  style={{ display:'inline-flex', alignItems:'center', gap:5, fontSize:11, fontWeight:700, color:'#c8102e', background:'rgba(200,16,46,.07)', border:'1px solid rgba(200,16,46,.25)', borderRadius:50, padding:'4px 12px', cursor:'pointer', whiteSpace:'nowrap', transition:'all .15s' }}>
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
-                  Open in Studio
-                </button>
-              )}
-            </div>
+            <label style={{ fontSize:11, fontWeight:700, letterSpacing:'.12em', textTransform:'uppercase', color:'#555', display:'block', marginBottom:7 }}>Design / Logo (optional)</label>
             <div style={{ display:'flex', gap:16, alignItems:'flex-start', flexWrap:'wrap' }}>
               {/* Upload zone */}
               <label style={{ flex:'1 1 140px', cursor:'pointer' }}>
@@ -4737,10 +4787,9 @@ function JoinGroupOrder({ user }) {
 // MAIN SITE SHELL (navbar + bottom nav + router)
 // ══════════════════════════════════════════════════════════════
 function MainSite({ user }) {
-  const [page, setPage]             = useState('home')
-  const [cart, setCart]             = useState([])
-  const [toast, setToast]           = useState('')
-  const [studioInitialStep, setStudioInitialStep] = useState(1)
+  const [page, setPage]     = useState('home')
+  const [cart, setCart]     = useState([])
+  const [toast, setToast]   = useState('')
 
   const showToast = (msg) => {
     setToast(msg)
@@ -4825,14 +4874,14 @@ function MainSite({ user }) {
       {/* ── PAGE CONTENT ── */}
       {page==='home'     && <HomePage     user={user} onNav={setPage} cart={cart} onAddToCart={addToCart} />}
       {page==='products' && <ProductsPage onAddToCart={addToCart} onNav={setPage} />}
-      {page==='studio'   && <StudioPage   user={user} onNav={p=>{ setStudioInitialStep(1); setPage(p) }} onAddToCart={addToCart} initialStep={studioInitialStep} />}
+      {page==='studio'   && <StudioPage   user={user} onNav={setPage} onAddToCart={addToCart} />}
       {page==='about'    && <AboutPage    onNav={setPage} />}
       {page==='contact'  && <ContactPage  onNav={setPage} />}
       {page==='cart'     && <CartPage cart={cart} onRemove={i=>setCart(c=>c.filter((_,idx)=>idx!==i))} onClear={()=>setCart([])} user={user} onNav={setPage} />}
       {page==='account'  && <AccountPage user={user} onLogout={handleLogout} onNav={setPage} />}
       {page==='orders'   && <OrdersPage  user={user} onBack={()=>setPage('account')} />}
       {page==='track'    && <OrderTrackingPage onNav={setPage} />}
-      {page==='group'    && <GroupOrderPage user={user} onNav={setPage} onNavStudio={step=>{ setStudioInitialStep(step); setPage('studio') }} />}
+      {page==='group'    && <GroupOrderPage user={user} onNav={setPage} />}
 
       {/* ── FOOTER (only on main pages) ── */}
       {['home','about','contact','track','group'].includes(page) && page !== 'products' && (

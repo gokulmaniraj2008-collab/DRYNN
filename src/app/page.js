@@ -3741,28 +3741,64 @@ function AdminPanel({ onBack }) {
             <h2 style={{ fontSize:18, fontWeight:700, marginBottom:16 }}>Customer Design Uploads</h2>
             {loading ? (
               <div style={{ textAlign:'center', padding:40, color:'#888' }}>Loading…</div>
-            ) : (
-              <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(180px,1fr))', gap:14 }}>
-                {orders.filter(o=>o.design_file && o.design_file.startsWith('http')).length === 0 && (
-                  <div style={{ gridColumn:'1/-1', textAlign:'center', padding:60, color:'#888', background:'#fff', borderRadius:12, fontSize:13 }}>
-                    No design uploads yet. They appear here once customers place custom print orders.
-                  </div>
-                )}
-                {orders.filter(o=>o.design_file && o.design_file.startsWith('http')).map(o=>(
-                  <div key={o.id} style={{ background:'#fff', borderRadius:10, overflow:'hidden', border:'1px solid #e8e8e8' }}>
-                    <div style={{ height:160, background:'#f8f8f8', display:'flex', alignItems:'center', justifyContent:'center', overflow:'hidden' }}>
-                      <img src={o.design_file} alt="Design" style={{ width:'100%', height:'100%', objectFit:'contain' }} onError={e=>e.target.style.display='none'} />
-                    </div>
-                    <div style={{ padding:'10px 12px' }}>
-                      <div style={{ fontSize:12, fontWeight:700, marginBottom:2 }}>{o.name}</div>
-                      <div style={{ fontSize:10, color:'#888', marginBottom:2 }}>{o.garment} · {o.size} · Qty {o.qty}</div>
-                      <div style={{ fontSize:10, color:'#aaa' }}>{new Date(o.placed_at||o.created_at).toLocaleDateString('en-IN')}</div>
-                      <a href={o.design_file} target="_blank" rel="noreferrer" style={{ display:'block', marginTop:8, fontSize:11, color:'#0a1f5d', fontWeight:600, textDecoration:'underline' }}>View Full Size</a>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
+            ) : (() => {
+              const customOrders = orders.filter(o => o.design_file && o.design_file.startsWith('http'))
+              const GD = {
+                'T-Shirt': 'https://res.cloudinary.com/dfhdyp4oq/image/upload/drynn/products/tshirt_white.png',
+                'Hoodie':  'https://res.cloudinary.com/dfhdyp4oq/image/upload/drynn/products/hoodie_navy.png',
+                'Polo':    'https://res.cloudinary.com/dfhdyp4oq/image/upload/drynn/products/polo_white.png',
+                'Joggers': 'https://res.cloudinary.com/dfhdyp4oq/image/upload/drynn/products/joggers_black.png',
+              }
+              if (customOrders.length === 0) return (
+                <div style={{ textAlign:'center', padding:60, color:'#888', background:'#fff', borderRadius:12, fontSize:13 }}>
+                  No design uploads yet.
+                </div>
+              )
+              return (
+                <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(220px,1fr))', gap:16 }}>
+                  {customOrders.map(o => {
+                    const gk = o.garment?.toLowerCase().includes('hoodie') ? 'Hoodie'
+                      : o.garment?.toLowerCase().includes('polo') ? 'Polo'
+                      : o.garment?.toLowerCase().includes('jogger') ? 'Joggers' : 'T-Shirt'
+                    const gi = GD[gk]
+                    const sides = [
+                      { label:'Front', url: o.design_file },
+                      { label:'Back',  url: o.design_back?.startsWith('http')  ? o.design_back  : null },
+                      { label:'Left',  url: o.design_left?.startsWith('http')  ? o.design_left  : null },
+                      { label:'Right', url: o.design_right?.startsWith('http') ? o.design_right : null },
+                    ].filter(s => s.url)
+                    return (
+                      <div key={o.id} style={{ background:'#fff', borderRadius:12, overflow:'hidden', border:'1px solid #e8e8e8', boxShadow:'0 2px 8px rgba(0,0,0,.05)' }}>
+                        <div style={{ position:'relative', background:'#f5f5f5', padding:8 }}>
+                          <div style={{ position:'relative', borderRadius:8, overflow:'hidden' }}>
+                            <img src={gi} alt={gk} style={{ width:'100%', display:'block' }} onError={e=>e.target.style.opacity='0.1'} />
+                            <img src={o.design_file} alt="design"
+                              style={{ position:'absolute', top:'38%', left:'50%', transform:'translate(-50%,-50%)', width:'42%', objectFit:'contain', pointerEvents:'none' }}
+                              onError={e=>e.target.style.display='none'} />
+                          </div>
+                          {sides.length > 1 && (
+                            <div style={{ display:'flex', gap:4, marginTop:6, flexWrap:'wrap' }}>
+                              {sides.map(s => (
+                                <a key={s.label} href={s.url} target="_blank" rel="noreferrer"
+                                  style={{ fontSize:9, fontWeight:700, padding:'3px 8px', borderRadius:20, background:'#0a1f5d', color:'#fff', textDecoration:'none' }}>
+                                  {s.label} ↗
+                                </a>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                        <div style={{ padding:'10px 12px' }}>
+                          <div style={{ fontSize:13, fontWeight:700, marginBottom:2 }}>{o.name}</div>
+                          <div style={{ fontSize:10, color:'#888', marginBottom:2 }}>{o.garment} · {o.size} · Qty {o.qty}</div>
+                          <div style={{ fontSize:10, color:'#aaa', marginBottom:8 }}>{new Date(o.placed_at||o.created_at).toLocaleDateString('en-IN')}</div>
+                          <a href={o.design_file} target="_blank" rel="noreferrer" style={{ fontSize:11, color:'#c8102e', fontWeight:700, textDecoration:'underline' }}>Open Full Design ↗</a>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )
+            })()}
           </div>
         )}
 

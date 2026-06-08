@@ -2418,7 +2418,6 @@ function CartPage({ cart, onRemove, onClear, user, onNav }) {
           design_sides: item.isCustom ? (cd?.sides || '') : '',
           custom_text:  item.isCustom ? (cd?.textOn ? cd?.textVal : '') : '',
           side_pos:     item.isCustom ? (cd?.sidePos || null) : null,
-          print_sheet:  item.isCustom ? (cd?.printSheetUrl || null) : null,
           product_name: item.name,
           product_image: item.image_url || item.img_front || '',
           product_category: item.category || '',

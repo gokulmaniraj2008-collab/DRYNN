@@ -3059,8 +3059,6 @@ function TermsPage({ onBack }) {
 // ══════════════════════════════════════════════════════════════
 function AdminOrderPreview({ order }) {
   const o = order
-  const SIDES = ['front','back','left','right']
-  const SIDE_LABELS = { front:'Front', back:'Back', left:'Left Side', right:'Right Side' }
 
   const GARMENT_DEFAULTS = {
     'T-Shirt': 'https://res.cloudinary.com/dfhdyp4oq/image/upload/drynn/products/tshirt_white.png',
@@ -3074,124 +3072,55 @@ function AdminOrderPreview({ order }) {
     : o.garment?.toLowerCase().includes('jogger') ? 'Joggers'
     : 'T-Shirt'
 
-  // Build design map per side
-  const designs = {
-    front: o.design_file?.startsWith('http')  ? o.design_file  : null,
-    back:  o.design_back?.startsWith('http')  ? o.design_back  : null,
-    left:  o.design_left?.startsWith('http')  ? o.design_left  : null,
-    right: o.design_right?.startsWith('http') ? o.design_right : null,
-  }
+  const [garmentImg, setGarmentImg] = React.useState(GARMENT_DEFAULTS[garmentKey])
+  React.useEffect(() => {
+    if (!o.garment) return
+    const keyword = o.garment.replace('Custom ','').split(' ').slice(0,3).join(' ')
+    supabase.from('drynn_products').select('img_front,image_url').ilike('name', '%' + keyword + '%').limit(1)
+      .then(({ data }) => {
+        if (data && data[0]) {
+          const img = data[0].img_front || data[0].image_url
+          if (img) setGarmentImg(img)
+        }
+      })
+  }, [o.garment])
 
-  // Only show sides that have a garment image OR a design
-  const activeSides = SIDES.filter(s => designs[s])
-  if (activeSides.length === 0) return null
-
-  const [activeIdx, setActiveIdx] = React.useState(0)
-  const activeSide = activeSides[activeIdx] || activeSides[0]
-
-  const sidePos = o.side_pos || {}
-  const getPos = side => ({
-    posX:     sidePos[side]?.posX     ?? 50,
-    posY:     sidePos[side]?.posY     ?? 38,
-    scale:    sidePos[side]?.scale    ?? 38,
-    rotation: sidePos[side]?.rotation ?? 0,
-  })
-
-  // Garment image for this side — use product_image for front, fallback to defaults
-  const getGarmentImg = side => {
-    if (side === 'front' && o.product_image?.startsWith('http')) return o.product_image
-    return GARMENT_DEFAULTS[garmentKey]
-  }
+  const designUrl = o.design_file?.startsWith('http') ? o.design_file : null
+  if (!designUrl) return null
 
   const color = o.color || '#ffffff'
-  const pos = getPos(activeSide)
 
   return (
-    <div style={{ marginBottom:14 }}>
+    <div style={{ marginBottom:16 }}>
       <div style={{ fontSize:9, fontWeight:700, letterSpacing:'.12em', textTransform:'uppercase', color:'#c8102e', marginBottom:8 }}>
-        🎨 Customer Design Preview — {SIDE_LABELS[activeSide]}
+        🎨 Customer Design Preview — Front
       </div>
-
-      {/* Main mockup */}
-      <div style={{ position:'relative', borderRadius:10, overflow:'hidden', background:'#f0f0f0', border:'1.5px solid #e0e0e0', maxWidth:280 }}>
-        {/* Garment with colour filter */}
+      <div style={{ position:'relative', borderRadius:12, overflow:'hidden', background:'#f5f5f5', border:'1.5px solid #e0e0e0', maxWidth:320, display:'inline-block' }}>
         <img
-          src={getGarmentImg(activeSide)}
+          src={garmentImg}
           alt={garmentKey}
           style={{ width:'100%', display:'block', filter:colorToFilter(color) }}
-          onError={e=>{ e.target.style.opacity='0.1' }}
+          onError={e=>{ e.target.src = GARMENT_DEFAULTS[garmentKey] }}
         />
-        {/* Design overlay at exact saved position */}
-        {designs[activeSide] && (
-          <a href={designs[activeSide]} target="_blank" rel="noopener noreferrer">
-            <img
-              src={designs[activeSide]}
-              alt="design"
-              style={{
-                position:'absolute',
-                top:`${pos.posY}%`,
-                left:`${pos.posX}%`,
-                transform:`translate(-50%,-50%) rotate(${pos.rotation}deg)`,
-                width:`${pos.scale}%`,
-                objectFit:'contain',
-                pointerEvents:'auto',
-                cursor:'pointer',
-              }}
-              onError={e=>{ e.target.style.display='none' }}
-            />
-          </a>
-        )}
-        {/* Custom text overlay */}
-        {o.custom_text && activeSide === 'front' && (
-          <div style={{
-            position:'absolute', bottom:'12%', left:'50%',
-            transform:'translateX(-50%)',
-            fontSize:11, fontWeight:700, color:'#fff',
-            textShadow:'0 1px 4px rgba(0,0,0,.6)',
-            whiteSpace:'nowrap', pointerEvents:'none',
-          }}>{o.custom_text}</div>
-        )}
-        {/* Colour badge */}
-        <div style={{ position:'absolute', top:6, right:6, display:'flex', alignItems:'center', gap:4, background:'rgba(255,255,255,.9)', borderRadius:20, padding:'3px 8px', fontSize:9, fontWeight:700 }}>
+        <img
+          src={designUrl}
+          alt=design
+          style={{ position:'absolute', top:'38%', left:'50%', transform:'translate(-50%,-50%)', width:'42%', objectFit:'contain', pointerEvents:'none' }}
+          onError={e=>{ e.target.style.display='none' }}
+        />
+        <div style={{ position:'absolute', top:8, right:8, display:'flex', alignItems:'center', gap:4, background:'rgba(255,255,255,.92)', borderRadius:20, padding:'3px 8px', fontSize:9, fontWeight:700, boxShadow:'0 1px 4px rgba(0,0,0,.1)' }}>
           <div style={{ width:10, height:10, borderRadius:'50%', background:color, border:'1px solid #ccc' }} />
           {color}
         </div>
       </div>
-
-      {/* Side thumbnails */}
-      {activeSides.length > 1 && (
-        <div style={{ display:'flex', gap:6, marginTop:8 }}>
-          {activeSides.map((side, i) => {
-            const p = getPos(side)
-            return (
-              <button key={side} onClick={()=>setActiveIdx(i)}
-                style={{ position:'relative', width:56, height:56, borderRadius:7, overflow:'hidden', border:`2px solid ${i===activeIdx?'#c8102e':'#e0e0e0'}`, background:'#f8f8f8', padding:0, cursor:'pointer', flexShrink:0, transition:'border-color .15s' }}>
-                <img src={getGarmentImg(side)} alt={side}
-                  style={{ width:'100%', height:'100%', objectFit:'contain', filter:colorToFilter(color) }}
-                  onError={e=>e.target.style.opacity='0.1'} />
-                {designs[side] && (
-                  <img src={designs[side]} alt="d"
-                    style={{ position:'absolute', top:`${p.posY}%`, left:`${p.posX}%`, transform:`translate(-50%,-50%) rotate(${p.rotation}deg)`, width:`${p.scale}%`, objectFit:'contain', pointerEvents:'none' }}
-                    onError={e=>e.target.style.display='none'} />
-                )}
-                <div style={{ position:'absolute', bottom:1, left:0, right:0, textAlign:'center', fontSize:7, fontWeight:700, color: i===activeIdx?'#c8102e':'#888', background:'rgba(255,255,255,.85)' }}>
-                  {SIDE_LABELS[side].split(' ')[0]}
-                </div>
-              </button>
-            )
-          })}
-        </div>
-      )}
-
-      {/* Placement info */}
-      <div style={{ marginTop:6, fontSize:9, color:'#aaa' }}>
-        Scale {Math.round(pos.scale)}% · X {Math.round(pos.posX)}% · Y {Math.round(pos.posY)}%{pos.rotation ? ` · ${pos.rotation}° rot` : ''}
-        {designs[activeSide] && <> · <a href={designs[activeSide]} target="_blank" rel="noopener noreferrer" style={{ color:'#c8102e', textDecoration:'underline' }}>Open design ↗</a></>}
+      <div style={{ marginTop:6 }}>
+        <a href={designUrl} target='_blank' rel='noopener noreferrer' style={{ fontSize:11, color:'#c8102e', fontWeight:700, textDecoration:'underline' }}>
+          Open full design ↗
+        </a>
       </div>
     </div>
   )
 }
-
 // ══════════════════════════════════════════════════════════════
 // ADMIN PANEL  -  restricted to ADMIN_EMAIL only
 // ══════════════════════════════════════════════════════════════

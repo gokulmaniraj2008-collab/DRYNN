@@ -4111,15 +4111,47 @@ function GroupOrderPage({ user, onNav }) {
 }
 
 function CreateGroupOrder({ user }) {
-  const [form, setForm]     = useState({ title:'', garment:'T-Shirt', color:'#ffffff', deadline:'', organizer: user?.user_metadata?.full_name||'', phone:'' })
-  const [created, setCreated] = useState(null)
-  const [saving, setSaving]   = useState(false)
+  const [form, setForm]         = useState({ title:'', garment:'T-Shirt', color:'#ffffff', deadline:'', organizer: user?.user_metadata?.full_name||'', phone:'' })
+  const [created, setCreated]   = useState(null)
+  const [saving, setSaving]     = useState(false)
+  // Design upload state
+  const [designFile, setDesignFile]   = useState(null)
+  const [designImg,  setDesignImg]    = useState(null)   // local preview URL
+  const [uploadPct,  setUploadPct]    = useState(0)
+  const [uploadErr,  setUploadErr]    = useState('')
 
   const GARMENTS_LIST = ['T-Shirt','Hoodie','Polo','Joggers']
+  const GARMENT_DEFAULTS = {
+    'T-Shirt': 'https://res.cloudinary.com/dfhdyp4oq/image/upload/drynn/products/tshirt_white.png',
+    'Hoodie':  'https://res.cloudinary.com/dfhdyp4oq/image/upload/drynn/products/hoodie_navy.png',
+    'Polo':    'https://res.cloudinary.com/dfhdyp4oq/image/upload/drynn/products/polo_white.png',
+    'Joggers': 'https://res.cloudinary.com/dfhdyp4oq/image/upload/drynn/products/joggers_black.png',
+  }
+
+  const handleDesignFile = e => {
+    const f = e.target.files[0]; if (!f) return
+    const allowed = ['image/png','image/jpeg','image/jpg','image/svg+xml']
+    if (!allowed.includes(f.type)) { setUploadErr('Only PNG, JPG, SVG allowed.'); return }
+    if (f.size > 20*1024*1024) { setUploadErr('Max 20MB.'); return }
+    setUploadErr('')
+    setDesignFile(f)
+    setDesignImg(URL.createObjectURL(f))
+  }
 
   const create = async () => {
     if (!form.title||!form.organizer||!form.phone) { alert('Fill all required fields'); return }
     setSaving(true)
+    let designUrl = null
+    // Upload design to Cloudinary if provided
+    if (designFile) {
+      try {
+        designUrl = await uploadToCloudinary(designFile, pct => setUploadPct(pct))
+      } catch(e) {
+        setSaving(false)
+        alert('Design upload failed: ' + e.message)
+        return
+      }
+    }
     const id = crypto.randomUUID()
     const code = Math.random().toString(36).slice(2,8).toUpperCase()
     const groupData = {
@@ -4132,12 +4164,12 @@ function CreateGroupOrder({ user }) {
       organizer_name: form.organizer,
       organizer_phone: form.phone,
       organizer_user_id: user?.id || null,
+      design_url: designUrl,
       created_at: new Date().toISOString(),
       status: 'open',
     }
     const { error } = await supabase.from('drynn_group_orders').insert(groupData).catch(()=>({ error:{message:'Table may not exist'} }))
     setSaving(false)
-    // Even if DB fails (table doesn't exist yet), show success UI for demo
     setCreated({ ...groupData, error: error?.message })
   }
 
@@ -4150,6 +4182,18 @@ function CreateGroupOrder({ user }) {
         <div style={{ marginBottom:12, color:'#00a86b' }}><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="9 12 11 14 15 10"/></svg></div>
         <h2 style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:28, marginBottom:8 }}>GROUP ORDER CREATED!</h2>
         <p style={{ fontSize:14, color:'#555', marginBottom:16 }}>Share this code or link with your team. They can join and select their size independently.</p>
+        {/* Design preview on success screen */}
+        {created.design_url && (
+          <div style={{ marginBottom:16 }}>
+            <div style={{ fontSize:11, fontWeight:700, letterSpacing:'.1em', textTransform:'uppercase', color:'#888', marginBottom:8 }}>Design Preview</div>
+            <div style={{ position:'relative', display:'inline-block', width:160, height:160 }}>
+              <img src={GARMENT_DEFAULTS[created.garment] || GARMENT_DEFAULTS['T-Shirt']} alt="garment"
+                style={{ width:160, height:160, objectFit:'contain', borderRadius:8, border:'1px solid #e0e0e0', background:'#f8f8f8' }} />
+              <img src={created.design_url} alt="design"
+                style={{ position:'absolute', top:'25%', left:'50%', transform:'translate(-50%,-50%)', width:'45%', objectFit:'contain', pointerEvents:'none' }} />
+            </div>
+          </div>
+        )}
         <div style={{ background:'#fff', border:'2px solid #00a86b', borderRadius:8, padding:'16px 20px', marginBottom:16, display:'inline-block', minWidth:200 }}>
           <div style={{ fontSize:10, color:'#888', letterSpacing:'.16em', textTransform:'uppercase', marginBottom:6 }}>Group Code</div>
           <div style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:44, letterSpacing:'.12em', color:'#0a0a0a' }}>{created.group_code}</div>
@@ -4161,7 +4205,7 @@ function CreateGroupOrder({ user }) {
             Share on WhatsApp
           </a>
         </div>
-        {created.error && <p style={{ fontSize:11, color:'#f5a623', marginTop:12 }}>Note: DB save failed ({created.error}). Set up drynn_group_orders table in Supabase.</p>}
+        {created.error && <p style={{ fontSize:11, color:'#f5a623', marginTop:12 }}>Note: DB save failed ({created.error}). Add design_url column to drynn_group_orders in Supabase.</p>}
       </div>
       <button onClick={()=>setCreated(null)} style={{ background:'none', border:'none', color:'#888', cursor:'pointer', fontSize:13, textDecoration:'underline' }}>← Create another</button>
     </div>
@@ -4190,6 +4234,59 @@ function CreateGroupOrder({ user }) {
               </div>
             </div>
           </div>
+
+          {/* ── Design Upload + Live Preview ── */}
+          <div>
+            <label style={{ fontSize:11, fontWeight:700, letterSpacing:'.12em', textTransform:'uppercase', color:'#555', display:'block', marginBottom:7 }}>Design / Logo (optional)</label>
+            <div style={{ display:'flex', gap:16, alignItems:'flex-start', flexWrap:'wrap' }}>
+              {/* Upload zone */}
+              <label style={{ flex:'1 1 140px', cursor:'pointer' }}>
+                <input type="file" accept=".png,.jpg,.jpeg,.svg" style={{ display:'none' }} onChange={handleDesignFile} />
+                <div className="upload-zone" style={{ minHeight:80, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:6 }}>
+                  {designImg
+                    ? <img src={designImg} alt="design" style={{ maxHeight:60, maxWidth:'100%', objectFit:'contain', borderRadius:4 }} />
+                    : <>
+                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#aaa" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                        <span style={{ fontSize:11, color:'#aaa' }}>Upload PNG / JPG / SVG</span>
+                      </>
+                  }
+                </div>
+              </label>
+              {/* Live garment preview */}
+              <div style={{ flex:'0 0 130px', textAlign:'center' }}>
+                <div style={{ fontSize:9, fontWeight:700, letterSpacing:'.1em', textTransform:'uppercase', color:'#aaa', marginBottom:4 }}>Preview</div>
+                <div style={{ position:'relative', width:120, height:120, margin:'0 auto' }}>
+                  <img src={GARMENT_DEFAULTS[form.garment] || GARMENT_DEFAULTS['T-Shirt']} alt="garment"
+                    style={{ width:120, height:120, objectFit:'contain', borderRadius:8, border:'1px solid #e0e0e0', background:'#f8f8f8', display:'block' }} />
+                  {designImg && (
+                    <img src={designImg} alt="design overlay"
+                      style={{ position:'absolute', top:'25%', left:'50%', transform:'translate(-50%,-50%)', width:'45%', objectFit:'contain', pointerEvents:'none' }} />
+                  )}
+                  {!designImg && (
+                    <div style={{ position:'absolute', inset:0, display:'flex', alignItems:'center', justifyContent:'center', fontSize:9, color:'#ccc', pointerEvents:'none' }}>
+                      design here
+                    </div>
+                  )}
+                </div>
+                {designImg && (
+                  <button onClick={()=>{setDesignFile(null);setDesignImg(null)}}
+                    style={{ marginTop:6, fontSize:10, color:'#c8102e', background:'none', border:'none', cursor:'pointer', textDecoration:'underline' }}>Remove</button>
+                )}
+              </div>
+            </div>
+            {uploadErr && <p style={{ fontSize:11, color:'#c8102e', marginTop:6 }}>{uploadErr}</p>}
+            {saving && designFile && (
+              <div style={{ marginTop:8 }}>
+                <div style={{ display:'flex', justifyContent:'space-between', fontSize:11, color:'#888', marginBottom:4 }}>
+                  <span>Uploading design…</span><span>{uploadPct}%</span>
+                </div>
+                <div style={{ height:4, background:'#f0f0f0', borderRadius:2 }}>
+                  <div style={{ height:'100%', width:`${uploadPct}%`, background:'#c8102e', borderRadius:2, transition:'width .3s' }} />
+                </div>
+              </div>
+            )}
+          </div>
+
           <div>
             <label style={{ fontSize:11, fontWeight:700, letterSpacing:'.12em', textTransform:'uppercase', color:'#555', display:'block', marginBottom:7 }}>Order Deadline (optional)</label>
             <input className="input-field" type="date" value={form.deadline} onChange={e=>setForm({...form,deadline:e.target.value})} style={{ maxWidth:200 }} />
@@ -4205,13 +4302,13 @@ function CreateGroupOrder({ user }) {
             </div>
           </div>
           <button className="btn-primary" style={{ padding:14, fontSize:13, opacity:saving?.6:1 }} onClick={create} disabled={saving}>
-            {saving ? 'Creating…' : 'Create Group Order'}
+            {saving ? (designFile ? `Uploading… ${uploadPct}%` : 'Creating…') : 'Create Group Order'}
           </button>
         </div>
       </div>
       <div style={{ background:'linear-gradient(135deg,rgba(0,168,107,.06),rgba(10,31,93,.06))', border:'1px solid rgba(0,168,107,.2)', borderRadius:12, padding:'20px 24px' }}>
         <div style={{ fontSize:13, fontWeight:700, marginBottom:10 }}>How Group Orders Work</div>
-        {[['1.','Create a group order with your event name and garment.'],['2.','Share the unique link/code with your group.'],['3.','Everyone selects their size and pays individually.'],['4.','DRYNN prints and delivers all pieces together.']].map(([e,t])=>(
+        {[['1.','Create a group order with your event name, garment, and design.'],['2.','Share the unique link/code with your group.'],['3.','Everyone sees the design preview, selects their size, and pays individually.'],['4.','DRYNN prints and delivers all pieces together.']].map(([e,t])=>(
           <div key={e} style={{ display:'flex', gap:10, marginBottom:8, fontSize:13, color:'#555' }}><span>{e}</span><span>{t}</span></div>
         ))}
       </div>
@@ -4285,6 +4382,24 @@ function JoinGroupOrder({ user }) {
           <div style={{ background:'linear-gradient(90deg,rgba(0,168,107,.08),rgba(10,31,93,.06))', borderRadius:8, padding:'14px 18px', marginBottom:20 }}>
             <div style={{ fontSize:16, fontWeight:700 }}>{group.title}</div>
             <div style={{ fontSize:12, color:'#888', marginTop:4 }}>{group.garment} · Organizer: {group.organizer_name} {group.deadline&&`· Deadline: ${new Date(group.deadline).toLocaleDateString('en-IN')}`}</div>
+            {/* Design preview for members */}
+            {group.design_url && (
+              <div style={{ marginTop:14, textAlign:'center' }}>
+                <div style={{ fontSize:10, fontWeight:700, letterSpacing:'.1em', textTransform:'uppercase', color:'#888', marginBottom:6 }}>Your Design Preview</div>
+                <div style={{ position:'relative', display:'inline-block', width:130, height:130 }}>
+                  <img src={{
+                    'T-Shirt': 'https://res.cloudinary.com/dfhdyp4oq/image/upload/drynn/products/tshirt_white.png',
+                    'Hoodie':  'https://res.cloudinary.com/dfhdyp4oq/image/upload/drynn/products/hoodie_navy.png',
+                    'Polo':    'https://res.cloudinary.com/dfhdyp4oq/image/upload/drynn/products/polo_white.png',
+                    'Joggers': 'https://res.cloudinary.com/dfhdyp4oq/image/upload/drynn/products/joggers_black.png',
+                  }[group.garment] || 'https://res.cloudinary.com/dfhdyp4oq/image/upload/drynn/products/tshirt_white.png'}
+                    alt="garment" style={{ width:130, height:130, objectFit:'contain', borderRadius:8, border:'1px solid #e0e0e0', background:'#f8f8f8', display:'block' }} />
+                  <img src={group.design_url} alt="design"
+                    style={{ position:'absolute', top:'25%', left:'50%', transform:'translate(-50%,-50%)', width:'45%', objectFit:'contain', pointerEvents:'none' }} />
+                </div>
+                <div style={{ fontSize:11, color:'#00a86b', marginTop:6, fontWeight:600 }}>This is what will be printed on your {group.garment}</div>
+              </div>
+            )}
           </div>
           <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
             <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>

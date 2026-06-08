@@ -2758,7 +2758,6 @@ function AdminPanel({ onBack }) {
           <button onClick={()=>{setTab('orders');loadOrders()}} style={{ flexShrink:0, padding:'6px 16px', borderRadius:4, border:'none', cursor:'pointer', background:tab==='orders'?'#c8102e':'#222', color:'#fff', fontSize:12, fontWeight:700 }}>Orders</button>
           <button onClick={()=>{setTab('products');loadProducts()}} style={{ flexShrink:0, padding:'6px 16px', borderRadius:4, border:'none', cursor:'pointer', background:tab==='products'?'#c8102e':'#222', color:'#fff', fontSize:12, fontWeight:700 }}>Products</button>
           <button onClick={()=>{setTab('samples');loadSamples()}} style={{ flexShrink:0, padding:'6px 16px', borderRadius:4, border:'none', cursor:'pointer', background:tab==='samples'?'#c8102e':'#222', color:'#fff', fontSize:12, fontWeight:700 }}>Samples</button>
-          <button onClick={()=>setTab('mockups')} style={{ flexShrink:0, padding:'6px 16px', borderRadius:4, border:'none', cursor:'pointer', background:tab==='mockups'?'#c8102e':'#222', color:'#fff', fontSize:12, fontWeight:700 }}>Mockups</button>
           <button onClick={()=>{setTab('uploads');loadOrders()}} style={{ flexShrink:0, padding:'6px 16px', borderRadius:4, border:'none', cursor:'pointer', background:tab==='uploads'?'#c8102e':'#222', color:'#fff', fontSize:12, fontWeight:700 }}>Uploads</button>
         </div>
       </div>
@@ -2936,18 +2935,17 @@ function AdminPanel({ onBack }) {
                 </div>
               ))}
             </div>
+
+            {/* Garment Mockup Images */}
+            <div style={{ marginTop:32, borderTop:'1.5px solid #f0f0f0', paddingTop:24 }}>
+              <h3 style={{ fontSize:16, fontWeight:700, marginBottom:4 }}>Garment Mockup Images</h3>
+              <p style={{ fontSize:13, color:'#888', marginBottom:20 }}>Upload front, back, left & right views for each garment. Images go straight to Cloudinary and save automatically.</p>
+              <MockupUploader />
+            </div>
           </div>
         )}
 
         {/* SAMPLES TAB */}
-        {/* ── MOCKUPS TAB ── */}
-        {tab==='mockups' && (
-          <div style={{ padding:20 }}>
-            <h2 style={{ fontSize:18, fontWeight:700, marginBottom:4 }}>Garment Mockup Images</h2>
-            <p style={{ fontSize:13, color:'#888', marginBottom:20 }}>Upload front, back, left & right views for each garment. Images go straight to Cloudinary and save automatically.</p>
-            <MockupUploader />
-          </div>
-        )}
 
         {tab==='uploads' && (
           <div>

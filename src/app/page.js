@@ -1118,7 +1118,7 @@ function StudioPage({ user, onNav, onAddToCart }) {
           name:          form.name,
           phone:         form.phone,
           address:       form.address,
-          textOn, textVal,
+          textOn, textVal, textFont, textColor, textSize, textPosX, textPosY, textRot,
           printSheetUrl: sheetUrl || null,
         },
       }
@@ -1370,23 +1370,22 @@ function StudioPage({ user, onNav, onAddToCart }) {
 
               <div style={{ marginBottom:20 }}>
                 <span style={lblStyle}>Preset Colours</span>
-                <div style={{ display:'flex', flexWrap:'wrap', gap:12 }}>
+                <div style={{ display:'flex', flexWrap:'wrap', gap:8 }}>
                   {SWATCHES.map(c => (
-                    <div key={c} onClick={()=>setColor(c)} style={{ width:44, height:44, borderRadius:'50%', background:c, cursor:'pointer',
-                      border:c==='#ffffff'?'2px solid rgba(255,255,255,.4)':'2px solid transparent',
-                      boxShadow:color===c?`0 0 0 3px #0d1b3e, 0 0 0 5px #c8102e`:'0 2px 8px rgba(0,0,0,.35)',
-                      transition:'box-shadow .15s', position:'relative' }}>
-                      {color===c && <div style={{ position:'absolute', inset:'50%', transform:'translate(-50%,-50%)', width:12, height:12, borderRadius:'50%', background:c==='#ffffff'?'#333':'#fff', opacity:.7 }} />}
-                    </div>
+                    <div key={c} onClick={()=>setColor(c)}
+                      style={{ width:28, height:28, borderRadius:'50%', background:c, cursor:'pointer',
+                        border: c==='#ffffff' ? '2px solid rgba(255,255,255,.4)' : '2px solid transparent',
+                        boxShadow: color===c ? `0 0 0 2px #0d1b3e, 0 0 0 4px #c8102e` : '0 1px 4px rgba(0,0,0,.4)',
+                        transition:'box-shadow .15s', flexShrink:0 }} />
                   ))}
                 </div>
               </div>
 
               <div style={{ marginBottom:24 }}>
                 <span style={lblStyle}>Custom Colour</span>
-                <div style={{ display:'flex', alignItems:'center', gap:12 }}>
-                  <input type="color" value={color} onChange={e=>setColor(e.target.value)} style={{ width:56, height:40, border:'none', borderRadius:8, cursor:'pointer', background:'none' }} />
-                  <span style={{ fontSize:13, color:'rgba(255,255,255,.6)', fontFamily:'monospace' }}>{color.toUpperCase()}</span>
+                <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+                  <input type="color" value={color} onChange={e=>setColor(e.target.value)} style={{ width:40, height:32, border:'none', borderRadius:6, cursor:'pointer', background:'none' }} />
+                  <span style={{ fontSize:12, color:'rgba(255,255,255,.5)', fontFamily:'monospace' }}>{color.toUpperCase()}</span>
                 </div>
               </div>
 
@@ -1613,7 +1612,19 @@ function StudioPage({ user, onNav, onAddToCart }) {
                       ))}
                       <div>
                         <span style={lblStyle}>Text Colour</span>
-                        <input type="color" value={textColor} onChange={e=>setTextColor(e.target.value)} style={{ width:'100%', height:38, border:'none', borderRadius:8, cursor:'pointer' }} />
+                        <div style={{ display:'flex', flexWrap:'wrap', gap:8, marginBottom:8 }}>
+                          {['#ffffff','#0a0a0a','#c8102e','#0a1f5d','#00a86b','#f5a623','#9b59b6','#f0e68c'].map(c => (
+                            <div key={c} onClick={()=>setTextColor(c)}
+                              style={{ width:28, height:28, borderRadius:'50%', background:c, cursor:'pointer',
+                                border: c==='#ffffff' ? '2px solid rgba(255,255,255,.4)' : '2px solid transparent',
+                                boxShadow: textColor===c ? `0 0 0 2px #0d1b3e, 0 0 0 4px #c8102e` : '0 1px 4px rgba(0,0,0,.4)',
+                                transition:'box-shadow .15s', flexShrink:0 }} />
+                          ))}
+                        </div>
+                        <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+                          <input type="color" value={textColor} onChange={e=>setTextColor(e.target.value)} style={{ width:40, height:32, border:'none', borderRadius:6, cursor:'pointer', background:'none' }} />
+                          <span style={{ fontSize:12, color:'rgba(255,255,255,.5)', fontFamily:'monospace' }}>{textColor.toUpperCase()}</span>
+                        </div>
                       </div>
                       <button onClick={()=>{setTextPosY(75);setTextPosX(50);setTextSize(24);setTextRot(0)}}
                         style={{ width:'100%', padding:10, background:'rgba(255,255,255,.06)', border:'1px solid rgba(255,255,255,.12)', borderRadius:6, color:'rgba(255,255,255,.5)', fontSize:12, fontWeight:700, cursor:'pointer' }}>
@@ -2412,7 +2423,15 @@ function CartPage({ cart, onRemove, onClear, user, onNav }) {
           size: item.size || form.size || 'Various',
           qty: item.qty,
           design_file: item.isCustom ? (cd?.designUrls ? JSON.stringify(cd.designUrls) : '') : 'catalog-order',
-          side_pos: item.isCustom ? (cd?.sidePos ? JSON.stringify(cd.sidePos) : null) : null,
+          side_pos:    item.isCustom ? (cd?.sidePos    ? JSON.stringify(cd.sidePos)    : null) : null,
+          text_on:     item.isCustom ? (cd?.textOn     ? true : false)                         : false,
+          text_val:    item.isCustom ? (cd?.textVal    || null)                                 : null,
+          text_font:   item.isCustom ? (cd?.textFont   || null)                                 : null,
+          text_size:   item.isCustom ? (cd?.textSize   || null)                                 : null,
+          text_color:  item.isCustom ? (cd?.textColor  || null)                                 : null,
+          text_pos_x:  item.isCustom ? (cd?.textPosX   || 50)                                   : null,
+          text_pos_y:  item.isCustom ? (cd?.textPosY   || 75)                                   : null,
+          text_rot:    item.isCustom ? (cd?.textRot    || 0)                                    : null,
           status: 'Received',
           payment_status: 'Unpaid',
           total: grandTotal,
@@ -3067,6 +3086,8 @@ function AdminOrderPreview({ order }) {
     'Joggers': 'https://res.cloudinary.com/dfhdyp4oq/image/upload/drynn/products/joggers_black.png',
   }
   const SIDE_LABELS = { front:'Front', back:'Back', left:'Left', right:'Right' }
+  const SIDES = ['front','back','left','right']
+
   const garmentKey = o.garment?.toLowerCase().includes('hoodie') ? 'Hoodie'
     : o.garment?.toLowerCase().includes('polo') ? 'Polo'
     : o.garment?.toLowerCase().includes('jogger') ? 'Joggers'
@@ -3074,12 +3095,15 @@ function AdminOrderPreview({ order }) {
 
   const [garmentImgs, setGarmentImgs] = React.useState({
     front: GARMENT_DEFAULTS[garmentKey], back: GARMENT_DEFAULTS[garmentKey],
-    left: GARMENT_DEFAULTS[garmentKey], right: GARMENT_DEFAULTS[garmentKey],
+    left:  GARMENT_DEFAULTS[garmentKey], right: GARMENT_DEFAULTS[garmentKey],
   })
+
   React.useEffect(() => {
     if (!o.garment) return
     const keyword = o.garment.replace('Custom ','').split(' ').slice(0,3).join(' ')
-    supabase.from('drynn_products').select('img_front,img_back,img_left,img_right,image_url').ilike('name', '%' + keyword + '%').limit(1)
+    supabase.from('drynn_products')
+      .select('img_front,img_back,img_left,img_right,image_url')
+      .ilike('name', '%' + keyword + '%').limit(1)
       .then(({ data }) => {
         if (data && data[0]) {
           const p = data[0]
@@ -3093,7 +3117,7 @@ function AdminOrderPreview({ order }) {
       })
   }, [o.garment])
 
-  // Parse design_file — JSON {front,back,left,right} for new orders, plain URL for old
+  // Parse design_file — JSON {front,back,left,right} or plain URL
   let designs = { front:null, back:null, left:null, right:null }
   if (o.design_file) {
     try {
@@ -3110,76 +3134,161 @@ function AdminOrderPreview({ order }) {
       if (o.design_file.startsWith('http')) designs.front = o.design_file
     }
   }
-  const activeSides = ['front','back','left','right'].filter(s => designs[s])
-  const [activeIdx, setActiveIdx] = React.useState(0)
 
-  // Parse saved position data — use exact customer positions if available
-  const DEFAULT_POS = { posX: 50, posY: 38, scale: 38 }
-  let sidePos = { front: DEFAULT_POS, back: DEFAULT_POS, left: DEFAULT_POS, right: DEFAULT_POS }
+  // Parse saved position data — exact customer positions or default
+  const DEFAULT_POS = { posX:50, posY:38, scale:38, rotation:0 }
+  let sidePos = { front:DEFAULT_POS, back:DEFAULT_POS, left:DEFAULT_POS, right:DEFAULT_POS }
   if (o.side_pos) {
     try { const p = JSON.parse(o.side_pos); if (typeof p === 'object') sidePos = { ...sidePos, ...p } } catch(e) {}
   }
 
-  const getStyle = (side) => {
-    const p = sidePos[side] || DEFAULT_POS
-    // posY/posX are % of the print area. The garment img has ~10% top collar space,
-    // so we add 6% offset. Scale maps directly to width%.
-    return {
-      position: 'absolute',
-      top:  `${p.posY * 0.9 + 6}%`,
-      left: `${p.posX}%`,
-      transform: `translate(-50%,-50%) rotate(${p.rotation || 0}deg)`,
-      width: `${p.scale}%`,
-      objectFit: 'contain',
-      pointerEvents: 'none',
-    }
+  // Text config from order
+  const textOn    = o.text_on  || false
+  const textVal   = o.text_val || ''
+  const textFont  = o.text_font  || 'Bebas Neue'
+  const textSize  = o.text_size  || 24
+  const textColor = o.text_color || '#ffffff'
+  const textPosX  = o.text_pos_x != null ? o.text_pos_x : 50
+  const textPosY  = o.text_pos_y != null ? o.text_pos_y : 75
+  const textRot   = o.text_rot   != null ? o.text_rot   : 0
+
+  const [activeIdx, setActiveIdx] = React.useState(0)
+  // Swipe support
+  const dragX = React.useRef(null)
+  const onDown = e => { dragX.current = e.touches ? e.touches[0].clientX : e.clientX }
+  const onUp   = e => {
+    if (dragX.current === null) return
+    const endX = e.changedTouches ? e.changedTouches[0].clientX : e.clientX
+    const dx = endX - dragX.current
+    if (Math.abs(dx) > 40) setActiveIdx(i => ((i + (dx < 0 ? 1 : -1)) + 4) % 4)
+    dragX.current = null
   }
 
-  if (activeSides.length === 0) return null
-  const activeSide = activeSides[activeIdx] || 'front'
+  if (!designs.front && !designs.back && !designs.left && !designs.right) return null
+
+  const activeSide = SIDES[activeIdx]
   const color = o.color || '#ffffff'
 
   return (
     <div style={{ marginBottom:16 }}>
       <div style={{ fontSize:9, fontWeight:700, letterSpacing:'.12em', textTransform:'uppercase', color:'#c8102e', marginBottom:8 }}>
-        🎨 Customer Design Preview — {SIDE_LABELS[activeSide]}
+        🎨 Customer Design Preview
       </div>
-      <div style={{ position:'relative', borderRadius:12, overflow:'hidden', background:'#f5f5f5', border:'1.5px solid #e0e0e0', maxWidth:320, display:'inline-block' }}>
-        <img src={garmentImgs[activeSide]} alt={garmentKey}
-          style={{ width:'100%', display:'block', filter:colorToFilter(color) }}
-          onError={e=>{ e.target.src = GARMENT_DEFAULTS[garmentKey] }} />
-        <img src={designs[activeSide]} alt="design"
-          style={getStyle(activeSide)}
-          onError={e=>{ e.target.style.display='none' }} />
-        <div style={{ position:'absolute', top:8, right:8, display:'flex', alignItems:'center', gap:4, background:'rgba(255,255,255,.92)', borderRadius:20, padding:'3px 8px', fontSize:9, fontWeight:700 }}>
+
+      {/* ── Main viewer ── */}
+      <div style={{ position:'relative', borderRadius:12, overflow:'hidden', background:'#1a1a1a',
+        border:'1.5px solid #333', maxWidth:320, userSelect:'none', touchAction:'none' }}
+        onMouseDown={onDown} onMouseUp={onUp}
+        onTouchStart={onDown} onTouchEnd={onUp}>
+
+        {/* All 4 sides stacked */}
+        {SIDES.map((side, i) => (
+          <div key={side} style={{ position: i===0?'relative':'absolute', inset:0,
+            opacity: i===activeIdx ? 1 : 0, transition:'opacity .1s ease', pointerEvents:'none' }}>
+            <img src={garmentImgs[side]} alt={side}
+              style={{ width:'100%', display:'block', filter:colorToFilter(color), minHeight:200, objectFit:'contain' }}
+              onError={e=>{ e.target.src = GARMENT_DEFAULTS[garmentKey] }} />
+            {designs[side] && (() => {
+              const p = sidePos[side] || DEFAULT_POS
+              return (
+                <img src={designs[side]} alt="design"
+                  style={{ position:'absolute', top:`${p.posY}%`, left:`${p.posX}%`,
+                    transform:`translate(-50%,-50%) rotate(${p.rotation||0}deg)`,
+                    width:`${p.scale}%`, objectFit:'contain', pointerEvents:'none' }}
+                  onError={e=>e.target.style.display='none'} />
+              )
+            })()}
+            {/* Text overlay — front side only, same as studio */}
+            {textOn && textVal && side==='front' && (
+              <div style={{ position:'absolute', top:`${textPosY}%`, left:`${textPosX}%`,
+                transform:`translate(-50%,-50%) rotate(${textRot}deg)`,
+                fontFamily: textFont, fontSize: textSize, color: textColor, fontWeight:700,
+                textShadow:'0 1px 6px rgba(0,0,0,.5)', pointerEvents:'none', whiteSpace:'nowrap' }}>
+                {textVal}
+              </div>
+            )}
+          </div>
+        ))}
+
+        {/* Side label + counter */}
+        <div style={{ position:'absolute', bottom:8, left:'50%', transform:'translateX(-50%)',
+          background:'rgba(0,0,0,.65)', borderRadius:20, padding:'3px 12px',
+          fontSize:10, fontWeight:700, color:'#fff', pointerEvents:'none' }}>
+          {SIDE_LABELS[activeSide]}
+        </div>
+
+        {/* Colour badge */}
+        <div style={{ position:'absolute', top:8, right:8, display:'flex', alignItems:'center', gap:4,
+          background:'rgba(255,255,255,.92)', borderRadius:20, padding:'3px 8px', fontSize:9, fontWeight:700 }}>
           <div style={{ width:10, height:10, borderRadius:'50%', background:color, border:'1px solid #ccc' }} />
           {color}
         </div>
+
+        {/* Arrow hints */}
+        {[['‹', -1, 8], ['›', 1, 'auto']].map(([arrow, dir, left]) => (
+          <button key={arrow} onClick={()=>setActiveIdx(i=>((i+dir)+4)%4)}
+            style={{ position:'absolute', top:'50%', left: typeof left==='number'?left:undefined,
+              right: left==='auto'?8:undefined, transform:'translateY(-50%)',
+              background:'rgba(0,0,0,.45)', border:'none', color:'#fff', fontSize:18,
+              width:28, height:28, borderRadius:'50%', cursor:'pointer', display:'flex',
+              alignItems:'center', justifyContent:'center', fontWeight:700, padding:0 }}>
+            {arrow}
+          </button>
+        ))}
       </div>
-      {activeSides.length > 1 && (
-        <div style={{ display:'flex', gap:6, marginTop:8 }}>
-          {activeSides.map((side, i) => (
-            <button key={side} onClick={()=>setActiveIdx(i)}
-              style={{ position:'relative', width:64, height:64, borderRadius:8, overflow:'hidden', border:'2px solid ' + (i===activeIdx?'#c8102e':'#e0e0e0'), background:'#f8f8f8', padding:0, cursor:'pointer', flexShrink:0 }}>
-              <img src={garmentImgs[side]} alt={side}
-                style={{ width:'100%', height:'100%', objectFit:'contain', filter:colorToFilter(color) }}
-                onError={e=>e.target.src=GARMENT_DEFAULTS[garmentKey]} />
-              <img src={designs[side]} alt="d"
-                style={getStyle(side)}
-                onError={e=>e.target.style.display='none'} />
-              <div style={{ position:'absolute', bottom:0, left:0, right:0, textAlign:'center', fontSize:8, fontWeight:700, color:i===activeIdx?'#c8102e':'#888', background:'rgba(255,255,255,.88)', padding:'2px 0' }}>
-                {SIDE_LABELS[side]}
+
+      {/* ── 4 thumbnail tabs ── */}
+      <div style={{ display:'flex', gap:6, marginTop:8 }}>
+        {SIDES.map((side, i) => (
+          <button key={side} onClick={()=>setActiveIdx(i)}
+            style={{ position:'relative', flex:1, aspectRatio:'1', borderRadius:8, overflow:'hidden',
+              border:'2px solid ' + (i===activeIdx ? '#c8102e' : designs[side] ? '#00a86b' : '#e0e0e0'),
+              background:'#f8f8f8', padding:0, cursor:'pointer' }}>
+            <img src={garmentImgs[side]} alt={side}
+              style={{ width:'100%', height:'100%', objectFit:'contain', filter:colorToFilter(color) }}
+              onError={e=>e.target.src=GARMENT_DEFAULTS[garmentKey]} />
+            {designs[side] && (() => {
+              const p = sidePos[side] || DEFAULT_POS
+              return (
+                <img src={designs[side]} alt="d"
+                  style={{ position:'absolute', top:`${p.posY}%`, left:`${p.posX}%`,
+                    transform:`translate(-50%,-50%) rotate(${p.rotation||0}deg)`,
+                    width:`${p.scale}%`, objectFit:'contain', pointerEvents:'none' }}
+                  onError={e=>e.target.style.display='none'} />
+              )
+            })()}
+            {textOn && textVal && side==='front' && (
+              <div style={{ position:'absolute', top:`${textPosY}%`, left:`${textPosX}%`,
+                transform:`translate(-50%,-50%) rotate(${textRot}deg)`,
+                fontFamily:textFont, fontSize: Math.max(6, textSize * 0.25), color:textColor,
+                fontWeight:700, pointerEvents:'none', whiteSpace:'nowrap' }}>
+                {textVal}
               </div>
-            </button>
-          ))}
+            )}
+            {designs[side] && (
+              <div style={{ position:'absolute', top:2, right:2, background:'#00a86b',
+                borderRadius:'50%', width:10, height:10, display:'flex', alignItems:'center',
+                justifyContent:'center', fontSize:7, color:'#fff', fontWeight:700 }}>✓</div>
+            )}
+            <div style={{ position:'absolute', bottom:0, left:0, right:0, textAlign:'center',
+              fontSize:8, fontWeight:700,
+              color: i===activeIdx ? '#c8102e' : designs[side] ? '#00a86b' : '#888',
+              background:'rgba(255,255,255,.88)', padding:'2px 0' }}>
+              {SIDE_LABELS[side]}
+            </div>
+          </button>
+        ))}
+      </div>
+
+      {/* Open design link */}
+      {designs[activeSide] && (
+        <div style={{ marginTop:6 }}>
+          <a href={designs[activeSide]} target="_blank" rel="noopener noreferrer"
+            style={{ fontSize:11, color:'#c8102e', fontWeight:700, textDecoration:'underline' }}>
+            Open full design ↗
+          </a>
         </div>
       )}
-      <div style={{ marginTop:6 }}>
-        <a href={designs[activeSide]} target="_blank" rel="noopener noreferrer"
-          style={{ fontSize:11, color:'#c8102e', fontWeight:700, textDecoration:'underline' }}>
-          Open full design ↗
-        </a>
-      </div>
     </div>
   )
 }

@@ -815,6 +815,39 @@ function ProductImageViewer({ product, fallbackSrc, designImgSrc, sideImgs, side
   )
 }
 
+// ── Shared colour-to-CSS-filter converter (used by Studio + Admin) ──────────
+function colorToFilter(hex) {
+  if (!hex) return 'none'
+  const h = hex.replace('#','').toLowerCase()
+  if (h === 'ffffff') return 'none'
+  if (h === '000000' || h === '0a0a0a') return 'brightness(0) saturate(1)'
+  let r, g, b
+  if (h.length === 3) {
+    r = parseInt(h[0]+h[0],16); g = parseInt(h[1]+h[1],16); b = parseInt(h[2]+h[2],16)
+  } else {
+    r = parseInt(h.slice(0,2),16); g = parseInt(h.slice(2,4),16); b = parseInt(h.slice(4,6),16)
+  }
+  const rn = r/255, gn = g/255, bn = b/255
+  const max = Math.max(rn,gn,bn), min = Math.min(rn,gn,bn)
+  const l = (max + min) / 2
+  const d = max - min
+  let h2 = 0, s = 0
+  if (d !== 0) {
+    s = d / (1 - Math.abs(2*l - 1))
+    if      (max === rn) h2 = ((gn - bn) / d + 6) % 6
+    else if (max === gn) h2 = (bn - rn) / d + 2
+    else                 h2 = (rn - gn) / d + 4
+    h2 = h2 * 60
+  }
+  if (l < 0.12) return `brightness(${Math.round(l * 6 * 100)}%) saturate(1)`
+  if (l > 0.92 && s < 0.15) return 'none'
+  if (s < 0.12) return `brightness(${Math.round(l * 100)}%) saturate(0.05)`
+  const hueRotate  = Math.round(h2 - 35)
+  const satMult    = Math.min(20, Math.round(s * 18 + 2))
+  const brightMult = Math.min(1.4, Math.max(0.35, l * 1.3 + 0.15)).toFixed(2)
+  return `sepia(1) saturate(${satMult}) hue-rotate(${hueRotate}deg) brightness(${brightMult})`
+}
+
 // ══════════════════════════════════════════════════════════════
 // ══════════════════════════════════════════════════════════════
 // LIVE T-SHIRT PREVIEW  -  canvas-based, design on fabric
@@ -1104,53 +1137,7 @@ function StudioPage({ user, onNav, onAddToCart }) {
     {label:'B&W',value:'grayscale(1)'},{label:'Vivid',value:'saturate(2) contrast(1.1)'},
     {label:'Cool',value:'hue-rotate(180deg) saturate(0.8)'},{label:'Warm',value:'sepia(0.3) saturate(1.4)'},
   ]
-  const colorToFilter = hex => {
-    if (!hex) return 'none'
-    const h = hex.replace('#','').toLowerCase()
-
-    // Pure white — no filter
-    if (h === 'ffffff') return 'none'
-    // Pure black
-    if (h === '000000' || h === '0a0a0a') return 'brightness(0) saturate(1)'
-
-    // Parse hex to r,g,b (0-255)
-    let r, g, b
-    if (h.length === 3) {
-      r = parseInt(h[0]+h[0],16); g = parseInt(h[1]+h[1],16); b = parseInt(h[2]+h[2],16)
-    } else {
-      r = parseInt(h.slice(0,2),16); g = parseInt(h.slice(2,4),16); b = parseInt(h.slice(4,6),16)
-    }
-
-    // Convert RGB to HSL to get hue, saturation, lightness
-    const rn = r/255, gn = g/255, bn = b/255
-    const max = Math.max(rn,gn,bn), min = Math.min(rn,gn,bn)
-    const l = (max + min) / 2
-    const d = max - min
-    let h2 = 0, s = 0
-    if (d !== 0) {
-      s = d / (1 - Math.abs(2*l - 1))
-      if      (max === rn) h2 = ((gn - bn) / d + 6) % 6
-      else if (max === gn) h2 = (bn - rn) / d + 2
-      else                 h2 = (rn - gn) / d + 4
-      h2 = h2 * 60
-    }
-
-    // Very dark colours → just darken
-    if (l < 0.12) return `brightness(${Math.round(l * 6 * 100)}%) saturate(1)`
-    // Very light / near-white
-    if (l > 0.92 && s < 0.15) return 'none'
-    // Near-grey (low saturation)
-    if (s < 0.12) return `brightness(${Math.round(l * 100)}%) saturate(0.05)`
-
-    // The garment images are white-base — convert white → target colour using:
-    // sepia(1) shifts toward golden-brown, then hue-rotate + saturate steers to the target hue
-    // brightness accounts for the target lightness
-    const hueRotate  = Math.round(h2 - 35)   // 35° = natural sepia hue offset
-    const satMult    = Math.min(20, Math.round(s * 18 + 2))
-    const brightMult = Math.min(1.4, Math.max(0.35, l * 1.3 + 0.15)).toFixed(2)
-
-    return `sepia(1) saturate(${satMult}) hue-rotate(${hueRotate}deg) brightness(${brightMult})`
-  }
+  // colorToFilter is defined at module scope — shared with admin panel
   const canvasFilter = [filterFx, `brightness(${brightness}%) contrast(${contrast}%) saturate(${saturation}%)`].filter(Boolean).join(' ')
 
   // Mockup URLs come from selected product's img_front/back/left/right columns — no drynn_settings needed
@@ -3078,6 +3065,145 @@ function TermsPage({ onBack }) {
 }
 
 // ══════════════════════════════════════════════════════════════
+// ADMIN ORDER PREVIEW — replicates Studio Step 5 view for admin
+// Shows garment + design composited at exact saved position/scale/rotation/colour
+// ══════════════════════════════════════════════════════════════
+function AdminOrderPreview({ order }) {
+  const o = order
+  const SIDES = ['front','back','left','right']
+  const SIDE_LABELS = { front:'Front', back:'Back', left:'Left Side', right:'Right Side' }
+
+  const GARMENT_DEFAULTS = {
+    'T-Shirt': 'https://res.cloudinary.com/dfhdyp4oq/image/upload/drynn/products/tshirt_white.png',
+    'Hoodie':  'https://res.cloudinary.com/dfhdyp4oq/image/upload/drynn/products/hoodie_navy.png',
+    'Polo':    'https://res.cloudinary.com/dfhdyp4oq/image/upload/drynn/products/polo_white.png',
+    'Joggers': 'https://res.cloudinary.com/dfhdyp4oq/image/upload/drynn/products/joggers_black.png',
+  }
+
+  const garmentKey = o.garment?.toLowerCase().includes('hoodie') ? 'Hoodie'
+    : o.garment?.toLowerCase().includes('polo') ? 'Polo'
+    : o.garment?.toLowerCase().includes('jogger') ? 'Joggers'
+    : 'T-Shirt'
+
+  // Build design map per side
+  const designs = {
+    front: o.design_file?.startsWith('http')  ? o.design_file  : null,
+    back:  o.design_back?.startsWith('http')  ? o.design_back  : null,
+    left:  o.design_left?.startsWith('http')  ? o.design_left  : null,
+    right: o.design_right?.startsWith('http') ? o.design_right : null,
+  }
+
+  // Only show sides that have a garment image OR a design
+  const activeSides = SIDES.filter(s => designs[s])
+  if (activeSides.length === 0) return null
+
+  const [activeIdx, setActiveIdx] = React.useState(0)
+  const activeSide = activeSides[activeIdx] || activeSides[0]
+
+  const sidePos = o.side_pos || {}
+  const getPos = side => ({
+    posX:     sidePos[side]?.posX     ?? 50,
+    posY:     sidePos[side]?.posY     ?? 38,
+    scale:    sidePos[side]?.scale    ?? 38,
+    rotation: sidePos[side]?.rotation ?? 0,
+  })
+
+  // Garment image for this side — use product_image for front, fallback to defaults
+  const getGarmentImg = side => {
+    if (side === 'front' && o.product_image?.startsWith('http')) return o.product_image
+    return GARMENT_DEFAULTS[garmentKey]
+  }
+
+  const color = o.color || '#ffffff'
+  const pos = getPos(activeSide)
+
+  return (
+    <div style={{ marginBottom:14 }}>
+      <div style={{ fontSize:9, fontWeight:700, letterSpacing:'.12em', textTransform:'uppercase', color:'#c8102e', marginBottom:8 }}>
+        🎨 Customer Design Preview — {SIDE_LABELS[activeSide]}
+      </div>
+
+      {/* Main mockup */}
+      <div style={{ position:'relative', borderRadius:10, overflow:'hidden', background:'#f0f0f0', border:'1.5px solid #e0e0e0', maxWidth:280 }}>
+        {/* Garment with colour filter */}
+        <img
+          src={getGarmentImg(activeSide)}
+          alt={garmentKey}
+          style={{ width:'100%', display:'block', filter:colorToFilter(color) }}
+          onError={e=>{ e.target.style.opacity='0.1' }}
+        />
+        {/* Design overlay at exact saved position */}
+        {designs[activeSide] && (
+          <a href={designs[activeSide]} target="_blank" rel="noopener noreferrer">
+            <img
+              src={designs[activeSide]}
+              alt="design"
+              style={{
+                position:'absolute',
+                top:`${pos.posY}%`,
+                left:`${pos.posX}%`,
+                transform:`translate(-50%,-50%) rotate(${pos.rotation}deg)`,
+                width:`${pos.scale}%`,
+                objectFit:'contain',
+                pointerEvents:'auto',
+                cursor:'pointer',
+              }}
+              onError={e=>{ e.target.style.display='none' }}
+            />
+          </a>
+        )}
+        {/* Custom text overlay */}
+        {o.custom_text && activeSide === 'front' && (
+          <div style={{
+            position:'absolute', bottom:'12%', left:'50%',
+            transform:'translateX(-50%)',
+            fontSize:11, fontWeight:700, color:'#fff',
+            textShadow:'0 1px 4px rgba(0,0,0,.6)',
+            whiteSpace:'nowrap', pointerEvents:'none',
+          }}>{o.custom_text}</div>
+        )}
+        {/* Colour badge */}
+        <div style={{ position:'absolute', top:6, right:6, display:'flex', alignItems:'center', gap:4, background:'rgba(255,255,255,.9)', borderRadius:20, padding:'3px 8px', fontSize:9, fontWeight:700 }}>
+          <div style={{ width:10, height:10, borderRadius:'50%', background:color, border:'1px solid #ccc' }} />
+          {color}
+        </div>
+      </div>
+
+      {/* Side thumbnails */}
+      {activeSides.length > 1 && (
+        <div style={{ display:'flex', gap:6, marginTop:8 }}>
+          {activeSides.map((side, i) => {
+            const p = getPos(side)
+            return (
+              <button key={side} onClick={()=>setActiveIdx(i)}
+                style={{ position:'relative', width:56, height:56, borderRadius:7, overflow:'hidden', border:`2px solid ${i===activeIdx?'#c8102e':'#e0e0e0'}`, background:'#f8f8f8', padding:0, cursor:'pointer', flexShrink:0, transition:'border-color .15s' }}>
+                <img src={getGarmentImg(side)} alt={side}
+                  style={{ width:'100%', height:'100%', objectFit:'contain', filter:colorToFilter(color) }}
+                  onError={e=>e.target.style.opacity='0.1'} />
+                {designs[side] && (
+                  <img src={designs[side]} alt="d"
+                    style={{ position:'absolute', top:`${p.posY}%`, left:`${p.posX}%`, transform:`translate(-50%,-50%) rotate(${p.rotation}deg)`, width:`${p.scale}%`, objectFit:'contain', pointerEvents:'none' }}
+                    onError={e=>e.target.style.display='none'} />
+                )}
+                <div style={{ position:'absolute', bottom:1, left:0, right:0, textAlign:'center', fontSize:7, fontWeight:700, color: i===activeIdx?'#c8102e':'#888', background:'rgba(255,255,255,.85)' }}>
+                  {SIDE_LABELS[side].split(' ')[0]}
+                </div>
+              </button>
+            )
+          })}
+        </div>
+      )}
+
+      {/* Placement info */}
+      <div style={{ marginTop:6, fontSize:9, color:'#aaa' }}>
+        Scale {Math.round(pos.scale)}% · X {Math.round(pos.posX)}% · Y {Math.round(pos.posY)}%{pos.rotation ? ` · ${pos.rotation}° rot` : ''}
+        {designs[activeSide] && <> · <a href={designs[activeSide]} target="_blank" rel="noopener noreferrer" style={{ color:'#c8102e', textDecoration:'underline' }}>Open design ↗</a></>}
+      </div>
+    </div>
+  )
+}
+
+// ══════════════════════════════════════════════════════════════
 // ADMIN PANEL  -  restricted to ADMIN_EMAIL only
 // ══════════════════════════════════════════════════════════════
 const ADMIN_EMAIL = 'gokulmaniraj2008@gmail.com'
@@ -3481,72 +3607,8 @@ function AdminPanel({ onBack }) {
                         </div>
 
                         <div style={{ padding:'14px 16px' }}>
-                          {/* 4-Panel Print Sheet for custom orders */}
-                          {isCustom && (
-                            <div style={{ marginBottom:14 }}>
-                              <div style={{ fontSize:9, fontWeight:700, letterSpacing:'.12em', textTransform:'uppercase', color:'#c8102e', marginBottom:8 }}>🖨️ Print Sheet — Design on Garment</div>
-                              <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:8 }}>
-                                {[
-                                  { key:'front', label:'Front',  url: o.design_file?.startsWith('http') ? o.design_file : null },
-                                  { key:'back',  label:'Back',   url: o.design_back?.startsWith('http')  ? o.design_back  : null },
-                                  { key:'left',  label:'Left',   url: o.design_left?.startsWith('http')  ? o.design_left  : null },
-                                  { key:'right', label:'Right',  url: o.design_right?.startsWith('http') ? o.design_right : null },
-                                ].map(side => {
-                                  const garmentKey = o.garment?.includes('Hoodie') ? 'Hoodie' : o.garment?.includes('Polo') ? 'Polo' : o.garment?.includes('Jogger') ? 'Joggers' : 'T-Shirt'
-                                  const ADMIN_GARMENT_IMGS = {
-                                    'T-Shirt': 'https://res.cloudinary.com/dfhdyp4oq/image/upload/drynn/products/tshirt_white.png',
-                                    'Hoodie':  'https://res.cloudinary.com/dfhdyp4oq/image/upload/drynn/products/hoodie_navy.png',
-                                    'Polo':    'https://res.cloudinary.com/dfhdyp4oq/image/upload/drynn/products/polo_white.png',
-                                    'Joggers': 'https://res.cloudinary.com/dfhdyp4oq/image/upload/drynn/products/joggers_black.png',
-                                  }
-                                  const garmentImg = ADMIN_GARMENT_IMGS[garmentKey]
-                                  const pos = o.side_pos ? o.side_pos[side.key] : null
-                                  const posY    = pos?.posY    ?? 38
-                                  const posX    = pos?.posX    ?? 50
-                                  const scale   = pos?.scale   ?? 38
-                                  const rotation = pos?.rotation ?? 0
-                                  return (
-                                    <div key={side.key} style={{ textAlign:'center' }}>
-                                      <div style={{ position:'relative', width:'100%', paddingBottom:'100%', background: side.url ? '#f0f0f0' : '#f8f8f8', borderRadius:8, overflow:'hidden', border: side.url ? '1.5px solid #e0e0e0' : '1.5px dashed #e0e0e0' }}>
-                                        {/* Garment mockup */}
-                                        <img src={garmentImg} alt={side.label}
-                                          style={{ position:'absolute', inset:0, width:'100%', height:'100%', objectFit:'contain' }}
-                                          onError={e=>e.target.style.opacity='0'} />
-                                        {/* Design overlay at saved position */}
-                                        {side.url && (
-                                          <a href={side.url} target="_blank" rel="noopener noreferrer">
-                                            <img src={side.url} alt={`design-${side.label}`}
-                                              style={{
-                                                position:'absolute',
-                                                top:`${posY}%`, left:`${posX}%`,
-                                                transform:`translate(-50%,-50%) rotate(${rotation}deg)`,
-                                                width:`${scale}%`,
-                                                objectFit:'contain',
-                                                cursor:'pointer',
-                                              }}
-                                              onError={e=>e.target.style.display='none'} />
-                                          </a>
-                                        )}
-                                        {/* No design label */}
-                                        {!side.url && (
-                                          <div style={{ position:'absolute', inset:0, display:'flex', alignItems:'center', justifyContent:'center' }}>
-                                            <span style={{ fontSize:9, color:'#ccc', fontWeight:600 }}>No design</span>
-                                          </div>
-                                        )}
-                                      </div>
-                                      {/* Side label + placement info */}
-                                      <div style={{ fontSize:9, fontWeight:700, color: side.url ? '#0a1f5d' : '#ccc', marginTop:4 }}>{side.label}</div>
-                                      {side.url && pos && (
-                                        <div style={{ fontSize:8, color:'#aaa', lineHeight:1.4 }}>
-                                          {Math.round(scale)}% · {rotation}°
-                                        </div>
-                                      )}
-                                    </div>
-                                  )
-                                })}
-                              </div>
-                            </div>
-                          )}
+                          {/* Studio Step 5 style preview — garment + design composited */}
+                          {isCustom && <AdminOrderPreview order={o} />}
 
                           <div style={{ display:'flex', gap:14, flexWrap:'wrap' }}>
 
@@ -3588,28 +3650,6 @@ function AdminPanel({ onBack }) {
                                   </a>
                                 </div>
                               )}
-                              {(() => {
-                                // Show placement info per side if saved
-                                const pos = o.side_pos || (o.custom_details && o.custom_details.sidePos)
-                                if (!pos) return null
-                                const sides = ['front','back','left','right']
-                                const labels = { front:'Front', back:'Back', left:'Left', right:'Right' }
-                                const activeSides = sides.filter(s => o['design_'+(s==='front'?'file':s)]?.startsWith('http'))
-                                if (activeSides.length === 0) return null
-                                return (
-                                  <div style={{ marginBottom:4 }}>
-                                    {activeSides.map(s => {
-                                      const p = pos[s]
-                                      if (!p) return null
-                                      return (
-                                        <div key={s} style={{ fontSize:10, color:'#888', marginBottom:1 }}>
-                                          📐 <strong style={{ color:'#555' }}>{labels[s]}:</strong> X:{Math.round(p.posX)}% Y:{Math.round(p.posY)}% · Scale:{Math.round(p.scale)}% · Rot:{p.rotation}°
-                                        </div>
-                                      )
-                                    })}
-                                  </div>
-                                )
-                              })()}
                               <div style={{ fontSize:10, color:'#aaa', marginBottom:4 }}>📍 {o.address}</div>
                               <div style={{ fontSize:13, fontWeight:700, color:'#0a1f5d' }}>₹{Number(o.total||0).toLocaleString()}</div>
                             </div>

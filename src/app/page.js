@@ -3066,6 +3066,40 @@ function ProductEditRow({ product, onSave, onCancel }) {
   const [imgPct, setImgPct]   = useState(0)
   const [imgSaving, setImgSaving] = useState(false)
 
+  // Mockup view uploads (front/back/left/right) stored in drynn_settings
+  const garmentType = p.category==='Hoodies'?'T-Shirt':p.category==='Polos'?'Polo':p.category==='Joggers'?'Joggers':'T-Shirt'
+  const VIEWS = ['front','back','left','right']
+  const VIEW_LABELS = { front:'👕 Front', back:'🔙 Back', left:'💪 Left', right:'💪 Right' }
+  const [mockupUrls, setMockupUrls]       = useState({})
+  const [mockupUploading, setMockupUploading] = useState({})
+  const [mockupSaved, setMockupSaved]     = useState({})
+
+  React.useEffect(() => {
+    supabase.from('drynn_settings').select('key,value')
+      .then(({ data }) => {
+        if (!data) return
+        const map = {}
+        data.forEach(row => { if (row.key.startsWith('mockup_')) map[row.key] = row.value })
+        setMockupUrls(map)
+      })
+  }, [])
+
+  const handleMockupFile = async (view, file) => {
+    if (!file) return
+    const key = `mockup_${garmentType.toLowerCase().replace(' ','-')}_${view}`
+    setMockupUploading(u => ({ ...u, [view]: true }))
+    try {
+      const url = await uploadToCloudinary(file, () => {})
+      await supabase.from('drynn_settings').upsert({ key, value: url }, { onConflict: 'key' })
+      setMockupUrls(u => ({ ...u, [key]: url }))
+      setMockupSaved(s => ({ ...s, [view]: true }))
+      setTimeout(() => setMockupSaved(s => ({ ...s, [view]: false })), 2500)
+    } catch(e) {
+      alert('Mockup upload failed: ' + e.message)
+    }
+    setMockupUploading(u => ({ ...u, [view]: false }))
+  }
+
   const handleImgUpload = async () => {
     if (!imgFile) { onSave(p); return }
     setImgSaving(true)
@@ -3113,6 +3147,35 @@ function ProductEditRow({ product, onSave, onCancel }) {
             <div style={{ fontSize:10, color:'#888', marginTop:2 }}>Uploading… {imgPct}%</div>
           </div>
         )}
+      </div>
+
+      {/* Mockup Views (front / back / left / right) */}
+      <div>
+        <label style={{ fontSize:10, fontWeight:700, letterSpacing:'.1em', color:'#888', textTransform:'uppercase', display:'block', marginBottom:8 }}>
+          Garment Views — {garmentType}
+        </label>
+        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8 }}>
+          {VIEWS.map(view => {
+            const key = `mockup_${garmentType.toLowerCase().replace(' ','-')}_${view}`
+            const url = mockupUrls[key]
+            const busy = mockupUploading[view]
+            const done = mockupSaved[view]
+            return (
+              <div key={view} style={{ background:'#f8f8f8', borderRadius:8, padding:10, border:'1px solid #eee' }}>
+                <div style={{ fontSize:10, fontWeight:700, color:'#555', letterSpacing:'.08em', textTransform:'uppercase', marginBottom:6 }}>{VIEW_LABELS[view]}</div>
+                {url && <img src={url} alt={view} style={{ width:'100%', height:70, objectFit:'contain', borderRadius:6, marginBottom:6, background:'#fff', border:'1px solid #eee' }} />}
+                <label style={{ display:'block', cursor:'pointer' }}>
+                  <input type="file" accept=".png,.jpg,.jpeg" style={{ display:'none' }} onChange={e => handleMockupFile(view, e.target.files[0])} />
+                  <div style={{ padding:'6px 10px', borderRadius:6, border:'1.5px dashed #d0d0d0', textAlign:'center', background: done?'rgba(0,168,107,.06)':busy?'#f0f0f0':'#fff', cursor:'pointer' }}>
+                    {busy ? <span style={{ fontSize:11, color:'#888' }}>⏳ Uploading…</span>
+                          : done ? <span style={{ fontSize:11, color:'#00a86b', fontWeight:700 }}>✅ Saved!</span>
+                          : <span style={{ fontSize:11, color:'#c8102e', fontWeight:700 }}>{url ? '🔄 Replace' : '📤 Upload'}</span>}
+                  </div>
+                </label>
+              </div>
+            )
+          })}
+        </div>
       </div>
 
       {/* Studio Only toggle */}

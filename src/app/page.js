@@ -1796,6 +1796,9 @@ function StudioPage({ user, onNav, onAddToCart }) {
               <button onClick={()=>setStep(4)} style={{ padding:'12px 20px', borderRadius:8, border:'1px solid rgba(255,255,255,.15)', background:'transparent', color:'rgba(255,255,255,.5)', fontSize:13, fontWeight:600, cursor:'pointer' }}>← Edit</button>
               <button onClick={()=>setStep(6)} className="btn-primary" style={{ padding:'13px 36px', fontSize:14 }}>Place Order →</button>
             </div>
+            </div>
+            <LivePreview />
+          </div>
         )}
 
         {/* ══ STEP 6: ORDER ══ */}

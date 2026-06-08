@@ -910,34 +910,8 @@ function StudioPage({ user, onNav, onAddToCart }) {
   const [custTab,    setCustTab]     = useState('position')
 
   // ── Step 5 (Preview): 3D ─────────────────────────────────
-  // printSheetUrl is auto-generated when customer reaches Step 5
-  const [printSheetUrl,     setPrintSheetUrl]     = useState(null)
-  const [printSheetLoading, setPrintSheetLoading] = useState(false)
-
-  // Auto-trigger print sheet generation when step becomes 5
-  React.useEffect(() => {
-    if (step !== 5) return
-    if (!sideImgs.front) return   // need at least a front design
-    if (printSheetUrl) return     // already generated
-    ;(async () => {
-      setPrintSheetLoading(true)
-      try {
-        // Upload blob: URLs to Cloudinary first so generatePrintSheet gets real HTTPS URLs
-        const resolvedUrls = {}
-        for (const side of SIDES) {
-          if (sideFiles[side]) {
-            try { resolvedUrls[side] = await uploadToCloudinary(sideFiles[side], () => {}) }
-            catch(e) { console.error('[PrintSheet] Upload failed for', side, e) }
-          } else if (sideSamples[side]) {
-            resolvedUrls[side] = sideSamples[side].image_url
-          }
-        }
-        const url = await generatePrintSheet(resolvedUrls)
-        setPrintSheetUrl(url)
-      } catch(e) { console.error('[PrintSheet] Auto-generate failed:', e) }
-      finally { setPrintSheetLoading(false) }
-    })()
-  }, [step])  // eslint-disable-line react-hooks/exhaustive-deps
+  // Step 5 preview handled by InteractiveMockup component
+  // printSheetUrl is generated on-demand in handleSubmit and passed directly
 
   // ── generatePrintSheet ────────────────────────────────────
   // Composites all 4 sides into a single 4-panel PNG, uploads to
@@ -1088,9 +1062,9 @@ function StudioPage({ user, onNav, onAddToCart }) {
       const garmentLabel = selectedProduct ? selectedProduct.name : 'Custom Garment'
       const sidesLabel   = SIDES.filter(s=>sideImgs[s]).map(s=>SIDE_LABELS[s]).join(', ')
 
-      // Generate print sheet — reuse already-generated URL from Step 5 if available
+      // Generate print sheet using the just-uploaded Cloudinary URLs (never blob: URLs)
       setStatus('sheet')
-      const sheetUrl = printSheetUrl || await generatePrintSheet(designUrls)
+      const sheetUrl = await generatePrintSheet(designUrls)
 
       // Build a cart item representing this custom order
       const customItem = {
@@ -1131,8 +1105,51 @@ function StudioPage({ user, onNav, onAddToCart }) {
     {label:'Cool',value:'hue-rotate(180deg) saturate(0.8)'},{label:'Warm',value:'sepia(0.3) saturate(1.4)'},
   ]
   const colorToFilter = hex => {
-    const m={'#ffffff':'none','#0a0a0a':'brightness(0)','#000000':'brightness(0)','#c8102e':'sepia(1) saturate(5) hue-rotate(320deg)','#0a1f5d':'sepia(1) saturate(3) hue-rotate(195deg) brightness(0.6)','#00a86b':'sepia(1) saturate(4) hue-rotate(110deg) brightness(0.8)','#f5a623':'sepia(1) saturate(4) hue-rotate(10deg)','#9b59b6':'sepia(1) saturate(3) hue-rotate(260deg)','#888888':'brightness(0.55)','#e8d5b7':'sepia(0.4)','#2c3e50':'brightness(0.3)'}
-    return m[hex] || 'none'
+    if (!hex) return 'none'
+    const h = hex.replace('#','').toLowerCase()
+
+    // Pure white — no filter
+    if (h === 'ffffff') return 'none'
+    // Pure black
+    if (h === '000000' || h === '0a0a0a') return 'brightness(0) saturate(1)'
+
+    // Parse hex to r,g,b (0-255)
+    let r, g, b
+    if (h.length === 3) {
+      r = parseInt(h[0]+h[0],16); g = parseInt(h[1]+h[1],16); b = parseInt(h[2]+h[2],16)
+    } else {
+      r = parseInt(h.slice(0,2),16); g = parseInt(h.slice(2,4),16); b = parseInt(h.slice(4,6),16)
+    }
+
+    // Convert RGB to HSL to get hue, saturation, lightness
+    const rn = r/255, gn = g/255, bn = b/255
+    const max = Math.max(rn,gn,bn), min = Math.min(rn,gn,bn)
+    const l = (max + min) / 2
+    const d = max - min
+    let h2 = 0, s = 0
+    if (d !== 0) {
+      s = d / (1 - Math.abs(2*l - 1))
+      if      (max === rn) h2 = ((gn - bn) / d + 6) % 6
+      else if (max === gn) h2 = (bn - rn) / d + 2
+      else                 h2 = (rn - gn) / d + 4
+      h2 = h2 * 60
+    }
+
+    // Very dark colours → just darken
+    if (l < 0.12) return `brightness(${Math.round(l * 6 * 100)}%) saturate(1)`
+    // Very light / near-white
+    if (l > 0.92 && s < 0.15) return 'none'
+    // Near-grey (low saturation)
+    if (s < 0.12) return `brightness(${Math.round(l * 100)}%) saturate(0.05)`
+
+    // The garment images are white-base — convert white → target colour using:
+    // sepia(1) shifts toward golden-brown, then hue-rotate + saturate steers to the target hue
+    // brightness accounts for the target lightness
+    const hueRotate  = Math.round(h2 - 35)   // 35° = natural sepia hue offset
+    const satMult    = Math.min(20, Math.round(s * 18 + 2))
+    const brightMult = Math.min(1.4, Math.max(0.35, l * 1.3 + 0.15)).toFixed(2)
+
+    return `sepia(1) saturate(${satMult}) hue-rotate(${hueRotate}deg) brightness(${brightMult})`
   }
   const canvasFilter = [filterFx, `brightness(${brightness}%) contrast(${contrast}%) saturate(${saturation}%)`].filter(Boolean).join(' ')
 
@@ -1697,37 +1714,6 @@ function StudioPage({ user, onNav, onAddToCart }) {
                   <div style={{ fontSize:12, fontWeight:700, color:'#fff', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{v}</div>
                 </div>
               ))}
-            </div>
-
-            {/* ── Print Sheet Preview ── */}
-            <div style={{ maxWidth:420, margin:'16px auto 0', background:'rgba(255,255,255,.04)', border:'1px solid rgba(255,255,255,.1)', borderRadius:12, overflow:'hidden' }}>
-              <div style={{ padding:'10px 16px', background:'rgba(200,16,46,.15)', borderBottom:'1px solid rgba(200,16,46,.3)', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
-                <span style={{ fontSize:10, fontWeight:700, letterSpacing:'.14em', textTransform:'uppercase', color:'#fff' }}>🖨️ Print-Ready Sheet</span>
-                {printSheetUrl && (
-                  <a href={printSheetUrl} target="_blank" rel="noopener noreferrer"
-                    style={{ fontSize:10, fontWeight:700, color:'rgba(255,255,255,.7)', textDecoration:'underline' }}>Open Full ↗</a>
-                )}
-              </div>
-              {printSheetLoading && (
-                <div style={{ padding:'24px', textAlign:'center' }}>
-                  <div style={{ display:'inline-flex', gap:5, alignItems:'center' }}>
-                    <div style={{ width:6, height:6, borderRadius:'50%', background:'#c8102e', animation:'drynn-dot 1.3s 0s ease-in-out infinite' }} />
-                    <div style={{ width:6, height:6, borderRadius:'50%', background:'#c8102e', animation:'drynn-dot 1.3s .2s ease-in-out infinite' }} />
-                    <div style={{ width:6, height:6, borderRadius:'50%', background:'#c8102e', animation:'drynn-dot 1.3s .4s ease-in-out infinite' }} />
-                  </div>
-                  <div style={{ fontSize:11, color:'rgba(255,255,255,.4)', marginTop:8 }}>Generating print sheet…</div>
-                </div>
-              )}
-              {!printSheetLoading && printSheetUrl && (
-                <a href={printSheetUrl} target="_blank" rel="noopener noreferrer">
-                  <img src={printSheetUrl} alt="Print Sheet"
-                    style={{ width:'100%', display:'block', background:'#fff' }}
-                    onError={e=>e.target.style.display='none'} />
-                </a>
-              )}
-              {!printSheetLoading && !printSheetUrl && (
-                <div style={{ padding:'16px', fontSize:11, color:'rgba(255,255,255,.3)', textAlign:'center' }}>Print sheet will be ready after order is placed.</div>
-              )}
             </div>
 
             <div style={{ display:'flex', gap:10, marginTop:20, justifyContent:'center' }}>
@@ -3495,22 +3481,6 @@ function AdminPanel({ onBack }) {
                         </div>
 
                         <div style={{ padding:'14px 16px' }}>
-                          {/* ── PRINT SHEET — top of card, most prominent for printer ── */}
-                          {isCustom && o.print_sheet && (
-                            <div style={{ marginBottom:16, background:'#0a0a0a', borderRadius:10, overflow:'hidden', border:'2.5px solid #c8102e' }}>
-                              <div style={{ background:'#c8102e', padding:'6px 12px', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
-                                <span style={{ fontSize:11, fontWeight:700, letterSpacing:'.12em', textTransform:'uppercase', color:'#fff' }}>🖨️ Print-Ready Sheet</span>
-                                <a href={o.print_sheet} target="_blank" rel="noopener noreferrer"
-                                  style={{ fontSize:11, fontWeight:700, color:'#fff', textDecoration:'underline', cursor:'pointer' }}>Open Full Size ↗</a>
-                              </div>
-                              <a href={o.print_sheet} target="_blank" rel="noopener noreferrer">
-                                <img src={o.print_sheet} alt="Print Sheet"
-                                  style={{ width:'100%', display:'block', background:'#fff' }}
-                                  onError={e=>e.target.style.display='none'} />
-                              </a>
-                            </div>
-                          )}
-
                           {/* 4-Panel Print Sheet for custom orders */}
                           {isCustom && (
                             <div style={{ marginBottom:14 }}>
@@ -3603,7 +3573,21 @@ function AdminPanel({ onBack }) {
                               <div style={{ fontSize:11, color:'#888', marginBottom:2 }}>👕 {o.garment} · 🎨 {o.color} · 📏 {o.size} · Qty {o.qty}</div>
                               {o.design_sides && <div style={{ fontSize:11, color:'#c8102e', marginBottom:2 }}>🖨️ Print sides: {o.design_sides}</div>}
                               {o.custom_text  && <div style={{ fontSize:11, color:'#0a1f5d', marginBottom:2 }}>✍️ Text: "{o.custom_text}"</div>}
-                              {/* ── PRINT SHEET — shown at top of card (see above) ── */}
+                              {/* ── PRINT SHEET (most important for printer) ── */}
+                              {o.print_sheet && (
+                                <div style={{ margin:'8px 0 6px', background:'#0a0a0a', borderRadius:8, overflow:'hidden', border:'2px solid #c8102e' }}>
+                                  <div style={{ background:'#c8102e', padding:'4px 10px', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+                                    <span style={{ fontSize:10, fontWeight:700, letterSpacing:'.12em', textTransform:'uppercase', color:'#fff' }}>🖨️ Print-Ready Sheet</span>
+                                    <a href={o.print_sheet} target="_blank" rel="noopener noreferrer"
+                                      style={{ fontSize:10, fontWeight:700, color:'#fff', textDecoration:'underline', cursor:'pointer' }}>Open Full Size ↗</a>
+                                  </div>
+                                  <a href={o.print_sheet} target="_blank" rel="noopener noreferrer">
+                                    <img src={o.print_sheet} alt="Print Sheet"
+                                      style={{ width:'100%', display:'block', maxHeight:200, objectFit:'contain', background:'#fff' }}
+                                      onError={e=>e.target.style.display='none'} />
+                                  </a>
+                                </div>
+                              )}
                               {(() => {
                                 // Show placement info per side if saved
                                 const pos = o.side_pos || (o.custom_details && o.custom_details.sidePos)

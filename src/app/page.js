@@ -28,11 +28,22 @@ function useProducts() {
   React.useEffect(() => {
     supabase.from('drynn_products').select('*').order('id')
       .then(({ data, error }) => {
-        if (error) {
-          console.error('[Products] Failed to load from Supabase:', error.message, '- using hardcoded fallback.')
-          return
+        if (error) { console.error('[Products] Supabase error:', error.message); return }
+        if (data && data.length > 0) {
+          // Normalize: Supabase uses tag_color, UI uses tagColor; prices may be strings
+          const normalized = data.map(p => ({
+            ...p,
+            price:     Number(p.price)    || 0,
+            mrp:       Number(p.mrp)      || 0,
+            rating:    Number(p.rating)   || 4.5,
+            reviews:   Number(p.reviews)  || 0,
+            tagColor:  p.tagColor || p.tag_color || '#c8102e',
+            tag_color: p.tag_color || p.tagColor || '#c8102e',
+            emoji:     p.emoji || '👕',
+            tag:       p.tag || 'New',
+          }))
+          setProducts(normalized)
         }
-        if (data && data.length > 0) setProducts(data)
       })
   }, [])
   return products
@@ -80,7 +91,7 @@ const StarRating = ({ rating }) => {
     </span>
   )
 }
-const disc = (price, mrp) => Math.round((1 - price / mrp) * 100)
+const disc = (price, mrp) => Math.round((1 - Number(price) / Number(mrp)) * 100)
 
 // ── Global CSS ────────────────────────────────────────────────
 const GLOBAL_CSS = `
@@ -601,7 +612,6 @@ function StudioPage({ user, onNav }) {
 
   // ── Step 5 (Preview): 3D ─────────────────────────────────
   // Step 5 preview handled by InteractiveMockup component
-  const [previewAngle, setPreviewAngle] = useState('front')
   // ── Step 6: Order ─────────────────────────────────────────
   const [size,       setSize]     = useState('M')
   const [form,       setForm]     = useState({ name:user?.user_metadata?.full_name||'', phone:'', qty:1, address:'' })
@@ -662,19 +672,23 @@ function StudioPage({ user, onNav }) {
       })
   }, [])
 
-  const getMockupUrl = (productId, view) => {
-    const key = `mockup_product_${productId}_${view}`
+  const getMockupUrl = (garment, view) => {
+    const key = `mockup_${garment.toLowerCase().replace(' ','-')}_${view}`
     return mockupUrls[key] || null
   }
 
-  // Garment image priority: product mockup front → product image_url → default emoji
+  // Garment image — use admin product image if available, fallback to mockup, fallback to default
+  const GARMENT_DEFAULTS = {
+    'T-Shirt': 'https://res.cloudinary.com/dfhdyp4oq/image/upload/drynn/products/tshirt_white.png',
+    'Hoodie':  'https://res.cloudinary.com/dfhdyp4oq/image/upload/drynn/products/hoodie_navy.png',
+    'Polo':    'https://res.cloudinary.com/dfhdyp4oq/image/upload/drynn/products/polo_white.png',
+    'Joggers': 'https://res.cloudinary.com/dfhdyp4oq/image/upload/drynn/products/joggers_black.png',
+  }
   const GARMENT_EMOJI = {'T-Shirt':'👕','Hoodie':'🧥','Polo':'👔','Joggers':'👖'}
   const garmentType = selectedProduct
     ? (selectedProduct.category==='Hoodies'?'Hoodie':selectedProduct.category==='Polos'?'Polo':selectedProduct.category==='Joggers'?'Joggers':'T-Shirt')
     : 'T-Shirt'
-  const garmentImgSrc = selectedProduct
-    ? (getMockupUrl(selectedProduct.id, 'front') || selectedProduct.image_url || null)
-    : null
+  const garmentImgSrc = selectedProduct?.image_url || getMockupUrl(garmentType,'front') || GARMENT_DEFAULTS[garmentType]
 
   const canGoNext = () => {
     if (step===1) return true  // product optional
@@ -1108,34 +1122,14 @@ function StudioPage({ user, onNav }) {
         )}
 
         {/* ══ STEP 5: PREVIEW ══ */}
-        {step === 5 && (() => {
-          const angles = selectedProduct
-            ? MOCKUP_VIEWS.filter(v => getMockupUrl(selectedProduct.id, v))
-            : []
-          const activeImgSrc = selectedProduct && angles.includes(previewAngle)
-            ? getMockupUrl(selectedProduct.id, previewAngle)
-            : garmentImgSrc
-          return (
+        {step === 5 && (
           <div>
             <h2 style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:28, color:'#fff', letterSpacing:'.06em', marginBottom:4 }}>STEP 5 — PREVIEW YOUR DESIGN</h2>
             <p style={{ fontSize:13, color:'rgba(255,255,255,.45)', marginBottom:16 }}>This is exactly how your design will look when printed. Pinch to zoom · Drag to pan.</p>
 
-            {/* Multi-angle switcher */}
-            {angles.length > 1 && (
-              <div style={{ display:'flex', gap:8, justifyContent:'center', marginBottom:14 }}>
-                {angles.map(v => (
-                  <button key={v} onClick={()=>setPreviewAngle(v)}
-                    style={{ padding:'4px', borderRadius:8, border:`2px solid ${previewAngle===v?'#c8102e':'rgba(255,255,255,.15)'}`, background:'rgba(255,255,255,.05)', cursor:'pointer', transition:'all .15s' }}>
-                    <img src={getMockupUrl(selectedProduct.id, v)} alt={v} style={{ width:44, height:44, objectFit:'contain', borderRadius:5, display:'block' }} />
-                    <div style={{ fontSize:8, color:previewAngle===v?'#c8102e':'rgba(255,255,255,.4)', fontWeight:700, marginTop:3, textAlign:'center', textTransform:'uppercase' }}>{v}</div>
-                  </button>
-                ))}
-              </div>
-            )}
-
             {/* Interactive flat mockup */}
             <InteractiveMockup
-              garmentImgSrc={activeImgSrc}
+              garmentImgSrc={garmentImgSrc}
               designImgSrc={designImgSrc}
               color={color}
               posX={posX} posY={posY} scale={scale} rotation={rotation}
@@ -1166,8 +1160,7 @@ function StudioPage({ user, onNav }) {
               <button onClick={()=>setStep(6)} className="btn-primary" style={{ padding:'13px 36px', fontSize:14 }}>Place Order →</button>
             </div>
           </div>
-          )
-        })()}
+        )}
 
         {/* ══ STEP 6: ORDER ══ */}
         {step === 6 && (
@@ -1306,7 +1299,7 @@ function HomePage({ user, onNav, cart, onAddToCart }) {
               <div key={p.id} className="product-card" onClick={()=>onNav('products')}>
                 <div style={{ background:'#f8f8f8', height:200, display:'flex', alignItems:'center', justifyContent:'center', fontSize:80, position:'relative', overflow:'hidden' }}>
                   {p.image_url ? <img src={p.image_url} alt={p.name} style={{ width:'100%', height:'100%', objectFit:'contain' }} /> : <svg width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="#ddd" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"><path d="M20.38 3.46L16 2a4 4 0 01-8 0L3.62 3.46a2 2 0 00-1.34 2.23l.58 3.57a1 1 0 00.99.84H6v10c0 1.1.9 2 2 2h8a2 2 0 002-2V10h2.15a1 1 0 00.99-.84l.58-3.57a2 2 0 00-1.34-2.23z"/></svg>}
-                  <div style={{ position:'absolute', top:10, left:10, background:p.tagColor, color:'#fff', fontSize:9, fontWeight:700, letterSpacing:'.1em', textTransform:'uppercase', padding:'3px 8px', borderRadius:2 }}>{p.tag}</div>
+                  <div style={{ position:'absolute', top:10, left:10, background:p.tagColor||p.tag_color||"#c8102e", color:'#fff', fontSize:9, fontWeight:700, letterSpacing:'.1em', textTransform:'uppercase', padding:'3px 8px', borderRadius:2 }}>{p.tag}</div>
                   <div style={{ position:'absolute', top:10, right:10, background:'#e8f5e9', color:'#00a86b', fontSize:10, fontWeight:700, padding:'3px 8px', borderRadius:2 }}>{disc(p.price,p.mrp)}% off</div>
                 </div>
                 <div style={{ padding:'12px 14px' }}>
@@ -1316,8 +1309,8 @@ function HomePage({ user, onNav, cart, onAddToCart }) {
                     <span style={{ fontSize:11, color:'#aaa' }}>({p.reviews})</span>
                   </div>
                   <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:10 }}>
-                    <span style={{ fontSize:16, fontWeight:700 }}>₹{p.price.toLocaleString()}</span>
-                    <span style={{ fontSize:12, color:'#aaa', textDecoration:'line-through' }}>₹{p.mrp.toLocaleString()}</span>
+                    <span style={{ fontSize:16, fontWeight:700 }}>₹{Number(p.price).toLocaleString()}</span>
+                    <span style={{ fontSize:12, color:'#aaa', textDecoration:'line-through' }}>₹{Number(p.mrp).toLocaleString()}</span>
                   </div>
                   <button className="btn-primary" style={{ width:'100%', padding:'9px', fontSize:12 }}
                     onClick={e=>{ e.stopPropagation(); onAddToCart(p) }}>Add to Cart</button>
@@ -1408,7 +1401,7 @@ function ProductDetailPage({ product, onBack, onAddToCart }) {
           <div style={{ flex:'0 0 auto', width:'100%', maxWidth:340 }}>
             <div style={{ background:'#f8f8f8', borderRadius:12, height:320, display:'flex', alignItems:'center', justifyContent:'center', fontSize:140, position:'relative', overflow:'hidden' }}>
               {product.image_url ? <img src={product.image_url} alt={product.name} style={{ width:'100%', height:'100%', objectFit:'contain' }} /> : <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="#ddd" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round"><path d="M20.38 3.46L16 2a4 4 0 01-8 0L3.62 3.46a2 2 0 00-1.34 2.23l.58 3.57a1 1 0 00.99.84H6v10c0 1.1.9 2 2 2h8a2 2 0 002-2V10h2.15a1 1 0 00.99-.84l.58-3.57a2 2 0 00-1.34-2.23z"/></svg>}
-              <div style={{ position:'absolute', top:14, left:14, background:product.tagColor, color:'#fff', fontSize:9, fontWeight:700, letterSpacing:'.1em', textTransform:'uppercase', padding:'4px 10px', borderRadius:3 }}>{product.tag}</div>
+              <div style={{ position:'absolute', top:14, left:14, background:product.tagColor||product.tag_color||"#c8102e", color:'#fff', fontSize:9, fontWeight:700, letterSpacing:'.1em', textTransform:'uppercase', padding:'4px 10px', borderRadius:3 }}>{product.tag}</div>
             </div>
           </div>
 
@@ -1421,8 +1414,8 @@ function ProductDetailPage({ product, onBack, onAddToCart }) {
               <span style={{ fontSize:12, color:'#aaa' }}>({product.reviews} reviews)</span>
             </div>
             <div style={{ display:'flex', alignItems:'baseline', gap:10, marginBottom:6 }}>
-              <span style={{ fontSize:28, fontWeight:700, color:'#0a0a0a' }}>₹{product.price.toLocaleString()}</span>
-              <span style={{ fontSize:15, color:'#aaa', textDecoration:'line-through' }}>₹{product.mrp.toLocaleString()}</span>
+              <span style={{ fontSize:28, fontWeight:700, color:'#0a0a0a' }}>₹{Number(product.price).toLocaleString()}</span>
+              <span style={{ fontSize:15, color:'#aaa', textDecoration:'line-through' }}>₹{Number(product.mrp).toLocaleString()}</span>
               <span style={{ fontSize:13, fontWeight:700, color:'#00a86b' }}>{disc(product.price,product.mrp)}% off</span>
             </div>
             <div style={{ fontSize:12, color:'#00a86b', fontWeight:600, marginBottom:20 }}>In stock · Free delivery above ₹1,500</div>
@@ -1573,7 +1566,7 @@ function ProductsPage({ onAddToCart, onNav }) {
               <div key={p.id} className="product-card" onClick={()=>setSelectedProduct(p)}>
                 <div style={{ background:'#f8f8f8', height:200, display:'flex', alignItems:'center', justifyContent:'center', fontSize:80, position:'relative', overflow:'hidden' }}>
                   {p.image_url ? <img src={p.image_url} alt={p.name} style={{ width:'100%', height:'100%', objectFit:'contain' }} /> : <svg width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="#ddd" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"><path d="M20.38 3.46L16 2a4 4 0 01-8 0L3.62 3.46a2 2 0 00-1.34 2.23l.58 3.57a1 1 0 00.99.84H6v10c0 1.1.9 2 2 2h8a2 2 0 002-2V10h2.15a1 1 0 00.99-.84l.58-3.57a2 2 0 00-1.34-2.23z"/></svg>}
-                  <div style={{ position:'absolute', top:10, left:10, background:p.tagColor, color:'#fff', fontSize:9, fontWeight:700, letterSpacing:'.1em', textTransform:'uppercase', padding:'3px 8px', borderRadius:2 }}>{p.tag}</div>
+                  <div style={{ position:'absolute', top:10, left:10, background:p.tagColor||p.tag_color||"#c8102e", color:'#fff', fontSize:9, fontWeight:700, letterSpacing:'.1em', textTransform:'uppercase', padding:'3px 8px', borderRadius:2 }}>{p.tag}</div>
                   <button onClick={e=>{ e.stopPropagation(); setWishlist(w=>w.includes(p.id)?w.filter(x=>x!==p.id):[...w,p.id]) }}
                     style={{ position:'absolute', top:8, right:8, background:'#fff', border:'none', borderRadius:'50%', width:30, height:30, display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', fontSize:16, boxShadow:'0 2px 8px rgba(0,0,0,.1)' }}>
                     {wishlist.includes(p.id)?'♥':'♡'}
@@ -1586,8 +1579,8 @@ function ProductsPage({ onAddToCart, onNav }) {
                     <span style={{ fontSize:11, color:'#aaa' }}>({p.reviews})</span>
                   </div>
                   <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:4 }}>
-                    <span style={{ fontSize:16, fontWeight:700 }}>₹{p.price.toLocaleString()}</span>
-                    <span style={{ fontSize:12, color:'#aaa', textDecoration:'line-through' }}>₹{p.mrp.toLocaleString()}</span>
+                    <span style={{ fontSize:16, fontWeight:700 }}>₹{Number(p.price).toLocaleString()}</span>
+                    <span style={{ fontSize:12, color:'#aaa', textDecoration:'line-through' }}>₹{Number(p.mrp).toLocaleString()}</span>
                   </div>
                   <div style={{ fontSize:11, color:'#00a86b', fontWeight:600, marginBottom:10 }}>{disc(p.price,p.mrp)}% off</div>
                   <button className="btn-primary" style={{ width:'100%', padding:'9px', fontSize:12 }} onClick={e=>{ e.stopPropagation(); onAddToCart(p) }}>Add to Cart</button>
@@ -2463,86 +2456,96 @@ const ADMIN_EMAIL = 'gokulmaniraj2008@gmail.com'
 // ══════════════════════════════════════════════════════════════
 // MOCKUP UPLOADER — admin uploads garment views directly to Cloudinary
 // ══════════════════════════════════════════════════════════════
-const MOCKUP_VIEWS  = ['front','back','left','right']
-const MOCKUP_KEY    = (productId, view) => `mockup_product_${productId}_${view}`
-const MOCKUP_LABELS = { front:'👕 Front', back:'🔙 Back', left:'💪 Left Sleeve', right:'💪 Right Sleeve' }
+const MOCKUP_SLOTS = {
+  'T-Shirt':  ['front','back','left','right'],
+  'Hoodie':   ['front','back','left','right'],
+  'Polo':     ['front','back','left','right'],
+}
+const MOCKUP_KEY = (garment, view) => `mockup_${garment.toLowerCase().replace(' ','-')}_${view}`
+const MOCKUP_LABELS = { front:'👕 Front', back:'🔙 Back', left:'💪 Left', right:'💪 Right' }
 
-// Per-product mockup slots shown inside each product card
-function ProductMockupSlots({ productId }) {
-  const [urls,      setUrls]      = React.useState({})
+function MockupUploader() {
+  const [urls, setUrls]       = React.useState({})
   const [uploading, setUploading] = React.useState({})
-  const [saved,     setSaved]     = React.useState({})
+  const [saved, setSaved]     = React.useState({})
 
+  // Load existing URLs from Supabase settings table
   React.useEffect(() => {
-    supabase.from('drynn_settings')
-      .select('key,value')
-      .like('key', `mockup_product_${productId}_%`)
+    supabase.from('drynn_settings').select('key,value')
       .then(({ data }) => {
         if (!data) return
         const map = {}
         data.forEach(row => { map[row.key] = row.value })
         setUrls(map)
       })
-  }, [productId])
+  }, [])
 
-  const handleFile = async (view, file) => {
+  const handleFile = async (garment, view, file) => {
     if (!file) return
-    const key = MOCKUP_KEY(productId, view)
+    const key = MOCKUP_KEY(garment, view)
     setUploading(u => ({ ...u, [key]: true }))
     try {
       const url = await uploadToCloudinary(file, () => {})
+      // Save URL to Supabase settings
       await supabase.from('drynn_settings').upsert({ key, value: url }, { onConflict: 'key' })
       setUrls(u => ({ ...u, [key]: url }))
       setSaved(s => ({ ...s, [key]: true }))
       setTimeout(() => setSaved(s => ({ ...s, [key]: false })), 2500)
-    } catch(e) { alert('Upload failed: ' + e.message) }
+    } catch(e) {
+      alert('Upload failed: ' + e.message)
+    }
     setUploading(u => ({ ...u, [key]: false }))
   }
 
-  const handleDelete = async (view) => {
-    const key = MOCKUP_KEY(productId, view)
-    await supabase.from('drynn_settings').delete().eq('key', key)
-    setUrls(u => { const n={...u}; delete n[key]; return n })
-  }
-
   return (
-    <div style={{ marginTop:14, paddingTop:14, borderTop:'1px solid #f0f0f0' }}>
-      <div style={{ fontSize:11, fontWeight:700, letterSpacing:'.1em', textTransform:'uppercase', color:'#555', marginBottom:10 }}>
-        📷 Mockup Images
-        <span style={{ color:'#aaa', fontWeight:400, textTransform:'none', letterSpacing:0, marginLeft:6 }}>Used as garment base in Studio</span>
-      </div>
-      <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:8 }}>
-        {MOCKUP_VIEWS.map(view => {
-          const key  = MOCKUP_KEY(productId, view)
-          const url  = urls[key]
-          const busy = uploading[key]
-          const done = saved[key]
-          return (
-            <div key={view} style={{ background:'#fafafa', border:'1px solid #eee', borderRadius:8, overflow:'hidden' }}>
-              <div style={{ height:80, background:'#f4f4f4', display:'flex', alignItems:'center', justifyContent:'center', position:'relative', overflow:'hidden' }}>
-                {url
-                  ? <img src={url} alt={view} style={{ width:'100%', height:'100%', objectFit:'contain' }} />
-                  : <span style={{ fontSize:22, opacity:.25 }}>👕</span>}
-                {url && (
-                  <button onClick={()=>handleDelete(view)} style={{ position:'absolute', top:2, right:2, width:18, height:18, borderRadius:'50%', background:'rgba(200,16,46,.85)', border:'none', cursor:'pointer', fontSize:9, color:'#fff', fontWeight:700, display:'flex', alignItems:'center', justifyContent:'center', lineHeight:1 }}>✕</button>
-                )}
-              </div>
-              <div style={{ padding:'6px 8px' }}>
-                <div style={{ fontSize:9, fontWeight:700, color:'#888', letterSpacing:'.08em', textTransform:'uppercase', marginBottom:5 }}>{MOCKUP_LABELS[view]}</div>
-                <label style={{ display:'block', cursor:'pointer' }}>
-                  <input type="file" accept=".png,.jpg,.jpeg,.webp" style={{ display:'none' }} onChange={e=>handleFile(view, e.target.files[0])} />
-                  <div style={{ padding:'5px 0', borderRadius:5, border:'1.5px dashed', textAlign:'center', fontSize:9, fontWeight:700,
-                    borderColor: done?'#00a86b':busy?'#e0e0e0':'#c8102e',
-                    color: done?'#00a86b':busy?'#aaa':'#c8102e',
-                    background: done?'rgba(0,168,107,.05)':'rgba(200,16,46,.03)' }}>
-                    {busy?'⏳ Uploading…':done?'✅ Saved!':url?'🔄 Replace':'📤 Upload'}
+    <div style={{ display:'flex', flexDirection:'column', gap:28 }}>
+      {Object.entries(MOCKUP_SLOTS).map(([garment, views]) => (
+        <div key={garment} style={{ background:'#fff', borderRadius:12, border:'1px solid #e8e8e8', overflow:'hidden' }}>
+          <div style={{ background:'#0a0a0a', padding:'12px 16px' }}>
+            <div style={{ fontSize:14, fontWeight:700, color:'#fff', letterSpacing:'.06em' }}>{garment.toUpperCase()}</div>
+          </div>
+          <div style={{ display:'grid', gridTemplateColumns:'repeat(2,1fr)', gap:1, background:'#f0f0f0' }}>
+            {views.map(view => {
+              const key = MOCKUP_KEY(garment, view)
+              const url = urls[key]
+              const busy = uploading[key]
+              const done = saved[key]
+              return (
+                <div key={view} style={{ background:'#fff', padding:14 }}>
+                  <div style={{ fontSize:11, fontWeight:700, color:'#555', letterSpacing:'.08em', textTransform:'uppercase', marginBottom:8 }}>
+                    {MOCKUP_LABELS[view]}
                   </div>
-                </label>
-              </div>
-            </div>
-          )
-        })}
-      </div>
+                  {/* Current image preview */}
+                  {url && (
+                    <div style={{ marginBottom:8, borderRadius:8, overflow:'hidden', background:'#f8f8f8', border:'1px solid #eee' }}>
+                      <img src={url} alt={view} style={{ width:'100%', height:100, objectFit:'contain', display:'block' }} />
+                    </div>
+                  )}
+                  {/* Upload button */}
+                  <label style={{ display:'block', cursor:'pointer' }}>
+                    <input type="file" accept=".png,.jpg,.jpeg" style={{ display:'none' }}
+                      onChange={e => handleFile(garment, view, e.target.files[0])} />
+                    <div style={{ padding:'8px 12px', borderRadius:6, border:'1.5px dashed #d0d0d0', textAlign:'center', background: done?'rgba(0,168,107,.06)':busy?'#f8f8f8':'#fafafa', cursor:'pointer', transition:'all .2s' }}>
+                      {busy ? (
+                        <span style={{ fontSize:11, color:'#888' }}>⏳ Uploading…</span>
+                      ) : done ? (
+                        <span style={{ fontSize:11, color:'#00a86b', fontWeight:700 }}>✅ Saved!</span>
+                      ) : (
+                        <span style={{ fontSize:11, color:'#c8102e', fontWeight:700 }}>{url ? '🔄 Replace' : '📤 Upload'}</span>
+                      )}
+                    </div>
+                  </label>
+                  {url && (
+                    <div style={{ marginTop:6, fontSize:9, color:'#aaa', wordBreak:'break-all', lineHeight:1.4 }}>
+                      {url.split('/').pop()}
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      ))}
     </div>
   )
 }
@@ -2755,6 +2758,7 @@ function AdminPanel({ onBack }) {
           <button onClick={()=>{setTab('orders');loadOrders()}} style={{ flexShrink:0, padding:'6px 16px', borderRadius:4, border:'none', cursor:'pointer', background:tab==='orders'?'#c8102e':'#222', color:'#fff', fontSize:12, fontWeight:700 }}>Orders</button>
           <button onClick={()=>{setTab('products');loadProducts()}} style={{ flexShrink:0, padding:'6px 16px', borderRadius:4, border:'none', cursor:'pointer', background:tab==='products'?'#c8102e':'#222', color:'#fff', fontSize:12, fontWeight:700 }}>Products</button>
           <button onClick={()=>{setTab('samples');loadSamples()}} style={{ flexShrink:0, padding:'6px 16px', borderRadius:4, border:'none', cursor:'pointer', background:tab==='samples'?'#c8102e':'#222', color:'#fff', fontSize:12, fontWeight:700 }}>Samples</button>
+          <button onClick={()=>setTab('mockups')} style={{ flexShrink:0, padding:'6px 16px', borderRadius:4, border:'none', cursor:'pointer', background:tab==='mockups'?'#c8102e':'#222', color:'#fff', fontSize:12, fontWeight:700 }}>Mockups</button>
           <button onClick={()=>{setTab('uploads');loadOrders()}} style={{ flexShrink:0, padding:'6px 16px', borderRadius:4, border:'none', cursor:'pointer', background:tab==='uploads'?'#c8102e':'#222', color:'#fff', fontSize:12, fontWeight:700 }}>Uploads</button>
         </div>
       </div>
@@ -2904,47 +2908,46 @@ function AdminPanel({ onBack }) {
 
             {/* Products List */}
             <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
-              {products.map(p => {
-                const [showMockups, setShowMockups] = React.useState(false)
-                return (
+              {products.map(p => (
                 <div key={p.id} style={{ background:'#fff', borderRadius:10, padding:'16px 20px', border:'1px solid #e8e8e8' }}>
                   {editProd===p.id ? (
                     <ProductEditRow product={p} onSave={saveProduct} onCancel={()=>setEditProd(null)} />
                   ) : (
-                    <div>
-                      <div style={{ display:'flex', gap:16, alignItems:'center', flexWrap:'wrap' }}>
-                        <div style={{ width:60, height:60, borderRadius:8, overflow:'hidden', background:'#f8f8f8', border:'1px solid #e8e8e8', flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center' }}>
-                          {p.image_url
-                            ? <img src={p.image_url} alt={p.name} style={{ width:'100%', height:'100%', objectFit:'contain' }} />
-                            : <span style={{ fontSize:30 }}>{p.emoji}</span>}
-                        </div>
-                        <div style={{ flex:1 }}>
-                          <div style={{ fontSize:14, fontWeight:700, display:'flex', alignItems:'center', gap:8 }}>
-                            {p.name}
-                            {p.studio_only && <span style={{ fontSize:9, fontWeight:700, letterSpacing:'.1em', textTransform:'uppercase', background:'rgba(200,16,46,.1)', color:'#c8102e', border:'1px solid rgba(200,16,46,.25)', borderRadius:3, padding:'2px 7px' }}>🎨 Studio Only</span>}
-                          </div>
-                          <div style={{ fontSize:12, color:'#888' }}>{p.category} · ₹{Number(p.price).toLocaleString()} (MRP ₹{Number(p.mrp).toLocaleString()})</div>
-                          <div style={{ fontSize:11, color:'#aaa' }}>⭐ {p.rating} · {p.reviews} reviews · Tag: {p.tag}</div>
-                        </div>
-                        <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
-                          <button onClick={()=>setShowMockups(v=>!v)} style={{ padding:'7px 14px', fontSize:11, borderRadius:4, border:'1px solid #e0e0e0', color:'#555', background: showMockups?'#f0f0f0':'none', cursor:'pointer', fontWeight:600 }}>
-                            {showMockups ? '▲ Mockups' : '📷 Mockups'}
-                          </button>
-                          <button onClick={()=>setEditProd(p.id)} style={{ padding:'8px 16px', fontSize:12, borderRadius:4, border:'1px solid #0a1f5d', color:'#0a1f5d', background:'none', cursor:'pointer', fontWeight:600 }}>Edit</button>
-                          <button onClick={()=>deleteProduct(p.id)} style={{ padding:'8px 12px', fontSize:12, borderRadius:4, border:'1px solid #fdd', color:'#c8102e', background:'none', cursor:'pointer', fontWeight:600 }}>✕</button>
-                        </div>
+                    <div style={{ display:'flex', gap:16, alignItems:'center', flexWrap:'wrap' }}>
+                      <div style={{ width:60, height:60, borderRadius:8, overflow:'hidden', background:'#f8f8f8', border:'1px solid #e8e8e8', flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center' }}>
+                        {p.image_url
+                          ? <img src={p.image_url} alt={p.name} style={{ width:'100%', height:'100%', objectFit:'contain' }} />
+                          : <span style={{ fontSize:30 }}>{p.emoji}</span>}
                       </div>
-                      {showMockups && <ProductMockupSlots productId={p.id} />}
+                      <div style={{ flex:1 }}>
+                        <div style={{ fontSize:14, fontWeight:700, display:'flex', alignItems:'center', gap:8 }}>
+                          {p.name}
+                          {p.studio_only && <span style={{ fontSize:9, fontWeight:700, letterSpacing:'.1em', textTransform:'uppercase', background:'rgba(200,16,46,.1)', color:'#c8102e', border:'1px solid rgba(200,16,46,.25)', borderRadius:3, padding:'2px 7px' }}>🎨 Studio Only</span>}
+                        </div>
+                        <div style={{ fontSize:12, color:'#888' }}>{p.category} · ₹{Number(p.price).toLocaleString()} (MRP ₹{Number(p.mrp).toLocaleString()})</div>
+                        <div style={{ fontSize:11, color:'#aaa' }}>⭐ {p.rating} · {p.reviews} reviews · Tag: {p.tag}</div>
+                      </div>
+                      <div style={{ display:'flex', gap:8 }}>
+                        <button onClick={()=>setEditProd(p.id)} style={{ padding:'8px 16px', fontSize:12, borderRadius:4, border:'1px solid #0a1f5d', color:'#0a1f5d', background:'none', cursor:'pointer', fontWeight:600 }}>Edit</button>
+                        <button onClick={()=>deleteProduct(p.id)} style={{ padding:'8px 12px', fontSize:12, borderRadius:4, border:'1px solid #fdd', color:'#c8102e', background:'none', cursor:'pointer', fontWeight:600 }}>✕</button>
+                      </div>
                     </div>
                   )}
                 </div>
-                )
-              })}
+              ))}
             </div>
           </div>
         )}
 
         {/* SAMPLES TAB */}
+        {/* ── MOCKUPS TAB ── */}
+        {tab==='mockups' && (
+          <div style={{ padding:20 }}>
+            <h2 style={{ fontSize:18, fontWeight:700, marginBottom:4 }}>Garment Mockup Images</h2>
+            <p style={{ fontSize:13, color:'#888', marginBottom:20 }}>Upload front, back, left & right views for each garment. Images go straight to Cloudinary and save automatically.</p>
+            <MockupUploader />
+          </div>
+        )}
 
         {tab==='uploads' && (
           <div>

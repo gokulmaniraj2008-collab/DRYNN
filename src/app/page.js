@@ -2003,6 +2003,7 @@ function ProductsPage({ onAddToCart, onNav }) {
                 onSelect={setSelectedProduct}
                 onAddToCart={onAddToCart} />
             ))}
+          </div>
         )}
       </div>
 

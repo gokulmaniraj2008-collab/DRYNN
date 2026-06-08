@@ -2502,8 +2502,9 @@ function MockupUploader() {
     setUploading(u => ({ ...u, [key]: true }))
     try {
       const url = await uploadToCloudinary(file, () => {})
-      // Save URL to Supabase settings
-      await supabase.from('drynn_settings').upsert({ key, value: url }, { onConflict: 'key' })
+      await supabase.from('drynn_settings').delete().eq('key', key)
+      const { error: insertErr } = await supabase.from('drynn_settings').insert({ key, value: url })
+      if (insertErr) { alert('Save failed: ' + insertErr.message); return }
       setUrls(u => ({ ...u, [key]: url }))
       setSaved(s => ({ ...s, [key]: true }))
       setTimeout(() => setSaved(s => ({ ...s, [key]: false })), 2500)
@@ -3104,7 +3105,10 @@ function ProductEditRow({ product, onSave, onCancel }) {
     setMockupUploading(u => ({ ...u, [view]: true }))
     try {
       const url = await uploadToCloudinary(file, () => {})
-      await supabase.from('drynn_settings').upsert({ key, value: url }, { onConflict: 'key' })
+      // delete existing row first, then insert fresh — avoids onConflict issues
+      await supabase.from('drynn_settings').delete().eq('key', key)
+      const { error: insertErr } = await supabase.from('drynn_settings').insert({ key, value: url })
+      if (insertErr) { alert('Save failed: ' + insertErr.message); return }
       setMockupUrls(u => ({ ...u, [key]: url }))
       setMockupSaved(s => ({ ...s, [view]: true }))
       setTimeout(() => setMockupSaved(s => ({ ...s, [view]: false })), 2500)

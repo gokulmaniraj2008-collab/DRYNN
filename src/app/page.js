@@ -1803,59 +1803,66 @@ function StudioPage({ user, onNav, onAddToCart }) {
 
         {/* ══ STEP 6: ORDER ══ */}
         {step === 6 && (
-          <div style={{ display:'flex', gap:24, flexWrap:'wrap' }}>
-            <div style={{ flex:'1 1 280px' }}>
-              <h2 style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:28, color:'#fff', letterSpacing:'.06em', marginBottom:6 }}>STEP 6 — PLACE YOUR ORDER</h2>
-              <p style={{ fontSize:13, color:'rgba(255,255,255,.45)', marginBottom:24 }}>Fill your details. We'll WhatsApp you within 2 hours to confirm.</p>
+          <div style={{ display:'flex', flexDirection:'column', gap:16 }}>
 
-              {status==='done' ? (
-                <div style={{ textAlign:'center', padding:'48px 16px', background:'rgba(0,168,107,.07)', border:'1px solid rgba(0,168,107,.2)', borderRadius:16 }}>
-                  <div style={{ fontSize:64, marginBottom:16 }}>🛒</div>
-                  <div style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:28, color:'#fff', letterSpacing:'.06em', marginBottom:8 }}>ADDED TO CART!</div>
-                  <p style={{ fontSize:13, color:'rgba(255,255,255,.55)', lineHeight:1.8 }}>Taking you to cart to review your bill…</p>
-                </div>
-              ) : (
-                <div style={{ display:'flex', flexDirection:'column', gap:18 }}>
-                  {/* Size */}
-                  <div>
-                    <span style={lblStyle}>Size</span>
-                    <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
-                      {SIZES.map(s=>(
-                        <button key={s} onClick={()=>setSize(s)}
-                          style={{ padding:'9px 16px', borderRadius:6, fontSize:13, fontWeight:700, cursor:'pointer', border:'1.5px solid',
-                            borderColor:size===s?'#c8102e':'rgba(255,255,255,.15)',
-                            background:size===s?'#c8102e':'rgba(255,255,255,.04)', color:'#fff', transition:'all .15s' }}>
-                          {s}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-
-                  {/* Upload progress */}
-                  {status==='uploading' && (
-                    <div>
-                      <div style={{ display:'flex', justifyContent:'space-between', fontSize:11, color:'rgba(255,255,255,.6)', marginBottom:6 }}>
-                        <span>Uploading design…</span><span>{uploadPct}%</span>
-                      </div>
-                      <div style={{ height:5, background:'rgba(255,255,255,.1)', borderRadius:3 }}>
-                        <div style={{ height:'100%', width:`${uploadPct}%`, background:'#c8102e', borderRadius:3, transition:'width .3s' }} />
-                      </div>
-                    </div>
-                  )}
-
-                  <div style={{ display:'flex', gap:10 }}>
-                    <button onClick={()=>setStep(5)} style={{ padding:'12px 20px', borderRadius:8, border:'1px solid rgba(255,255,255,.15)', background:'transparent', color:'rgba(255,255,255,.5)', fontSize:13, fontWeight:600, cursor:'pointer' }}>← Preview</button>
-                    <button className="btn-primary" style={{ flex:1, padding:'14px', fontSize:14, letterSpacing:'.04em', opacity:(status==='saving'||status==='uploading'||status==='sheet')?.6:1 }}
-                      onClick={handleSubmit} disabled={status==='saving'||status==='uploading'||status==='sheet'}>
-                      {status==='uploading'?`Uploading… ${uploadPct}%`:status==='saving'?'Placing Order…':status==='sheet'?'Generating print sheet…':'🛒 Place Custom Order'}
-                    </button>
-                  </div>
-                  <p style={{ fontSize:11, color:'rgba(255,255,255,.3)', textAlign:'center' }}>Our team will WhatsApp you within 2 hours · Pay via UPI link</p>
-                </div>
-              )}
+            {/* ── Card 1: Header ── */}
+            <div style={{ background:'rgba(255,255,255,.04)', border:'1px solid rgba(255,255,255,.09)', borderRadius:12, padding:'18px 16px' }}>
+              <h2 style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:28, color:'#fff', letterSpacing:'.06em', marginBottom:4 }}>STEP 6 — PLACE YOUR ORDER</h2>
+              <p style={{ fontSize:13, color:'rgba(255,255,255,.45)', marginBottom:0 }}>Fill your details. We'll WhatsApp you within 2 hours to confirm.</p>
             </div>
+
+            {/* ── Card 2: Live Preview (full width) ── */}
             <LivePreview />
+
+            {/* ── Card 3: Controls (size + actions) ── */}
+            {status==='done' ? (
+              <div style={{ textAlign:'center', padding:'48px 16px', background:'rgba(0,168,107,.07)', border:'1px solid rgba(0,168,107,.2)', borderRadius:12 }}>
+                <div style={{ fontSize:64, marginBottom:16 }}>🛒</div>
+                <div style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:28, color:'#fff', letterSpacing:'.06em', marginBottom:8 }}>ADDED TO CART!</div>
+                <p style={{ fontSize:13, color:'rgba(255,255,255,.55)', lineHeight:1.8 }}>Taking you to cart to review your bill…</p>
+              </div>
+            ) : (
+              <div style={{ background:'rgba(255,255,255,.04)', border:'1px solid rgba(255,255,255,.09)', borderRadius:12, padding:'18px 16px', display:'flex', flexDirection:'column', gap:18 }}>
+
+                {/* Size */}
+                <div>
+                  <span style={lblStyle}>Size</span>
+                  <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
+                    {SIZES.map(s=>(
+                      <button key={s} onClick={()=>setSize(s)}
+                        style={{ padding:'9px 16px', borderRadius:6, fontSize:13, fontWeight:700, cursor:'pointer', border:'1.5px solid',
+                          borderColor:size===s?'#c8102e':'rgba(255,255,255,.15)',
+                          background:size===s?'#c8102e':'rgba(255,255,255,.04)', color:'#fff', transition:'all .15s' }}>
+                        {s}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Upload progress */}
+                {status==='uploading' && (
+                  <div>
+                    <div style={{ display:'flex', justifyContent:'space-between', fontSize:11, color:'rgba(255,255,255,.6)', marginBottom:6 }}>
+                      <span>Uploading design…</span><span>{uploadPct}%</span>
+                    </div>
+                    <div style={{ height:5, background:'rgba(255,255,255,.1)', borderRadius:3 }}>
+                      <div style={{ height:'100%', width:`${uploadPct}%`, background:'#c8102e', borderRadius:3, transition:'width .3s' }} />
+                    </div>
+                  </div>
+                )}
+
+                {/* ── Buttons ── */}
+                <div style={{ display:'flex', gap:10 }}>
+                  <button onClick={()=>setStep(5)} style={{ padding:'12px 20px', borderRadius:8, border:'1px solid rgba(255,255,255,.15)', background:'transparent', color:'rgba(255,255,255,.5)', fontSize:13, fontWeight:600, cursor:'pointer' }}>← Preview</button>
+                  <button className="btn-primary" style={{ flex:1, padding:'14px', fontSize:14, letterSpacing:'.04em', opacity:(status==='saving'||status==='uploading'||status==='sheet')?.6:1 }}
+                    onClick={handleSubmit} disabled={status==='saving'||status==='uploading'||status==='sheet'}>
+                    {status==='uploading'?`Uploading… ${uploadPct}%`:status==='saving'?'Placing Order…':status==='sheet'?'Generating print sheet…':'🛒 Place Custom Order'}
+                  </button>
+                </div>
+                <p style={{ fontSize:11, color:'rgba(255,255,255,.3)', textAlign:'center' }}>Our team will WhatsApp you within 2 hours · Pay via UPI link</p>
+              </div>
+            )}
+
           </div>
         )}
 

@@ -815,15 +815,26 @@ function StudioPage({ user, onNav }) {
   // ── Step 2: Colour ────────────────────────────────────────
   const [color, setColor] = useState('#ffffff')
 
-  // ── Step 3: Design ────────────────────────────────────────
-  const [uploadedFile,   setUploadedFile]   = useState(null)
-  const [selectedSample, setSelectedSample] = useState(null)
-  const [designImgSrc,   setDesignImgSrc]   = useState(null)
-  const [uploadErr,      setUploadErr]      = useState('')
-  const [samples,        setSamples]        = useState([])
-  const [samplesLoading, setSamplesLoading] = useState(false)
-  const [sampleCat,      setSampleCat]      = useState('All')
-  const [designTab,      setDesignTab]      = useState('upload')
+  // ── Step 3: Design (per-side) ────────────────────────────
+  const SIDES = ['front','back','left','right']
+  const SIDE_LABELS = { front:'Front', back:'Back', left:'Left Side', right:'Right Side' }
+  const [activeSide,    setActiveSide]    = useState('front')
+  // sideFiles[side] = File object | null
+  const [sideFiles,     setSideFiles]     = useState({ front:null, back:null, left:null, right:null })
+  // sideSamples[side] = sample object | null
+  const [sideSamples,   setSideSamples]   = useState({ front:null, back:null, left:null, right:null })
+  // sideImgs[side] = preview URL | null
+  const [sideImgs,      setSideImgs]      = useState({ front:null, back:null, left:null, right:null })
+  const [uploadErr,     setUploadErr]     = useState('')
+  const [samples,       setSamples]       = useState([])
+  const [samplesLoading,setSamplesLoading]= useState(false)
+  const [sampleCat,     setSampleCat]     = useState('All')
+  const [designTab,     setDesignTab]     = useState('upload')
+
+  // Convenience: current side's values
+  const designImgSrc  = sideImgs[activeSide]
+  const uploadedFile  = sideFiles[activeSide]
+  const selectedSample = sideSamples[activeSide]
 
   const loadSamples = async () => {
     if (samples.length > 0) return
@@ -838,20 +849,29 @@ function StudioPage({ user, onNav }) {
     const allowed = ['image/png','image/jpeg','image/jpg','image/svg+xml']
     if (!allowed.includes(f.type)) { setUploadErr('Only PNG, JPG, SVG allowed.'); return }
     if (f.size > 20*1024*1024) { setUploadErr('Max 20MB.'); return }
-    setUploadErr(''); setUploadedFile(f); setSelectedSample(null)
-    setDesignImgSrc(URL.createObjectURL(f))
+    setUploadErr('')
+    setSideFiles(prev => ({ ...prev, [activeSide]: f }))
+    setSideSamples(prev => ({ ...prev, [activeSide]: null }))
+    setSideImgs(prev => ({ ...prev, [activeSide]: URL.createObjectURL(f) }))
   }
 
   const pickSample = s => {
-    setSelectedSample(s); setUploadedFile(null)
-    setDesignImgSrc(s.image_url)
+    setSideSamples(prev => ({ ...prev, [activeSide]: s }))
+    setSideFiles(prev => ({ ...prev, [activeSide]: null }))
+    setSideImgs(prev => ({ ...prev, [activeSide]: s.image_url }))
   }
 
-  // ── Step 4: Customise ─────────────────────────────────────
-  const [posY,       setPosY]       = useState(38)
-  const [posX,       setPosX]       = useState(50)
-  const [scale,      setScale]      = useState(38)
-  const [rotation,   setRotation]   = useState(0)
+  // ── Step 4: Customise (per-side) ─────────────────────────
+  const DEFAULT_POS = { posY:38, posX:50, scale:38, rotation:0 }
+  const [sidePos,    setSidePos]    = useState({ front:{...DEFAULT_POS}, back:{...DEFAULT_POS}, left:{...DEFAULT_POS}, right:{...DEFAULT_POS} })
+  const [custSide,   setCustSide]   = useState('front')
+  const custPos = sidePos[custSide]
+  const posY = custPos.posY, posX = custPos.posX, scale = custPos.scale, rotation = custPos.rotation
+  const setPosY     = v => setSidePos(p => ({ ...p, [custSide]: { ...p[custSide], posY: v } }))
+  const setPosX     = v => setSidePos(p => ({ ...p, [custSide]: { ...p[custSide], posX: v } }))
+  const setScale    = v => setSidePos(p => ({ ...p, [custSide]: { ...p[custSide], scale: v } }))
+  const setRotation = v => setSidePos(p => ({ ...p, [custSide]: { ...p[custSide], rotation: v } }))
+
   const [textOn,     setTextOn]     = useState(false)
   const [textVal,    setTextVal]    = useState('YOUR TEXT')
   const [textFont,   setTextFont]   = useState('Bebas Neue')
@@ -873,16 +893,19 @@ function StudioPage({ user, onNav }) {
 
   const handleSubmit = async () => {
     if (!form.name||!form.phone||!form.address) { alert('Please fill all fields.'); return }
-    if (!designImgSrc) { alert('Please add a design first (Step 3).'); return }
-    setStatus('saving')
+    if (!sideImgs.front) { alert('Please add a Front design first (Step 3).'); return }
+    setStatus('uploading')
     const orderId=crypto.randomUUID(), placedAt=new Date().toISOString()
     try {
-      let designUrl = ''
-      if (uploadedFile) {
-        setStatus('uploading')
-        try { designUrl = await uploadToCloudinary(uploadedFile, pct=>setUploadPct(pct)) }
-        catch(e) { setStatus(''); alert('Upload failed: '+e.message); return }
-      } else { designUrl = selectedSample.image_url }
+      const designUrls = {}
+      for (const side of SIDES) {
+        if (sideFiles[side]) {
+          try { designUrls[side] = await uploadToCloudinary(sideFiles[side], pct=>setUploadPct(pct)) }
+          catch(e) { setStatus(''); alert('Upload failed for '+side+': '+e.message); return }
+        } else if (sideSamples[side]) {
+          designUrls[side] = sideSamples[side].image_url
+        }
+      }
       setStatus('saving')
       const { data:{ user:authUser } } = await supabase.auth.getUser()
       const uid = authUser?.id || user?.id || null
@@ -890,10 +913,14 @@ function StudioPage({ user, onNav }) {
       await supabase.from('drynn_orders').insert({
         id:orderId, user_id:uid, name:form.name, phone:form.phone,
         garment:garmentLabel, color, size, qty:Number(form.qty), address:form.address,
-        design_file:designUrl, status:'Received', placed_at:placedAt,
+        design_file: designUrls.front || '',
+        design_file_back:  designUrls.back  || null,
+        design_file_left:  designUrls.left  || null,
+        design_file_right: designUrls.right || null,
+        status:'Received', placed_at:placedAt,
         product_id: selectedProduct?.id || null,
       })
-      if (GOOGLE_SHEET_WEBHOOK) fetch(GOOGLE_SHEET_WEBHOOK,{ method:'POST', mode:'no-cors', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ sheet:'DRYNN_Orders', orderId, name:form.name, phone:form.phone, garment:garmentLabel, color, size, qty:form.qty, address:form.address, designUrl, placedAt }) }).catch(console.error)
+      if (GOOGLE_SHEET_WEBHOOK) fetch(GOOGLE_SHEET_WEBHOOK,{ method:'POST', mode:'no-cors', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ sheet:'DRYNN_Orders', orderId, name:form.name, phone:form.phone, garment:garmentLabel, color, size, qty:form.qty, address:form.address, designUrls, placedAt }) }).catch(console.error)
       setStatus('done')
     } catch(e) { setStatus(''); alert('Error: '+e.message) }
   }
@@ -935,7 +962,7 @@ function StudioPage({ user, onNav }) {
   const canGoNext = () => {
     if (step===1) return true  // product optional
     if (step===2) return !!color
-    if (step===3) return !!designImgSrc
+    if (step===3) return !!sideImgs.front
     if (step===4) return true
     if (step===5) return true
     return false
@@ -953,9 +980,13 @@ function StudioPage({ user, onNav }) {
   const rowStyle  = { display:'flex', justifyContent:'space-between', marginBottom:6 }
 
   // ── Live preview panel (shown on steps 3-6) ───────────────
-  const LivePreview = () => (
+  const LivePreview = ({ previewSide }) => {
+    const ps = previewSide || custSide || 'front'
+    const pImg = sideImgs[ps]
+    const pp   = sidePos[ps]
+    return (
     <div style={{ position:'sticky', top:72, flex:'0 0 280px', maxWidth:280, display:'flex', flexDirection:'column', gap:10 }}>
-      <div style={{ fontSize:10, fontWeight:700, letterSpacing:'.14em', textTransform:'uppercase', color:'rgba(255,255,255,.35)', textAlign:'center', marginBottom:4 }}>Live Preview</div>
+      <div style={{ fontSize:10, fontWeight:700, letterSpacing:'.14em', textTransform:'uppercase', color:'rgba(255,255,255,.35)', textAlign:'center', marginBottom:4 }}>Live Preview — {SIDE_LABELS[ps]}</div>
       <div style={{ position:'relative', borderRadius:14, overflow:'hidden', background:'#1e2a1e', boxShadow:'0 8px 32px rgba(0,0,0,.5)', filter:canvasFilter }}>
         {/* Garment base */}
         <img src={garmentImgSrc} alt={garmentType} style={{ width:'100%', display:'block', filter:colorToFilter(color), minHeight:220, objectFit:'contain' }}
@@ -965,11 +996,11 @@ function StudioPage({ user, onNav }) {
           {GARMENT_EMOJI[garmentType]}
         </div>
         {/* Design overlay */}
-        {designImgSrc && (
-          <img src={designImgSrc} alt="design"
-            style={{ position:'absolute', top:`${posY}%`, left:`${posX}%`,
-              transform:`translate(-50%,-50%) rotate(${rotation}deg)`,
-              width:`${scale}%`, objectFit:'contain', pointerEvents:'none' }} />
+        {pImg && (
+          <img src={pImg} alt="design"
+            style={{ position:'absolute', top:`${pp.posY}%`, left:`${pp.posX}%`,
+              transform:`translate(-50%,-50%) rotate(${pp.rotation}deg)`,
+              width:`${pp.scale}%`, objectFit:'contain', pointerEvents:'none' }} />
         )}
         {/* Text overlay */}
         {textOn && textVal && (
@@ -980,23 +1011,32 @@ function StudioPage({ user, onNav }) {
           </div>
         )}
         {/* No design hint */}
-        {!designImgSrc && (
+        {!pImg && (
           <div style={{ position:'absolute', inset:0, display:'flex', alignItems:'center', justifyContent:'center' }}>
             <div style={{ background:'rgba(0,0,0,.55)', borderRadius:8, padding:'10px 14px', textAlign:'center' }}>
               <div style={{ fontSize:22, marginBottom:2 }}>🎨</div>
-              <div style={{ fontSize:10, color:'rgba(255,255,255,.7)', fontWeight:600 }}>Add design in Step 3</div>
+              <div style={{ fontSize:10, color:'rgba(255,255,255,.7)', fontWeight:600 }}>No design for this side</div>
             </div>
           </div>
         )}
+      </div>
+      {/* Side dots indicator */}
+      <div style={{ display:'flex', gap:6, justifyContent:'center' }}>
+        {SIDES.map(s=>(
+          <div key={s} style={{ width:8, height:8, borderRadius:'50%',
+            background: s===ps ? '#c8102e' : sideImgs[s] ? '#00a86b' : 'rgba(255,255,255,.15)',
+            transition:'background .2s' }} title={SIDE_LABELS[s]} />
+        ))}
       </div>
       {/* Quick info */}
       <div style={{ background:'rgba(255,255,255,.05)', borderRadius:8, padding:'10px 12px', fontSize:11, color:'rgba(255,255,255,.5)', lineHeight:1.7 }}>
         <div><span style={{ color:'rgba(255,255,255,.3)' }}>Garment: </span><strong style={{ color:'#fff' }}>{selectedProduct?.name || garmentType}</strong></div>
         <div><span style={{ color:'rgba(255,255,255,.3)' }}>Colour: </span><span style={{ display:'inline-block', width:10, height:10, borderRadius:'50%', background:color, border:'1px solid rgba(255,255,255,.3)', verticalAlign:'middle', marginRight:3 }} /><strong style={{ color:'#fff' }}>{color}</strong></div>
-        <div><span style={{ color:'rgba(255,255,255,.3)' }}>Design: </span><strong style={{ color: designImgSrc?'#00a86b':'#c8102e' }}>{designImgSrc ? '✓ Added' : '✗ Not yet'}</strong></div>
+        <div><span style={{ color:'rgba(255,255,255,.3)' }}>Front: </span><strong style={{ color: sideImgs.front?'#00a86b':'#c8102e' }}>{sideImgs.front ? '✓ Added' : '✗ Required'}</strong></div>
+        <div><span style={{ color:'rgba(255,255,255,.3)' }}>Sides done: </span><strong style={{ color:'#fff' }}>{SIDES.filter(s=>sideImgs[s]).length}/4</strong></div>
       </div>
     </div>
-  )
+  )}
 
   // ── RENDER ────────────────────────────────────────────────
   return (
@@ -1155,11 +1195,27 @@ function StudioPage({ user, onNav }) {
         {step === 3 && (
           <div style={{ display:'flex', gap:24, flexWrap:'wrap' }}>
             <div style={{ flex:'1 1 280px' }}>
-              <h2 style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:28, color:'#fff', letterSpacing:'.06em', marginBottom:6 }}>STEP 3 — ADD YOUR DESIGN</h2>
-              <p style={{ fontSize:13, color:'rgba(255,255,255,.45)', marginBottom:20 }}>Upload your artwork or pick from our ready-made sample designs.</p>
+              <h2 style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:28, color:'#fff', letterSpacing:'.06em', marginBottom:6 }}>STEP 3 — ADD YOUR DESIGNS</h2>
+              <p style={{ fontSize:13, color:'rgba(255,255,255,.45)', marginBottom:16 }}>Upload designs for each side. <strong style={{ color:'#fff' }}>Front is required.</strong> Back, Left, Right are optional.</p>
 
-              {/* Design source tabs */}
-              <div style={{ display:'flex', gap:0, background:'rgba(255,255,255,.05)', borderRadius:8, padding:3, marginBottom:20 }}>
+              {/* Side selector tabs */}
+              <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:4, marginBottom:20 }}>
+                {SIDES.map(s=>(
+                  <button key={s} onClick={()=>setActiveSide(s)}
+                    style={{ padding:'8px 4px', borderRadius:8, border:`2px solid ${activeSide===s?'#c8102e':sideImgs[s]?'#00a86b':'rgba(255,255,255,.12)'}`,
+                      background:activeSide===s?'rgba(200,16,46,.15)':sideImgs[s]?'rgba(0,168,107,.08)':'rgba(255,255,255,.04)',
+                      cursor:'pointer', display:'flex', flexDirection:'column', alignItems:'center', gap:3, transition:'all .15s' }}>
+                    <span style={{ fontSize:14 }}>{s==='front'?'👕':s==='back'?'🔙':s==='left'?'💪':'💪'}</span>
+                    <span style={{ fontSize:9, fontWeight:700, letterSpacing:'.06em', textTransform:'uppercase',
+                      color:activeSide===s?'#fff':sideImgs[s]?'#00a86b':'rgba(255,255,255,.4)' }}>{SIDE_LABELS[s]}</span>
+                    {sideImgs[s] && <span style={{ fontSize:8, color:'#00a86b', fontWeight:700 }}>✓</span>}
+                    {s==='front' && !sideImgs[s] && <span style={{ fontSize:8, color:'#c8102e', fontWeight:700 }}>Required</span>}
+                  </button>
+                ))}
+              </div>
+
+              {/* Design source tabs (upload / samples) */}
+              <div style={{ display:'flex', gap:0, background:'rgba(255,255,255,.05)', borderRadius:8, padding:3, marginBottom:16 }}>
                 {[['upload','📁 Upload'],['samples','🖼 Samples']].map(([k,l])=>(
                   <button key={k} onClick={()=>{ setDesignTab(k); if(k==='samples') loadSamples() }}
                     style={{ flex:1, padding:'10px', borderRadius:6, border:'none', cursor:'pointer', fontSize:13, fontWeight:700,
@@ -1169,22 +1225,33 @@ function StudioPage({ user, onNav }) {
                 ))}
               </div>
 
+              {/* Active side label */}
+              <div style={{ fontSize:11, fontWeight:700, letterSpacing:'.1em', textTransform:'uppercase', color:'rgba(255,255,255,.4)', marginBottom:10 }}>
+                Uploading for: <span style={{ color:'#c8102e' }}>{SIDE_LABELS[activeSide]}</span>
+                {sideImgs[activeSide] && <button onClick={()=>{ setSideImgs(p=>({...p,[activeSide]:null})); setSideFiles(p=>({...p,[activeSide]:null})); setSideSamples(p=>({...p,[activeSide]:null})) }} style={{ marginLeft:10, fontSize:10, color:'rgba(255,255,255,.3)', background:'none', border:'1px solid rgba(255,255,255,.15)', borderRadius:4, padding:'2px 8px', cursor:'pointer' }}>Clear</button>}
+              </div>
+
               {/* Upload tab */}
               {designTab==='upload' && (
                 <div>
-                  <div onClick={()=>document.getElementById('studioFile').click()}
+                  <div onClick={()=>document.getElementById(`studioFile_${activeSide}`).click()}
                     style={{ border:`2px dashed ${uploadedFile?'rgba(0,168,107,.5)':'rgba(255,255,255,.18)'}`, borderRadius:12, padding:'28px 16px', textAlign:'center', cursor:'pointer', background:'rgba(255,255,255,.03)', marginBottom:12, transition:'all .2s' }}>
-                    <input id="studioFile" type="file" accept=".png,.jpg,.jpeg,.svg" style={{ display:'none' }} onChange={handleFile} />
+                    <input id={`studioFile_${activeSide}`} type="file" accept=".png,.jpg,.jpeg,.svg" style={{ display:'none' }} onChange={handleFile} />
                     {uploadedFile ? (
                       <div>
                         <img src={designImgSrc} alt="" style={{ maxHeight:110, maxWidth:'100%', borderRadius:8, marginBottom:8, objectFit:'contain' }} />
                         <div style={{ fontSize:13, color:'#00a86b', fontWeight:700, marginBottom:3 }}>✓ {uploadedFile.name}</div>
                         <div style={{ fontSize:11, color:'rgba(255,255,255,.4)' }}>{(uploadedFile.size/1024/1024).toFixed(1)} MB · Tap to change</div>
                       </div>
+                    ) : designImgSrc ? (
+                      <div>
+                        <img src={designImgSrc} alt="" style={{ maxHeight:110, maxWidth:'100%', borderRadius:8, marginBottom:8, objectFit:'contain' }} />
+                        <div style={{ fontSize:12, color:'#00a86b', fontWeight:700, marginBottom:3 }}>✓ Sample selected · Tap to upload instead</div>
+                      </div>
                     ) : (
                       <div>
                         <div style={{ fontSize:48, marginBottom:10 }}>📁</div>
-                        <div style={{ fontSize:14, color:'rgba(255,255,255,.8)', fontWeight:700, marginBottom:4 }}>Tap to upload your design</div>
+                        <div style={{ fontSize:14, color:'rgba(255,255,255,.8)', fontWeight:700, marginBottom:4 }}>Tap to upload {SIDE_LABELS[activeSide]} design</div>
                         <div style={{ fontSize:11, color:'rgba(255,255,255,.4)' }}>PNG · JPG · SVG · Max 20MB · Min 300 DPI</div>
                       </div>
                     )}
@@ -1233,12 +1300,12 @@ function StudioPage({ user, onNav }) {
 
               <div style={{ display:'flex', gap:10, marginTop:20 }}>
                 <button onClick={()=>setStep(2)} style={{ padding:'12px 20px', borderRadius:8, border:'1px solid rgba(255,255,255,.15)', background:'transparent', color:'rgba(255,255,255,.5)', fontSize:13, fontWeight:600, cursor:'pointer' }}>← Back</button>
-                <button onClick={()=>{ if(!designImgSrc){alert('Please upload or select a design first.');return} setStep(4) }} className="btn-primary" style={{ flex:1, padding:'13px', fontSize:14 }}>
-                  {designImgSrc ? 'Continue →' : 'Add design to continue'}
+                <button onClick={()=>{ if(!sideImgs.front){alert('Please upload a Front design first.');return} setStep(4) }} className="btn-primary" style={{ flex:1, padding:'13px', fontSize:14 }}>
+                  {sideImgs.front ? `Continue (${SIDES.filter(s=>sideImgs[s]).length} side${SIDES.filter(s=>sideImgs[s]).length>1?'s':''}) →` : 'Add Front design to continue'}
                 </button>
               </div>
             </div>
-            <LivePreview />
+            <LivePreview previewSide={activeSide} />
           </div>
         )}
 
@@ -1247,7 +1314,20 @@ function StudioPage({ user, onNav }) {
           <div style={{ display:'flex', gap:24, flexWrap:'wrap' }}>
             <div style={{ flex:'1 1 280px' }}>
               <h2 style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:28, color:'#fff', letterSpacing:'.06em', marginBottom:6 }}>STEP 4 — CUSTOMISE</h2>
-              <p style={{ fontSize:13, color:'rgba(255,255,255,.45)', marginBottom:20 }}>Adjust design position, add text, and apply effects. Watch the preview update live.</p>
+              <p style={{ fontSize:13, color:'rgba(255,255,255,.45)', marginBottom:16 }}>Adjust position per side. Select a side below to customise it.</p>
+
+              {/* Side selector */}
+              <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:4, marginBottom:18 }}>
+                {SIDES.filter(s=>sideImgs[s]).map(s=>(
+                  <button key={s} onClick={()=>setCustSide(s)}
+                    style={{ padding:'8px 4px', borderRadius:8, border:`2px solid ${custSide===s?'#c8102e':'rgba(255,255,255,.15)'}`,
+                      background:custSide===s?'rgba(200,16,46,.18)':'rgba(255,255,255,.04)',
+                      cursor:'pointer', display:'flex', flexDirection:'column', alignItems:'center', gap:3, transition:'all .15s' }}>
+                    <img src={sideImgs[s]} alt={s} style={{ width:32, height:32, objectFit:'contain', borderRadius:4, background:'rgba(255,255,255,.1)' }} />
+                    <span style={{ fontSize:9, fontWeight:700, textTransform:'uppercase', color:custSide===s?'#fff':'rgba(255,255,255,.4)' }}>{SIDE_LABELS[s]}</span>
+                  </button>
+                ))}
+              </div>
 
               {/* Sub-tabs */}
               <div style={{ display:'flex', overflowX:'auto', gap:0, background:'rgba(255,255,255,.05)', borderRadius:8, padding:3, marginBottom:20, scrollbarWidth:'none' }}>
@@ -1359,7 +1439,7 @@ function StudioPage({ user, onNav }) {
                 <button onClick={()=>setStep(5)} className="btn-primary" style={{ flex:1, padding:'13px', fontSize:14 }}>Preview →</button>
               </div>
             </div>
-            <LivePreview />
+            <LivePreview previewSide={custSide} />
           </div>
         )}
 
@@ -1388,7 +1468,7 @@ function StudioPage({ user, onNav }) {
               {[
                 ['Garment', selectedProduct?.name || garmentType],
                 ['Colour',  color],
-                ['Design',  designImgSrc ? (uploadedFile?.name || selectedSample?.name || '✓ Added') : '—'],
+                ['Designs', SIDES.filter(s=>sideImgs[s]).map(s=>SIDE_LABELS[s]).join(', ') || '—'],
                 ['Text',    textOn ? textVal : 'None'],
               ].map(([k,v])=>(
                 <div key={k}>
@@ -1417,7 +1497,7 @@ function StudioPage({ user, onNav }) {
                   <div style={{ fontSize:64, marginBottom:16 }}>🎉</div>
                   <div style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:32, color:'#fff', letterSpacing:'.06em', marginBottom:8 }}>ORDER CONFIRMED!</div>
                   <p style={{ fontSize:13, color:'rgba(255,255,255,.55)', lineHeight:1.8, marginBottom:24 }}>We received your order and will WhatsApp you within 2 hours to confirm printing and delivery.</p>
-                  <button onClick={()=>{ setStep(1); setSelectedProduct(null); setDesignImgSrc(null); setUploadedFile(null); setSelectedSample(null); setStatus(''); setForm({ name:user?.user_metadata?.full_name||'', phone:'', qty:1, address:'' }) }}
+                  <button onClick={()=>{ setStep(1); setSelectedProduct(null); setSideImgs({front:null,back:null,left:null,right:null}); setSideFiles({front:null,back:null,left:null,right:null}); setSideSamples({front:null,back:null,left:null,right:null}); setActiveSide('front'); setCustSide('front'); setStatus(''); setForm({ name:user?.user_metadata?.full_name||'', phone:'', qty:1, address:'' }) }}
                     style={{ padding:'13px 28px', borderRadius:8, border:'1px solid rgba(255,255,255,.2)', background:'rgba(255,255,255,.08)', color:'#fff', fontSize:13, fontWeight:700, cursor:'pointer' }}>
                     Create Another Design
                   </button>

@@ -547,7 +547,7 @@ function InteractiveMockup({ garmentImgSrc, designImgSrc, color, posX, posY, sca
 // ══════════════════════════════════════════════════════════════
 // PRODUCT IMAGE VIEWER — Flipkart-style 360° drag viewer (Studio Step 5)
 // ══════════════════════════════════════════════════════════════
-function ProductImageViewer({ product, fallbackSrc, designImgSrc, sideImgs, sidePos, posX, posY, scale, rotation, textOn, textVal, textFont, textSize, textColor, textPosX=50, textPosY=75, textRot=0, colorToFilter, color, canvasFilter, garmentEmoji }) {
+function ProductImageViewer({ product, fallbackSrc, designImgSrc, sideImgs, sidePos, posX, posY, scale, rotation, textOn, textVal, textFont, textSize, textColor, textPosX=50, textPosY=75, textRot=0, colorToFilter, color, canvasFilter, garmentEmoji, bgColor='#111' }) {
   // sideImgs/sidePos take priority (Step 5 multi-side); fall back to single designImgSrc
   const getDesign = key => sideImgs ? sideImgs[key] : (key==='front' ? designImgSrc : null)
   const getPos    = key => sidePos  ? sidePos[key]  : { posX, posY, scale, rotation }
@@ -680,7 +680,7 @@ function ProductImageViewer({ product, fallbackSrc, designImgSrc, sideImgs, side
         onTouchStart={onDown} onTouchMove={onMove} onTouchEnd={onUp}
         style={{
           position:'relative', borderRadius:18, overflow:'hidden',
-          background:'radial-gradient(ellipse at 50% 40%,#2a2a2a,#111)',
+          background: bgColor.startsWith('#') ? `radial-gradient(ellipse at 50% 40%, ${bgColor}cc, ${bgColor})` : bgColor,
           boxShadow:'0 12px 48px rgba(0,0,0,.6)',
           userSelect:'none', touchAction:'none', cursor: TOTAL>1 ? (dragging?'grabbing':'grab') : 'default',
           filter:canvasFilter,
@@ -940,6 +940,8 @@ function StudioPage({ user, onNav, onAddToCart }) {
   const [contrast,   setContrast]   = useState(100)
   const [saturation, setSaturation] = useState(100)
   const [filterFx,   setFilterFx]   = useState('')
+  const [bgOn,       setBgOn]       = useState(false)
+  const [bgColor,    setBgColor]    = useState('#000000')
   const [custTab,    setCustTab]     = useState('position')
 
   // ── Step 5 (Preview): 3D ─────────────────────────────────
@@ -1191,7 +1193,7 @@ function StudioPage({ user, onNav, onAddToCart }) {
     return (
     <div style={{ position:'sticky', top:72, flex:'0 0 280px', maxWidth:280, display:'flex', flexDirection:'column', gap:10 }}>
       <div style={{ fontSize:10, fontWeight:700, letterSpacing:'.14em', textTransform:'uppercase', color:'rgba(255,255,255,.35)', textAlign:'center', marginBottom:4 }}>Live Preview — {SIDE_LABELS[ps]}</div>
-      <div style={{ position:'relative', borderRadius:14, overflow:'hidden', background:'#1e2a1e', boxShadow:'0 8px 32px rgba(0,0,0,.5)', filter:canvasFilter }}>
+      <div style={{ position:'relative', borderRadius:14, overflow:'hidden', background:bgColor, boxShadow:'0 8px 32px rgba(0,0,0,.5)', filter:canvasFilter }}>
         {/* Garment base — switches per selected side tab */}
         <img src={sideGarmentImg} alt={`${garmentType} ${ps}`} style={{ width:'100%', display:'block', filter:colorToFilter(color), minHeight:220, objectFit:'contain' }}
           onError={e=>{ e.target.style.opacity='0.05' }} />
@@ -1386,6 +1388,24 @@ function StudioPage({ user, onNav, onAddToCart }) {
                 <div style={{ display:'flex', alignItems:'center', gap:10 }}>
                   <input type="color" value={color} onChange={e=>setColor(e.target.value)} style={{ width:40, height:32, border:'none', borderRadius:6, cursor:'pointer', background:'none' }} />
                   <span style={{ fontSize:12, color:'rgba(255,255,255,.5)', fontFamily:'monospace' }}>{color.toUpperCase()}</span>
+                </div>
+              </div>
+
+              {/* Background colour */}
+              <div style={{ marginBottom:24 }}>
+                <span style={lblStyle}>Preview Background</span>
+                <div style={{ display:'flex', flexWrap:'wrap', gap:8, marginBottom:8 }}>
+                  {['#000000','#111111','#1a1a2e','#0a1f5d','#1a0a2e','#ffffff','#f5f5f0','#e8e8e8'].map(c => (
+                    <div key={c} onClick={()=>setBgColor(c)}
+                      style={{ width:28, height:28, borderRadius:6, background:c, cursor:'pointer',
+                        border: c==='#ffffff'||c==='#f5f5f0'||c==='#e8e8e8' ? '2px solid rgba(255,255,255,.3)' : '2px solid transparent',
+                        boxShadow: bgColor===c ? `0 0 0 2px #0d1b3e, 0 0 0 4px #c8102e` : '0 1px 4px rgba(0,0,0,.5)',
+                        transition:'box-shadow .15s', flexShrink:0 }} />
+                  ))}
+                </div>
+                <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+                  <input type="color" value={bgColor} onChange={e=>setBgColor(e.target.value)} style={{ width:40, height:32, border:'none', borderRadius:6, cursor:'pointer', background:'none' }} />
+                  <span style={{ fontSize:12, color:'rgba(255,255,255,.5)', fontFamily:'monospace' }}>{bgColor.toUpperCase()}</span>
                 </div>
               </div>
 
@@ -1697,6 +1717,7 @@ function StudioPage({ user, onNav, onAddToCart }) {
               color={color}
               canvasFilter={canvasFilter}
               garmentEmoji={GARMENT_EMOJI[garmentType]}
+              bgColor={bgColor}
             />
 
             {/* Summary strip */}

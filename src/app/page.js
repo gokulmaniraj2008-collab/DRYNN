@@ -1600,6 +1600,15 @@ function StudioPage({ user, onNav }) {
 
 function HomePage({ user, onNav, cart, onAddToCart }) {
   const products = usePublicProducts()
+  const [selectedProduct, setSelectedProduct] = React.useState(null)
+
+  if (selectedProduct) return (
+    <ProductDetailPage
+      product={selectedProduct}
+      onBack={()=>setSelectedProduct(null)}
+      onAddToCart={(p)=>{ onAddToCart(p); setSelectedProduct(null) }}
+    />
+  )
   return (
     <div>
       {/* Hero Banner */}
@@ -1655,7 +1664,7 @@ function HomePage({ user, onNav, cart, onAddToCart }) {
               const pViews = [p.img_front||p.image_url, p.img_back, p.img_left, p.img_right].filter(Boolean)
               const [vi, setVi] = React.useState(0)
               return (
-              <div key={p.id} className="product-card" onClick={()=>onNav('products')}
+              <div key={p.id} className="product-card" onClick={()=>setSelectedProduct(p)}
                 onMouseEnter={()=>{ if(pViews.length>1) setVi(1) }}
                 onMouseLeave={()=>setVi(0)}>
                 <div style={{ background:'#f8f8f8', height:200, display:'flex', alignItems:'center', justifyContent:'center', fontSize:80, position:'relative', overflow:'hidden' }}>

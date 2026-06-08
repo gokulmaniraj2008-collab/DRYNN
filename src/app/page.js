@@ -1431,8 +1431,10 @@ function StudioPage({ user, onNav, onAddToCart }) {
                 <button onClick={()=>setStep(1)} style={{ padding:'12px 20px', borderRadius:8, border:'1px solid rgba(255,255,255,.15)', background:'transparent', color:'rgba(255,255,255,.5)', fontSize:13, fontWeight:600, cursor:'pointer' }}>← Back</button>
                 <button onClick={()=>setStep(3)} className="btn-primary" style={{ flex:1, padding:'13px', fontSize:14 }}>Continue →</button>
               </div>
+              <div style={{ marginTop:24 }}>
+                <LivePreview />
+              </div>
             </div>
-            <LivePreview />
           </div>
         )}
 
@@ -1551,8 +1553,10 @@ function StudioPage({ user, onNav, onAddToCart }) {
                   {SIDES.filter(s=>sideImgs[s]).length > 0 ? `Continue (${SIDES.filter(s=>sideImgs[s]).length} side${SIDES.filter(s=>sideImgs[s]).length>1?'s':''}) →` : 'Continue →'}
                 </button>
               </div>
+              <div style={{ marginTop:24 }}>
+                <LivePreview previewSide={activeSide} />
+              </div>
             </div>
-            <LivePreview previewSide={activeSide} />
           </div>
         )}
 
@@ -1818,8 +1822,10 @@ function StudioPage({ user, onNav, onAddToCart }) {
                   <p style={{ fontSize:11, color:'rgba(255,255,255,.3)', textAlign:'center' }}>Our team will WhatsApp you within 2 hours · Pay via UPI link</p>
                 </div>
               )}
+              <div style={{ marginTop:24 }}>
+                <LivePreview />
+              </div>
             </div>
-            <LivePreview />
           </div>
         )}
 

@@ -1666,6 +1666,7 @@ function HomePage({ user, onNav, cart, onAddToCart }) {
                 onSelect={setSelectedProduct}
                 onAddToCart={onAddToCart} />
             ))}
+          </div>
         </div>
       </div>
 

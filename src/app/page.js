@@ -1661,41 +1661,11 @@ function HomePage({ user, onNav, cart, onAddToCart }) {
             <button className="btn-secondary" style={{ padding:'9px 18px', fontSize:12 }} onClick={()=>onNav('products')}>View All →</button>
           </div>
           <div className="products-grid" style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:16 }}>
-            {products.slice(0,4).map(p => {
-              const pViews = [p.img_front||p.image_url, p.img_back, p.img_left, p.img_right].filter(Boolean)
-              const [vi, setVi] = React.useState(0)
-              return (
-              <div key={p.id} className="product-card" onClick={()=>setSelectedProduct(p)}
-                onMouseEnter={()=>{ if(pViews.length>1) setVi(1) }}
-                onMouseLeave={()=>setVi(0)}>
-                <div style={{ background:'#f8f8f8', height:200, display:'flex', alignItems:'center', justifyContent:'center', fontSize:80, position:'relative', overflow:'hidden' }}>
-                  {pViews[vi] ? <img src={pViews[vi]} alt={p.name} style={{ width:'100%', height:'100%', objectFit:'contain', transition:'opacity .2s' }} /> : <svg width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="#ddd" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"><path d="M20.38 3.46L16 2a4 4 0 01-8 0L3.62 3.46a2 2 0 00-1.34 2.23l.58 3.57a1 1 0 00.99.84H6v10c0 1.1.9 2 2 2h8a2 2 0 002-2V10h2.15a1 1 0 00.99-.84l.58-3.57a2 2 0 00-1.34-2.23z"/></svg>}
-                  <div style={{ position:'absolute', top:10, left:10, background:p.tagColor||p.tag_color||"#c8102e", color:'#fff', fontSize:9, fontWeight:700, letterSpacing:'.1em', textTransform:'uppercase', padding:'3px 8px', borderRadius:2 }}>{p.tag}</div>
-                  <div style={{ position:'absolute', top:10, right:10, background:'#e8f5e9', color:'#00a86b', fontSize:10, fontWeight:700, padding:'3px 8px', borderRadius:2 }}>{disc(p.price,p.mrp)}% off</div>
-                  {pViews.length > 1 && (
-                    <div style={{ position:'absolute', bottom:6, left:0, right:0, display:'flex', justifyContent:'center', gap:4 }}>
-                      {pViews.map((_,i)=>(
-                        <div key={i} style={{ width:5, height:5, borderRadius:'50%', background: vi===i?'#c8102e':'rgba(0,0,0,.25)', transition:'background .2s' }} />
-                      ))}
-                    </div>
-                  )}
-                </div>
-                <div style={{ padding:'12px 14px' }}>
-                  <p style={{ fontSize:13, fontWeight:600, marginBottom:4, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{p.name}</p>
-                  <div style={{ display:'flex', alignItems:'center', gap:6, marginBottom:6 }}>
-                    <StarRating rating={p.rating} />
-                    <span style={{ fontSize:11, color:'#aaa' }}>({p.reviews})</span>
-                  </div>
-                  <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:10 }}>
-                    <span style={{ fontSize:16, fontWeight:700 }}>₹{Number(p.price).toLocaleString()}</span>
-                    <span style={{ fontSize:12, color:'#aaa', textDecoration:'line-through' }}>₹{Number(p.mrp).toLocaleString()}</span>
-                  </div>
-                  <button className="btn-primary" style={{ width:'100%', padding:'9px', fontSize:12 }}
-                    onClick={e=>{ e.stopPropagation(); onAddToCart(p) }}>Add to Cart</button>
-                </div>
-              </div>
-            )})}
-          </div>
+            {products.slice(0,4).map(p => (
+              <ProductCard key={p.id} p={p}
+                onSelect={setSelectedProduct}
+                onAddToCart={onAddToCart} />
+            ))}
         </div>
       </div>
 
@@ -1889,11 +1859,54 @@ function ProductDetailPage({ product, onBack, onAddToCart }) {
 }
 
 // ── Products Listing Page ─────────────────────────────────────
+function ProductCard({ p, onSelect, onAddToCart }) {
+  const pViews = [p.img_front||p.image_url, p.img_back, p.img_left, p.img_right].filter(Boolean)
+  const [vi, setVi] = useState(0)
+  const [wishlisted, setWishlisted] = useState(false)
+  return (
+    <div className="product-card" onClick={()=>onSelect(p)}
+      onMouseEnter={()=>{ if(pViews.length>1) setVi(1) }}
+      onMouseLeave={()=>setVi(0)}>
+      <div style={{ background:'#f8f8f8', height:200, display:'flex', alignItems:'center', justifyContent:'center', position:'relative', overflow:'hidden' }}>
+        {pViews[vi]
+          ? <img src={pViews[vi]} alt={p.name} style={{ width:'100%', height:'100%', objectFit:'contain', transition:'opacity .2s' }} />
+          : <svg width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="#ddd" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"><path d="M20.38 3.46L16 2a4 4 0 01-8 0L3.62 3.46a2 2 0 00-1.34 2.23l.58 3.57a1 1 0 00.99.84H6v10c0 1.1.9 2 2 2h8a2 2 0 002-2V10h2.15a1 1 0 00.99-.84l.58-3.57a2 2 0 00-1.34-2.23z"/></svg>
+        }
+        <div style={{ position:'absolute', top:10, left:10, background:p.tagColor||p.tag_color||'#c8102e', color:'#fff', fontSize:9, fontWeight:700, letterSpacing:'.1em', textTransform:'uppercase', padding:'3px 8px', borderRadius:2 }}>{p.tag}</div>
+        <button onClick={e=>{ e.stopPropagation(); setWishlisted(w=>!w) }}
+          style={{ position:'absolute', top:8, right:8, background:'#fff', border:'none', borderRadius:'50%', width:30, height:30, display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', fontSize:16, boxShadow:'0 2px 8px rgba(0,0,0,.1)' }}>
+          {wishlisted ? '♥' : '♡'}
+        </button>
+        {pViews.length > 1 && (
+          <div style={{ position:'absolute', bottom:6, left:0, right:0, display:'flex', justifyContent:'center', gap:4 }}>
+            {pViews.map((_,i)=>(
+              <div key={i} style={{ width:5, height:5, borderRadius:'50%', background:vi===i?'#c8102e':'rgba(0,0,0,.25)', transition:'background .2s' }} />
+            ))}
+          </div>
+        )}
+      </div>
+      <div style={{ padding:'12px 14px' }}>
+        <p style={{ fontSize:13, fontWeight:600, marginBottom:4 }}>{p.name}</p>
+        <div style={{ display:'flex', alignItems:'center', gap:6, marginBottom:6 }}>
+          <StarRating rating={p.rating} />
+          <span style={{ fontSize:11, color:'#aaa' }}>({p.reviews})</span>
+        </div>
+        <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:4 }}>
+          <span style={{ fontSize:16, fontWeight:700 }}>₹{Number(p.price).toLocaleString()}</span>
+          <span style={{ fontSize:12, color:'#aaa', textDecoration:'line-through' }}>₹{Number(p.mrp).toLocaleString()}</span>
+        </div>
+        <div style={{ fontSize:11, color:'#00a86b', fontWeight:600, marginBottom:10 }}>{disc(p.price,p.mrp)}% off</div>
+        <button className="btn-primary" style={{ width:'100%', padding:'9px', fontSize:12 }}
+          onClick={e=>{ e.stopPropagation(); onAddToCart(p) }}>Add to Cart</button>
+      </div>
+    </div>
+  )
+}
+
 function ProductsPage({ onAddToCart, onNav }) {
   const products  = usePublicProducts()
   const [activeTab,    setActiveTab]    = useState('All')
   const [sort,         setSort]         = useState('popular')
-  const [wishlist,     setWishlist]     = useState([])
   const [search,       setSearch]       = useState('')
   const [selectedProduct, setSelectedProduct] = useState(null)
 
@@ -1984,44 +1997,11 @@ function ProductsPage({ onAddToCart, onNav }) {
           </div>
         ) : (
           <div className="products-grid" style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:16 }}>
-            {sorted.map(p => {
-              const pViews = [p.img_front||p.image_url, p.img_back, p.img_left, p.img_right].filter(Boolean)
-              const [vi, setVi] = React.useState(0)
-              return (
-              <div key={p.id} className="product-card" onClick={()=>setSelectedProduct(p)}
-                onMouseEnter={()=>{ if(pViews.length>1) setVi(1) }}
-                onMouseLeave={()=>setVi(0)}>
-                <div style={{ background:'#f8f8f8', height:200, display:'flex', alignItems:'center', justifyContent:'center', fontSize:80, position:'relative', overflow:'hidden' }}>
-                  {pViews[vi] ? <img src={pViews[vi]} alt={p.name} style={{ width:'100%', height:'100%', objectFit:'contain', transition:'opacity .2s' }} /> : <svg width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="#ddd" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"><path d="M20.38 3.46L16 2a4 4 0 01-8 0L3.62 3.46a2 2 0 00-1.34 2.23l.58 3.57a1 1 0 00.99.84H6v10c0 1.1.9 2 2 2h8a2 2 0 002-2V10h2.15a1 1 0 00.99-.84l.58-3.57a2 2 0 00-1.34-2.23z"/></svg>}
-                  <div style={{ position:'absolute', top:10, left:10, background:p.tagColor||p.tag_color||"#c8102e", color:'#fff', fontSize:9, fontWeight:700, letterSpacing:'.1em', textTransform:'uppercase', padding:'3px 8px', borderRadius:2 }}>{p.tag}</div>
-                  <button onClick={e=>{ e.stopPropagation(); setWishlist(w=>w.includes(p.id)?w.filter(x=>x!==p.id):[...w,p.id]) }}
-                    style={{ position:'absolute', top:8, right:8, background:'#fff', border:'none', borderRadius:'50%', width:30, height:30, display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', fontSize:16, boxShadow:'0 2px 8px rgba(0,0,0,.1)' }}>
-                    {wishlist.includes(p.id)?'♥':'♡'}
-                  </button>
-                  {pViews.length > 1 && (
-                    <div style={{ position:'absolute', bottom:6, left:0, right:0, display:'flex', justifyContent:'center', gap:4 }}>
-                      {pViews.map((_,i)=>(
-                        <div key={i} style={{ width:5, height:5, borderRadius:'50%', background: vi===i?'#c8102e':'rgba(0,0,0,.25)', transition:'background .2s' }} />
-                      ))}
-                    </div>
-                  )}
-                </div>
-                <div style={{ padding:'12px 14px' }}>
-                  <p style={{ fontSize:13, fontWeight:600, marginBottom:4 }}>{p.name}</p>
-                  <div style={{ display:'flex', alignItems:'center', gap:6, marginBottom:6 }}>
-                    <StarRating rating={p.rating} />
-                    <span style={{ fontSize:11, color:'#aaa' }}>({p.reviews})</span>
-                  </div>
-                  <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:4 }}>
-                    <span style={{ fontSize:16, fontWeight:700 }}>₹{Number(p.price).toLocaleString()}</span>
-                    <span style={{ fontSize:12, color:'#aaa', textDecoration:'line-through' }}>₹{Number(p.mrp).toLocaleString()}</span>
-                  </div>
-                  <div style={{ fontSize:11, color:'#00a86b', fontWeight:600, marginBottom:10 }}>{disc(p.price,p.mrp)}% off</div>
-                  <button className="btn-primary" style={{ width:'100%', padding:'9px', fontSize:12 }} onClick={e=>{ e.stopPropagation(); onAddToCart(p) }}>Add to Cart</button>
-                </div>
-              </div>
-            )})}
-          </div>
+            {sorted.map(p => (
+              <ProductCard key={p.id} p={p}
+                onSelect={setSelectedProduct}
+                onAddToCart={onAddToCart} />
+            ))}
         )}
       </div>
 
@@ -2261,11 +2241,20 @@ function CartPage({ cart, onRemove, onClear, user, onNav }) {
           name: cd?.name || form.name,
           phone: cd?.phone || form.phone,
           address: cd?.address || `${form.address}, ${form.pincode}`,
-          garment: item.name,
+          garment: item.isCustom ? (cd?.garment || item.name) : item.name,
           color: item.color || 'Various',
-          size: item.size || 'Various',
+          size: item.size || form.size || 'Various',
           qty: item.qty,
-          design_file: item.isCustom ? (cd?.designUrls?.front || '') : 'catalog-order',
+          design_file:  item.isCustom ? (cd?.designUrls?.front || '') : 'catalog-order',
+          design_back:  item.isCustom ? (cd?.designUrls?.back  || '') : '',
+          design_left:  item.isCustom ? (cd?.designUrls?.left  || '') : '',
+          design_right: item.isCustom ? (cd?.designUrls?.right || '') : '',
+          design_sides: item.isCustom ? (cd?.sides || '') : '',
+          custom_text:  item.isCustom ? (cd?.textOn ? cd?.textVal : '') : '',
+          product_name: item.name,
+          product_image: item.image_url || item.img_front || '',
+          product_category: item.category || '',
+          order_type:   item.isCustom ? 'custom' : 'catalog',
           status: 'Received',
           payment_status: 'Unpaid',
           total: grandTotal,
@@ -3285,63 +3274,99 @@ function AdminPanel({ onBack }) {
             {loading ? <div style={{ textAlign:'center', padding:40, color:'#888' }}>Loading orders…</div> : (
               <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
                 {orders.length===0 && <div style={{ textAlign:'center', padding:60, color:'#888', background:'#fff', borderRadius:10 }}>No orders yet.</div>}
-                {orders.map(o => (
-                  <div key={o.id} style={{ background:'#fff', borderRadius:10, padding:'16px 20px', border:'1px solid #e8e8e8', boxShadow:'0 1px 4px rgba(0,0,0,.04)' }}>
+                {orders.map(o => {
+                  const isCustom = o.order_type === 'custom' || (o.design_file && o.design_file.startsWith('http'))
+                  const designSides = [
+                    { label:'Front', url: o.design_file?.startsWith('http') ? o.design_file : null },
+                    { label:'Back',  url: o.design_back?.startsWith('http')  ? o.design_back  : null },
+                    { label:'Left',  url: o.design_left?.startsWith('http')  ? o.design_left  : null },
+                    { label:'Right', url: o.design_right?.startsWith('http') ? o.design_right : null },
+                  ].filter(s => s.url)
+
+                  return (
+                  <div key={o.id} style={{ background:'#fff', borderRadius:10, border:'1px solid #e8e8e8', boxShadow:'0 1px 4px rgba(0,0,0,.04)', overflow:'hidden' }}>
                     {editOrder===o.id ? (
-                      <OrderEditRow order={o} onSave={async(status)=>{await updateOrderStatus(o.id,status);setEditOrder(null)}} onCancel={()=>setEditOrder(null)} statuses={ORDER_STATUSES} colors={STATUS_COLORS} />
-                    ) : (
-                      <div style={{ display:'flex', gap:16, alignItems:'center', flexWrap:'wrap' }}>
-                        {/* Design thumbnail */}
-                        {o.design_file && o.design_file.startsWith('http') ? (
-                          <a href={o.design_file} target="_blank" rel="noopener noreferrer" title="View full design" style={{ flexShrink:0 }}>
-                            <img src={o.design_file} alt="Customer Design"
-                              style={{ width:64, height:64, objectFit:'contain', borderRadius:8, border:'1.5px solid #e0e0e0', background:'#f8f8f8', cursor:'pointer' }}
-                              onError={e=>{ e.target.style.display='none' }}
-                            />
-                          </a>
-                        ) : (
-                          <div style={{ width:64, height:64, borderRadius:8, border:'1.5px dashed #e0e0e0', background:'#f8f8f8', display:'flex', alignItems:'center', justifyContent:'center', fontSize:10, color:'#bbb', flexShrink:0, textAlign:'center' }}>
-                            {o.design_file==='catalog-order'?'Catalog':'No design'}
-                          </div>
-                        )}
-                        <div style={{ flex:1, minWidth:160 }}>
-                          <div style={{ fontSize:13, fontWeight:700, marginBottom:2 }}>{o.name}</div>
-                          <div style={{ fontSize:11, color:'#888' }}>{o.phone} · {o.garment} · {o.size} · Qty {o.qty}</div>
-                          <div style={{ fontSize:10, color:'#aaa', marginTop:2 }}>{o.address}</div>
-                          <div style={{ fontSize:10, color:'#aaa' }}>{new Date(o.placed_at||o.created_at).toLocaleString('en-IN')}</div>
-                          {o.total && <div style={{ fontSize:12, fontWeight:700, color:'#0a1f5d', marginTop:4 }}>₹{Number(o.total).toLocaleString()}</div>}
-                          {o.design_file && o.design_file.startsWith('http') && (
-                            <a href={o.design_file} target="_blank" rel="noopener noreferrer"
-                              style={{ fontSize:10, color:'#0a1f5d', textDecoration:'underline', display:'inline-block', marginTop:3 }}>
-                              View Design File
-                            </a>
-                          )}
-                        </div>
-                        <div style={{ display:'flex', alignItems:'center', gap:10, flexWrap:'wrap' }}>
-                          <span style={{ fontSize:11, fontWeight:700, padding:'4px 10px', borderRadius:50, background:STATUS_COLORS[o.status||'Received']+'22', color:STATUS_COLORS[o.status||'Received'] }}>
-                            {o.status||'Received'}
-                          </span>
-                          {/* Payment status badge + toggle */}
-                          <button onClick={()=>togglePaymentStatus(o.id, o.payment_status||'Unpaid')}
-                            style={{ padding:'4px 10px', fontSize:11, fontWeight:700, borderRadius:50, border:'none', cursor:'pointer',
-                              background: o.payment_status==='Paid' ? '#e6f9f0' : '#fff3f3',
-                              color: o.payment_status==='Paid' ? '#00a86b' : '#c8102e' }}>
-                            {o.payment_status==='Paid' ? '✓ Paid' : '✗ Unpaid'}
-                          </button>
-                          {/* WhatsApp quick-dial */}
-                          {o.phone && (
-                            <a href={`https://wa.me/91${o.phone.replace(/\D/g,'').replace(/^91/,'')}`} target="_blank" rel="noopener noreferrer"
-                              style={{ padding:'6px 12px', fontSize:11, borderRadius:4, border:'1px solid #00a86b', color:'#00a86b', background:'none', cursor:'pointer', fontWeight:700, textDecoration:'none', display:'flex', alignItems:'center', gap:4 }}>
-                              💬 WhatsApp
-                            </a>
-                          )}
-                          <button onClick={()=>setEditOrder(o.id)} style={{ padding:'6px 14px', fontSize:11, borderRadius:4, border:'1px solid #0a1f5d', color:'#0a1f5d', background:'none', cursor:'pointer', fontWeight:600 }}>Edit Status</button>
-                          <button onClick={()=>deleteOrder(o.id)} style={{ padding:'6px 12px', fontSize:11, borderRadius:4, border:'1px solid #fdd', color:'#c8102e', background:'none', cursor:'pointer', fontWeight:600 }}>Delete</button>
-                        </div>
+                      <div style={{ padding:'16px 20px' }}>
+                        <OrderEditRow order={o} onSave={async(status)=>{await updateOrderStatus(o.id,status);setEditOrder(null)}} onCancel={()=>setEditOrder(null)} statuses={ORDER_STATUSES} colors={STATUS_COLORS} />
                       </div>
+                    ) : (
+                      <>
+                        {/* Order type banner */}
+                        <div style={{ padding:'6px 16px', background: isCustom ? 'rgba(200,16,46,.06)' : '#f8f8f8', borderBottom:'1px solid #f0f0f0', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+                          <span style={{ fontSize:10, fontWeight:700, letterSpacing:'.08em', textTransform:'uppercase', color: isCustom ? '#c8102e' : '#888' }}>
+                            {isCustom ? '🎨 Custom Design Order' : '🛍️ Catalog Order'}
+                          </span>
+                          <span style={{ fontSize:10, color:'#bbb' }}>{new Date(o.placed_at||o.created_at).toLocaleString('en-IN')}</span>
+                        </div>
+
+                        <div style={{ padding:'14px 16px' }}>
+                          <div style={{ display:'flex', gap:14, flexWrap:'wrap' }}>
+
+                            {/* Design images for custom / Product image for catalog */}
+                            {isCustom && designSides.length > 0 ? (
+                              <div style={{ display:'flex', gap:8, flexShrink:0 }}>
+                                {designSides.map(s => (
+                                  <a key={s.label} href={s.url} target="_blank" rel="noopener noreferrer" style={{ textDecoration:'none' }}>
+                                    <div style={{ textAlign:'center' }}>
+                                      <img src={s.url} alt={s.label}
+                                        style={{ width:56, height:56, objectFit:'contain', borderRadius:8, border:'1.5px solid #e0e0e0', background:'#f8f8f8', display:'block' }}
+                                        onError={e=>e.target.style.display='none'} />
+                                      <div style={{ fontSize:9, color:'#888', marginTop:3, fontWeight:600 }}>{s.label}</div>
+                                    </div>
+                                  </a>
+                                ))}
+                              </div>
+                            ) : o.product_image ? (
+                              <div style={{ flexShrink:0, textAlign:'center' }}>
+                                <img src={o.product_image} alt={o.product_name}
+                                  style={{ width:72, height:72, objectFit:'contain', borderRadius:8, border:'1.5px solid #e0e0e0', background:'#f8f8f8', display:'block' }}
+                                  onError={e=>e.target.style.display='none'} />
+                                <div style={{ fontSize:9, color:'#888', marginTop:3, fontWeight:600 }}>{o.product_category||'Product'}</div>
+                              </div>
+                            ) : (
+                              <div style={{ width:72, height:72, borderRadius:8, border:'1.5px dashed #e0e0e0', background:'#f8f8f8', display:'flex', alignItems:'center', justifyContent:'center', fontSize:10, color:'#bbb', flexShrink:0, textAlign:'center' }}>
+                                Catalog
+                              </div>
+                            )}
+
+                            {/* Order details */}
+                            <div style={{ flex:1, minWidth:160 }}>
+                              <div style={{ fontSize:14, fontWeight:700, marginBottom:3 }}>{o.name}</div>
+                              <div style={{ fontSize:11, color:'#555', marginBottom:2 }}>📞 {o.phone}</div>
+                              <div style={{ fontSize:11, color:'#888', marginBottom:2 }}>👕 {o.garment} · 🎨 {o.color} · 📏 {o.size} · Qty {o.qty}</div>
+                              {o.design_sides && <div style={{ fontSize:11, color:'#c8102e', marginBottom:2 }}>🖨️ Print sides: {o.design_sides}</div>}
+                              {o.custom_text  && <div style={{ fontSize:11, color:'#0a1f5d', marginBottom:2 }}>✍️ Text: "{o.custom_text}"</div>}
+                              <div style={{ fontSize:10, color:'#aaa', marginBottom:4 }}>📍 {o.address}</div>
+                              <div style={{ fontSize:13, fontWeight:700, color:'#0a1f5d' }}>₹{Number(o.total||0).toLocaleString()}</div>
+                            </div>
+
+                            {/* Actions */}
+                            <div style={{ display:'flex', flexDirection:'column', gap:6, alignItems:'flex-end' }}>
+                              <span style={{ fontSize:11, fontWeight:700, padding:'4px 10px', borderRadius:50, background:STATUS_COLORS[o.status||'Received']+'22', color:STATUS_COLORS[o.status||'Received'] }}>
+                                {o.status||'Received'}
+                              </span>
+                              <button onClick={()=>togglePaymentStatus(o.id, o.payment_status||'Unpaid')}
+                                style={{ padding:'4px 10px', fontSize:11, fontWeight:700, borderRadius:50, border:'none', cursor:'pointer',
+                                  background: o.payment_status==='Paid' ? '#e6f9f0' : '#fff3f3',
+                                  color: o.payment_status==='Paid' ? '#00a86b' : '#c8102e' }}>
+                                {o.payment_status==='Paid' ? '✓ Paid' : '✗ Unpaid'}
+                              </button>
+                              {o.phone && (
+                                <a href={`https://wa.me/91${o.phone.replace(/\D/g,'').replace(/^91/,'')}`} target="_blank" rel="noopener noreferrer"
+                                  style={{ padding:'5px 10px', fontSize:11, borderRadius:4, border:'1px solid #00a86b', color:'#00a86b', background:'none', cursor:'pointer', fontWeight:700, textDecoration:'none' }}>
+                                  💬 WhatsApp
+                                </a>
+                              )}
+                              <button onClick={()=>setEditOrder(o.id)} style={{ padding:'5px 12px', fontSize:11, borderRadius:4, border:'1px solid #0a1f5d', color:'#0a1f5d', background:'none', cursor:'pointer', fontWeight:600 }}>Edit Status</button>
+                              <button onClick={()=>deleteOrder(o.id)} style={{ padding:'5px 10px', fontSize:11, borderRadius:4, border:'1px solid #fdd', color:'#c8102e', background:'none', cursor:'pointer', fontWeight:600 }}>Delete</button>
+                            </div>
+                          </div>
+                        </div>
+                      </>
                     )}
                   </div>
-                ))}
+                )})}
+
               </div>
             )}
           </div>

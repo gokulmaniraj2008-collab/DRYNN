@@ -1510,8 +1510,8 @@ function StudioPage({ user, onNav, onAddToCart }) {
 
               <div style={{ display:'flex', gap:10, marginTop:20 }}>
                 <button onClick={()=>setStep(2)} style={{ padding:'12px 20px', borderRadius:8, border:'1px solid rgba(255,255,255,.15)', background:'transparent', color:'rgba(255,255,255,.5)', fontSize:13, fontWeight:600, cursor:'pointer' }}>← Back</button>
-                <button onClick={()=>{ if(!sideImgs.front){alert('Please upload a Front design first.');return} setStep(4) }} className="btn-primary" style={{ flex:1, padding:'13px', fontSize:14 }}>
-                  {sideImgs.front ? `Continue (${SIDES.filter(s=>sideImgs[s]).length} side${SIDES.filter(s=>sideImgs[s]).length>1?'s':''}) →` : 'Add Front design to continue'}
+                <button onClick={()=>setStep(4)} className="btn-primary" style={{ flex:1, padding:'13px', fontSize:14 }}>
+                  {SIDES.filter(s=>sideImgs[s]).length > 0 ? `Continue (${SIDES.filter(s=>sideImgs[s]).length} side${SIDES.filter(s=>sideImgs[s]).length>1?'s':''}) →` : 'Continue →'}
                 </button>
               </div>
             </div>

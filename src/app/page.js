@@ -800,7 +800,7 @@ function ProductImageViewer({ product, fallbackSrc, designImgSrc, sideImgs, side
 // ══════════════════════════════════════════════════════════════
 // DRYNN UNIFIED STUDIO  — 6-step flow
 // ══════════════════════════════════════════════════════════════
-function StudioPage({ user, onNav }) {
+function StudioPage({ user, onNav, onAddToCart }) {
   // ── All admin products ────────────────────────────────────
   const allProducts = useProducts()
 
@@ -898,7 +898,6 @@ function StudioPage({ user, onNav }) {
   const handleSubmit = async () => {
     if (!form.name||!form.phone||!form.address) { alert('Please fill all fields.'); return }
     setStatus('uploading')
-    const orderId=crypto.randomUUID(), placedAt=new Date().toISOString()
     try {
       const designUrls = {}
       for (const side of SIDES) {
@@ -910,20 +909,32 @@ function StudioPage({ user, onNav }) {
         }
       }
       setStatus('saving')
-      const { data:{ user:authUser } } = await supabase.auth.getUser()
-      const uid = authUser?.id || user?.id || null
       const garmentLabel = selectedProduct ? selectedProduct.name : 'Custom Garment'
-      await supabase.from('drynn_orders').insert({
-        id:orderId, user_id:uid, name:form.name, phone:form.phone,
-        garment:garmentLabel, color, size, qty:Number(form.qty), address:form.address,
-        design_file: designUrls.front || '',
-
-        status:'Received', placed_at:placedAt,
-        product_id: selectedProduct?.id || null,
-      })
-      if (GOOGLE_SHEET_WEBHOOK) fetch(GOOGLE_SHEET_WEBHOOK,{ method:'POST', mode:'no-cors', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ sheet:'DRYNN_Orders', orderId, name:form.name, phone:form.phone, garment:garmentLabel, color, size, qty:form.qty, address:form.address, designUrls, placedAt }) }).catch(console.error)
+      const sidesLabel   = SIDES.filter(s=>sideImgs[s]).map(s=>SIDE_LABELS[s]).join(', ')
+      // Build a cart item representing this custom order
+      const customItem = {
+        id:        `custom_${Date.now()}`,
+        name:      `Custom ${garmentLabel}`,
+        price:     selectedProduct?.price || 0,
+        mrp:       selectedProduct?.mrp   || 0,
+        qty:       Number(form.qty) || 1,
+        size,
+        color,
+        image_url: designUrls.front || selectedProduct?.image_url || null,
+        isCustom:  true,
+        customDetails: {
+          garment:    garmentLabel,
+          sides:      sidesLabel,
+          designUrls,
+          name:       form.name,
+          phone:      form.phone,
+          address:    form.address,
+          textOn, textVal,
+        },
+      }
+      onAddToCart(customItem)
       setStatus('done')
-      setTimeout(() => onNav('orders'), 3000)
+      setTimeout(() => onNav('cart'), 1200)
     } catch(e) { setStatus(''); alert('Error: '+e.message) }
   }
 
@@ -1521,19 +1532,9 @@ function StudioPage({ user, onNav }) {
 
               {status==='done' ? (
                 <div style={{ textAlign:'center', padding:'48px 16px', background:'rgba(0,168,107,.07)', border:'1px solid rgba(0,168,107,.2)', borderRadius:16 }}>
-                  <div style={{ fontSize:64, marginBottom:16 }}>🎉</div>
-                  <div style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:32, color:'#fff', letterSpacing:'.06em', marginBottom:8 }}>ORDER CONFIRMED!</div>
-                  <p style={{ fontSize:13, color:'rgba(255,255,255,.55)', lineHeight:1.8, marginBottom:24 }}>We received your order and will WhatsApp you within 2 hours to confirm printing and delivery.</p>
-                  <div style={{ display:'flex', flexDirection:'column', gap:10, alignItems:'center' }}>
-                    <button onClick={()=>onNav('orders')}
-                      className="btn-primary" style={{ padding:'13px 28px', fontSize:13 }}>
-                      📦 View My Orders
-                    </button>
-                    <button onClick={()=>{ setStep(1); setSelectedProduct(null); setSideImgs({front:null,back:null,left:null,right:null}); setSideFiles({front:null,back:null,left:null,right:null}); setSideSamples({front:null,back:null,left:null,right:null}); setActiveSide('front'); setCustSide('front'); setStatus(''); setForm({ name:user?.user_metadata?.full_name||'', phone:'', qty:1, address:'' }) }}
-                      style={{ padding:'13px 28px', borderRadius:8, border:'1px solid rgba(255,255,255,.2)', background:'rgba(255,255,255,.08)', color:'#fff', fontSize:13, fontWeight:700, cursor:'pointer' }}>
-                      Create Another Design
-                    </button>
-                  </div>
+                  <div style={{ fontSize:64, marginBottom:16 }}>🛒</div>
+                  <div style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:28, color:'#fff', letterSpacing:'.06em', marginBottom:8 }}>ADDED TO CART!</div>
+                  <p style={{ fontSize:13, color:'rgba(255,255,255,.55)', lineHeight:1.8 }}>Taking you to cart to review your bill…</p>
                 </div>
               ) : (
                 <div style={{ display:'flex', flexDirection:'column', gap:18 }}>
@@ -2236,27 +2237,39 @@ function CartPage({ cart, onRemove, onClear, user, onNav }) {
     }
     setSaving(true)
     try {
-      const orderId  = crypto.randomUUID()
       const placedAt = new Date().toISOString()
-      const itemsSummary = cart.map(i => `${i.name} x${i.qty}`).join(', ')
-      const { error: dbErr } = await supabase.from('drynn_orders').insert({
-        id: orderId, user_id: user?.id || null, name: form.name, phone: form.phone,
-        address: `${form.address}, ${form.pincode}`, garment: itemsSummary,
-        color: 'Various', size: 'Various', qty: cart.reduce((s,i) => s + i.qty, 0),
-        design_file: 'catalog-order', status: 'pending', placed_at: placedAt,
-      })
-      if (dbErr) {
-        console.error('[Cart → Supabase] Order insert failed:', dbErr.message)
-        alert(`[Order Save Failed]\n\nArea: Supabase drynn_orders (cart checkout)\nReason: ${dbErr.message}\n\nPlease WhatsApp us at +91 99447 61306 with your order details.`)
+      for (const item of cart) {
+        const orderId = crypto.randomUUID()
+        const cd = item.customDetails
+        const { error: dbErr } = await supabase.from('drynn_orders').insert({
+          id: orderId,
+          user_id: user?.id || null,
+          name: cd?.name || form.name,
+          phone: cd?.phone || form.phone,
+          address: cd?.address || `${form.address}, ${form.pincode}`,
+          garment: item.name,
+          color: item.color || 'Various',
+          size: item.size || 'Various',
+          qty: item.qty,
+          design_file: item.isCustom ? (cd?.designUrls?.front || '') : 'catalog-order',
+          status: 'Received',
+          placed_at: placedAt,
+        })
+        if (dbErr) {
+          console.error('[Cart → Supabase] Order insert failed:', dbErr.message)
+          alert(`[Order Save Failed]\n\n${dbErr.message}\n\nPlease WhatsApp us at +91 99447 61306.`)
+        }
       }
+      const itemsSummary = cart.map(i => `${i.name} x${i.qty}`).join(', ')
       if (GOOGLE_SHEET_WEBHOOK) fetch(GOOGLE_SHEET_WEBHOOK, {
         method:'POST', mode:'no-cors', headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({ sheet:'DRYNN_Orders', orderId, name:form.name, phone:form.phone, address:form.address, pincode:form.pincode, items:itemsSummary, total:grandTotal, payment:form.payment, placedAt }),
-      }).catch(e => console.error('[Cart → Google Sheets] Webhook failed:', e.message))
-      onClear(); setStep('done')
+        body: JSON.stringify({ sheet:'DRYNN_Orders', name:form.name, phone:form.phone, address:form.address, pincode:form.pincode, items:itemsSummary, total:grandTotal, payment:form.payment, placedAt }),
+      }).catch(e => console.error('[Cart → Google Sheets]:', e.message))
+      onClear()
+      setStep('done')
     } catch(e) {
-      console.error('[Cart] Unexpected error during checkout:', e.message)
-      alert(`[Checkout Error]\n\nArea: Cart checkout\nReason: ${e.message || 'Unknown error'}\n\nPlease try again or WhatsApp us at +91 99447 61306.`)
+      console.error('[Cart] Checkout error:', e.message)
+      alert(`[Checkout Error]\n\n${e.message || 'Unknown error'}\n\nPlease WhatsApp us at +91 99447 61306.`)
     }
     finally { setSaving(false) }
   }
@@ -2280,6 +2293,9 @@ function CartPage({ cart, onRemove, onClear, user, onNav }) {
             </div>
           ))}
         </div>
+        <button className="btn-primary" style={{ width:'100%', padding:14, fontSize:14 }} onClick={()=>onNav('orders')}>
+          📦 View My Orders
+        </button>
       </div>
     </div>
   )
@@ -2342,7 +2358,7 @@ function CartPage({ cart, onRemove, onClear, user, onNav }) {
       <div style={{ background:'linear-gradient(90deg,#0a1f5d,#1a0a2e)', padding:'28px 20px' }}>
         <div style={{ maxWidth:1100, margin:'0 auto' }}>
           <button onClick={()=>onNav('products')} style={{ display:'inline-flex', alignItems:'center', gap:6, background:'rgba(255,255,255,.1)', border:'1px solid rgba(255,255,255,.2)', color:'#fff', padding:'6px 14px', borderRadius:50, fontSize:12, cursor:'pointer', fontWeight:600, marginBottom:12 }}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg>Back
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg>Shop
           </button>
           <span className="sec-label" style={{ color:'rgba(255,255,255,.6)' }}>My Cart</span>
           <h1 className="sec-title" style={{ color:'#fff' }}>SHOPPING CART</h1>
@@ -2353,16 +2369,24 @@ function CartPage({ cart, onRemove, onClear, user, onNav }) {
           <div style={{ textAlign:'center', padding:'64px 16px' }}>
             <div style={{ marginBottom:16, color:'#ddd' }}><svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 001.98 1.61h9.72a2 2 0 001.98-1.61L23 6H6"/></svg></div>
             <h2 style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:32, marginBottom:8 }}>YOUR CART IS EMPTY</h2>
-            <p style={{ color:'#888', fontSize:14 }}>Add some products to get started!</p>
+            <p style={{ color:'#888', fontSize:14, marginBottom:24 }}>Add some products to get started!</p>
+            <button className="btn-primary" style={{ padding:'13px 28px', fontSize:14 }} onClick={()=>onNav('products')}>Go to Shop →</button>
           </div>
         ) : (
           <div>
             {cart.map((item,i)=>(
               <div key={i} style={{ display:'flex', gap:16, alignItems:'center', padding:'16px 0', borderBottom:'1px solid #f5f5f5' }}>
-                <div style={{ width:72, height:72, background:'#f8f8f8', borderRadius:8, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#ccc" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20.38 3.46L16 2a4 4 0 01-8 0L3.62 3.46a2 2 0 00-1.34 2.23l.58 3.57a1 1 0 00.99.84H6v10c0 1.1.9 2 2 2h8a2 2 0 002-2V10h2.15a1 1 0 00.99-.84l.58-3.57a2 2 0 00-1.34-2.23z"/></svg></div>
+                <div style={{ width:72, height:72, background:'#f8f8f8', borderRadius:8, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, overflow:'hidden' }}>
+                  {item.image_url
+                    ? <img src={item.image_url} alt={item.name} style={{ width:'100%', height:'100%', objectFit:'contain' }} />
+                    : <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#ccc" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20.38 3.46L16 2a4 4 0 01-8 0L3.62 3.46a2 2 0 00-1.34 2.23l.58 3.57a1 1 0 00.99.84H6v10c0 1.1.9 2 2 2h8a2 2 0 002-2V10h2.15a1 1 0 00.99-.84l.58-3.57a2 2 0 00-1.34-2.23z"/></svg>}
+                </div>
                 <div style={{ flex:1, minWidth:0 }}>
-                  <p style={{ fontSize:14, fontWeight:600, marginBottom:4, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{item.name}</p>
-                  <p style={{ fontSize:12, color:'#aaa', marginBottom:6 }}>Qty: {item.qty}</p>
+                  <p style={{ fontSize:14, fontWeight:600, marginBottom:2, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{item.name}</p>
+                  {item.isCustom && item.customDetails && (
+                    <p style={{ fontSize:11, color:'#00a86b', marginBottom:2 }}>🎨 Custom · Sides: {item.customDetails.sides}</p>
+                  )}
+                  <p style={{ fontSize:12, color:'#aaa', marginBottom:4 }}>Size: {item.size || '—'} · Qty: {item.qty}</p>
                   <p style={{ fontSize:16, fontWeight:700, color:'#c8102e' }}>₹{(item.price*item.qty).toLocaleString()}</p>
                 </div>
                 <button onClick={()=>onRemove(i)} style={{ background:'none', border:'1px solid #e0e0e0', borderRadius:6, padding:'6px 12px', fontSize:12, color:'#888', cursor:'pointer' }}>Remove</button>
@@ -4064,7 +4088,7 @@ function MainSite({ user }) {
       {/* ── PAGE CONTENT ── */}
       {page==='home'     && <HomePage     user={user} onNav={setPage} cart={cart} onAddToCart={addToCart} />}
       {page==='products' && <ProductsPage onAddToCart={addToCart} onNav={setPage} />}
-      {page==='studio'   && <StudioPage   user={user} onNav={setPage} />}
+      {page==='studio'   && <StudioPage   user={user} onNav={setPage} onAddToCart={addToCart} />}
       {page==='about'    && <AboutPage    onNav={setPage} />}
       {page==='contact'  && <ContactPage  onNav={setPage} />}
       {page==='cart'     && <CartPage cart={cart} onRemove={i=>setCart(c=>c.filter((_,idx)=>idx!==i))} onClear={()=>setCart([])} user={user} onNav={setPage} />}

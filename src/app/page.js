@@ -1190,7 +1190,7 @@ function StudioPage({ user, onNav, onAddToCart }) {
     'Polo':    'https://res.cloudinary.com/dfhdyp4oq/image/upload/drynn/products/polo_white.png',
     'Joggers': 'https://res.cloudinary.com/dfhdyp4oq/image/upload/drynn/products/joggers_black.png',
   }
-  const GARMENT_EMOJI = {'T-Shirt':'👕','Hoodie':'🧥','Polo':'👔','Joggers':'👖'}
+  const GARMENT_EMOJI = {'T-Shirt':'𝐓','Hoodie':'𝐇','Polo':'𝐏','Joggers':'𝐉'}
   const garmentType = selectedProduct
     ? (selectedProduct.category==='Hoodies'?'Hoodie':selectedProduct.category==='Polos'?'Polo':selectedProduct.category==='Joggers'?'Joggers':'T-Shirt')
     : 'T-Shirt'
@@ -1256,7 +1256,7 @@ function StudioPage({ user, onNav, onAddToCart }) {
         {!pImg && (
           <div style={{ position:'absolute', inset:0, display:'flex', alignItems:'center', justifyContent:'center' }}>
             <div style={{ background:'rgba(0,0,0,.55)', borderRadius:8, padding:'10px 14px', textAlign:'center' }}>
-              <div style={{ fontSize:22, marginBottom:2 }}>🎨</div>
+              <div style={{ fontSize:22, marginBottom:2 }}>⋆</div>
               <div style={{ fontSize:10, color:'rgba(255,255,255,.7)', fontWeight:600 }}>No design for this side</div>
             </div>
           </div>
@@ -1473,7 +1473,7 @@ function StudioPage({ user, onNav, onAddToCart }) {
                   style={{ padding:'10px 4px', borderRadius:10, border:`2px solid ${activeSide===s?'#c8102e':sideImgs[s]?'#00a86b':'rgba(255,255,255,.12)'}`,
                     background:activeSide===s?'rgba(200,16,46,.15)':sideImgs[s]?'rgba(0,168,107,.08)':'rgba(255,255,255,.04)',
                     cursor:'pointer', display:'flex', flexDirection:'column', alignItems:'center', gap:3, transition:'all .15s', position:'relative' }}>
-                  <span style={{ fontSize:20 }}>{s==='front'?'👕':s==='back'?'🔙':s==='left'?'👈':'👉'}</span>
+                  <span style={{ fontSize:20 }}>{s==='front'?'𝐅':s==='back'?'𝐁':s==='left'?'𝐋':'𝐑'}</span>
                   <span style={{ fontSize:9, fontWeight:700, letterSpacing:'.06em', textTransform:'uppercase',
                     color:activeSide===s?'#fff':sideImgs[s]?'#00a86b':'rgba(255,255,255,.4)' }}>
                     {SIDE_LABELS[s]}
@@ -1488,7 +1488,7 @@ function StudioPage({ user, onNav, onAddToCart }) {
 
             {/* Design source tabs (upload / samples) */}
             <div style={{ display:'flex', gap:0, background:'rgba(255,255,255,.05)', borderRadius:10, padding:4 }}>
-              {[['upload','📁 Upload'],['samples','🖼️ Samples']].map(([k,l])=>(
+              {[['upload','➜] Upload'],['samples','▶ Samples']].map(([k,l])=>(
                 <button key={k} onClick={()=>{ setDesignTab(k); if(k==='samples') loadSamples() }}
                   style={{ flex:1, padding:'11px', borderRadius:8, border:'none', cursor:'pointer', fontSize:13, fontWeight:700,
                     background:designTab===k?'#c8102e':'transparent', color:designTab===k?'#fff':'rgba(255,255,255,.5)', transition:'all .15s' }}>
@@ -1910,7 +1910,7 @@ function HomePage({ user, onNav, cart, onAddToCart }) {
         <div className="feature-bar" style={{ maxWidth:1100, margin:'0 auto', display:'grid', gridTemplateColumns:'repeat(4,1fr)', padding:'0 16px' }}>
           {[
             { icon:'•', label:'Free Delivery', sub:'Above ₹1,500' },
-            { icon:'↩️', label:'Easy Returns',  sub:'Manufacturing defects' },
+            { icon:'・', label:'Easy Returns',  sub:'Manufacturing defects' },
             { icon:'•', label:'Secure Pay',    sub:'UPI · Razorpay · Secure' },
             { icon:'•', label:'WhatsApp Support', sub:'2-hour response' },
           ].map((f,i) => (
@@ -3070,7 +3070,7 @@ function AccountPage({ user, onLogout, onNav }) {
           { icon:'•', label:'Payments',      sub:'UPI, Razorpay',                      page:null       },
           { icon:'•', label:'Addresses',     sub:'Manage delivery addresses',          page:null       },
           { icon:'•', label:'Notifications', sub:'Order updates on WhatsApp',          page:null       },
-          { icon:'ℹ️',  label:'About DRYNN',  sub:'Our story & how it works',           page:'about'   },
+          { icon:'ℹ',  label:'About DRYNN',  sub:'Our story & how it works',           page:'about'   },
           { icon:'•', label:'Contact Us',    sub:'WhatsApp, email & support',          page:'contact' },
           { icon:'•', label:'Privacy',       sub:'Data & privacy settings',            page:'privacy'  },
         ].map((item,i)=>(
@@ -5065,11 +5065,11 @@ function MainSite({ user }) {
   if (page === 'admin')   return <AdminPanel  onBack={()=>setPage('home')} />
 
   const NAV_ITEMS = [
-    { key:'home',     label:'Home',    icon:'🏠' },
-    { key:'products', label:'Shop',    icon:'🛒' },
-    { key:'studio',   label:'Studio',  special:true, icon:'🎨' },
-    { key:'cart',     label:'Cart',    icon:'🛒' },
-    { key:'account',  label:'Account', icon:'👤' },
+    { key:'home',     label:'Home',    icon:'合' },
+    { key:'products', label:'Shop',    icon:'⇄' },
+    { key:'studio',   label:'Studio',  special:true, icon:'✦' },
+    { key:'cart',     label:'Cart',    icon:'⌯⌲' },
+    { key:'account',  label:'Account', icon:'⏣' },
   ]
 
   const isAdmin = user?.email === ADMIN_EMAIL

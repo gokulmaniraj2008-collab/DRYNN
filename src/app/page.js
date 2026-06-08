@@ -1697,13 +1697,13 @@ function StudioPage({ user, onNav, onAddToCart }) {
           </div>
         )}
 
-        {/* ══ STEP 5: PREVIEW ══ */}
+        {/* ══ STEP 5: PREVIEW + CUSTOMISE ══ */}
         {step === 5 && (
           <div>
             <h2 style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:28, color:'#fff', letterSpacing:'.06em', marginBottom:4 }}>STEP 5 — PREVIEW YOUR DESIGN</h2>
-            <p style={{ fontSize:13, color:'rgba(255,255,255,.45)', marginBottom:20 }}>Swipe or tap thumbnails to see all angles. Your design appears on each uploaded side.</p>
+            <p style={{ fontSize:13, color:'rgba(255,255,255,.45)', marginBottom:20 }}>See all angles at the top. Fine-tune position, text, and effects below.</p>
 
-            {/* 4-image swipe viewer */}
+            {/* ── Full-width 4-image swipe viewer at top ── */}
             <ProductImageViewer
               product={selectedProduct}
               fallbackSrc={garmentImgSrc}
@@ -1720,24 +1720,164 @@ function StudioPage({ user, onNav, onAddToCart }) {
               bgColor={bgColor}
             />
 
-            {/* Summary strip */}
-            <div style={{ maxWidth:420, margin:'16px auto 0', background:'rgba(255,255,255,.06)', border:'1px solid rgba(255,255,255,.1)', borderRadius:12, padding:'14px 18px', display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
-              {[
-                ['Garment', selectedProduct?.name || garmentType],
-                ['Colour',  color],
-                ['Designs', SIDES.filter(s=>sideImgs[s]).map(s=>SIDE_LABELS[s]).join(', ') || '—'],
-                ['Text',    textOn ? textVal : 'None'],
-              ].map(([k,v])=>(
-                <div key={k}>
-                  <div style={{ fontSize:9, fontWeight:700, letterSpacing:'.1em', textTransform:'uppercase', color:'rgba(255,255,255,.3)', marginBottom:2 }}>{k}</div>
-                  <div style={{ fontSize:12, fontWeight:700, color:'#fff', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{v}</div>
-                </div>
-              ))}
-            </div>
+            {/* ── Customise + Summary row below preview ── */}
+            <div style={{ display:'flex', gap:20, marginTop:24, flexWrap:'wrap', alignItems:'flex-start' }}>
 
-            <div style={{ display:'flex', gap:10, marginTop:20, justifyContent:'center' }}>
-              <button onClick={()=>setStep(4)} style={{ padding:'12px 20px', borderRadius:8, border:'1px solid rgba(255,255,255,.15)', background:'transparent', color:'rgba(255,255,255,.5)', fontSize:13, fontWeight:600, cursor:'pointer' }}>← Edit</button>
-              <button onClick={()=>setStep(6)} className="btn-primary" style={{ padding:'13px 36px', fontSize:14 }}>Place Order →</button>
+              {/* Left: Customise panel */}
+              <div style={{ flex:'1 1 260px', background:'rgba(255,255,255,.04)', border:'1px solid rgba(255,255,255,.08)', borderRadius:14, padding:'18px 16px' }}>
+                <div style={{ fontSize:10, fontWeight:700, letterSpacing:'.18em', textTransform:'uppercase', color:'rgba(255,255,255,.35)', marginBottom:12 }}>✦ Fine-Tune</div>
+
+                {/* Side selector — only sides with designs */}
+                {SIDES.filter(s=>sideImgs[s]).length > 1 && (
+                  <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:4, marginBottom:14 }}>
+                    {SIDES.filter(s=>sideImgs[s]).map(s=>(
+                      <button key={s} onClick={()=>setCustSide(s)}
+                        style={{ padding:'7px 4px', borderRadius:8, border:`2px solid ${custSide===s?'#c8102e':'rgba(255,255,255,.15)'}`,
+                          background:custSide===s?'rgba(200,16,46,.18)':'rgba(255,255,255,.04)',
+                          cursor:'pointer', display:'flex', flexDirection:'column', alignItems:'center', gap:3, transition:'all .15s' }}>
+                        <img src={sideImgs[s]} alt={s} style={{ width:28, height:28, objectFit:'contain', borderRadius:4, background:'rgba(255,255,255,.1)' }} />
+                        <span style={{ fontSize:9, fontWeight:700, textTransform:'uppercase', color:custSide===s?'#fff':'rgba(255,255,255,.4)' }}>{SIDE_LABELS[s]}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                {/* Sub-tabs */}
+                <div style={{ display:'flex', overflowX:'auto', gap:0, background:'rgba(255,255,255,.05)', borderRadius:8, padding:3, marginBottom:16, scrollbarWidth:'none' }}>
+                  {[['position','↔ Position'],['text','T Text'],['effects','✨ Effects']].map(([k,l])=>(
+                    <button key={k} onClick={()=>setCustTab(k)}
+                      style={{ flex:'0 0 auto', padding:'8px 14px', borderRadius:6, border:'none', cursor:'pointer', fontSize:11, fontWeight:700, whiteSpace:'nowrap',
+                        background:custTab===k?'#0a1f5d':'transparent', color:custTab===k?'#fff':'rgba(255,255,255,.45)', transition:'all .15s' }}>
+                      {l}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Position tab */}
+                {custTab==='position' && (
+                  <div>
+                    {[
+                      ['Up / Down',    posY,      setPosY,      15, 75],
+                      ['Left / Right', posX,      setPosX,      15, 85],
+                      ['Size',         scale,     setScale,     10, 70],
+                      ['Rotation',     rotation,  setRotation, -45, 45],
+                    ].map(([label, val, setter, min, max])=>(
+                      <div key={label} style={{ marginBottom:14 }}>
+                        <div style={{ display:'flex', justifyContent:'space-between', marginBottom:4 }}>
+                          <span style={{ fontSize:11, fontWeight:700, letterSpacing:'.08em', textTransform:'uppercase', color:'rgba(255,255,255,.45)' }}>{label}</span>
+                          <span style={{ fontSize:11, color:'#fff', fontWeight:700 }}>{val}{label==='Rotation'?'°':'%'}</span>
+                        </div>
+                        <input type="range" min={min} max={max} value={val} onChange={e=>setter(Number(e.target.value))} style={{ width:'100%', accentColor:'#c8102e' }} />
+                      </div>
+                    ))}
+                    <button onClick={()=>{setPosY(38);setPosX(50);setScale(38);setRotation(0)}}
+                      style={{ width:'100%', padding:9, background:'rgba(255,255,255,.06)', border:'1px solid rgba(255,255,255,.12)', borderRadius:6, color:'rgba(255,255,255,.5)', fontSize:11, fontWeight:700, cursor:'pointer' }}>
+                      ↺ Reset Position
+                    </button>
+                  </div>
+                )}
+
+                {/* Text tab */}
+                {custTab==='text' && (
+                  <div>
+                    <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:12 }}>
+                      <span style={{ fontSize:11, fontWeight:700, letterSpacing:'.1em', textTransform:'uppercase', color:'rgba(255,255,255,.45)' }}>Text Overlay</span>
+                      <button onClick={()=>setTextOn(v=>!v)}
+                        style={{ padding:'5px 14px', borderRadius:50, fontSize:11, fontWeight:700, cursor:'pointer', border:'none',
+                          background:textOn?'#c8102e':'rgba(255,255,255,.1)', color:'#fff' }}>
+                        {textOn?'ON ✓':'OFF'}
+                      </button>
+                    </div>
+                    {textOn ? (
+                      <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
+                        <input value={textVal} onChange={e=>setTextVal(e.target.value)} placeholder="Your text here"
+                          style={{ ...inputStyle, fontSize:14, fontWeight:700 }} />
+                        <select value={textFont} onChange={e=>setTextFont(e.target.value)} style={{ ...inputStyle }}>
+                          {TEXT_FONTS.map(f=><option key={f} value={f}>{f}</option>)}
+                        </select>
+                        {[
+                          ['Up / Down', textPosY, setTextPosY, 5, 95],
+                          ['Left / Right', textPosX, setTextPosX, 5, 95],
+                          ['Size', textSize, setTextSize, 12, 60],
+                        ].map(([label, val, setter, min, max])=>(
+                          <div key={label}>
+                            <div style={{ display:'flex', justifyContent:'space-between', marginBottom:4 }}>
+                              <span style={{ fontSize:10, fontWeight:700, textTransform:'uppercase', color:'rgba(255,255,255,.4)' }}>{label}</span>
+                              <span style={{ fontSize:11, color:'#fff' }}>{val}{label==='Size'?'px':'%'}</span>
+                            </div>
+                            <input type="range" min={min} max={max} value={val} onChange={e=>setter(Number(e.target.value))} style={{ width:'100%', accentColor:'#c8102e' }} />
+                          </div>
+                        ))}
+                        <div style={{ display:'flex', flexWrap:'wrap', gap:6 }}>
+                          {['#ffffff','#0a0a0a','#c8102e','#0a1f5d','#00a86b','#f5a623','#9b59b6','#f0e68c'].map(c => (
+                            <div key={c} onClick={()=>setTextColor(c)}
+                              style={{ width:24, height:24, borderRadius:'50%', background:c, cursor:'pointer',
+                                border: c==='#ffffff' ? '2px solid rgba(255,255,255,.4)' : '2px solid transparent',
+                                boxShadow: textColor===c ? `0 0 0 2px #0d1b3e, 0 0 0 4px #c8102e` : '0 1px 4px rgba(0,0,0,.4)',
+                                transition:'box-shadow .15s', flexShrink:0 }} />
+                          ))}
+                        </div>
+                      </div>
+                    ) : (
+                      <p style={{ fontSize:12, color:'rgba(255,255,255,.3)', lineHeight:1.7 }}>Toggle ON to add custom text.</p>
+                    )}
+                  </div>
+                )}
+
+                {/* Effects tab */}
+                {custTab==='effects' && (
+                  <div>
+                    <div style={{ display:'flex', flexWrap:'wrap', gap:5, marginBottom:14 }}>
+                      {FILTERS.map(f=>(
+                        <button key={f.label} onClick={()=>setFilterFx(f.value)}
+                          style={{ padding:'5px 10px', borderRadius:50, fontSize:10, fontWeight:700, cursor:'pointer',
+                            background:filterFx===f.value?'#c8102e':'rgba(255,255,255,.07)',
+                            color:filterFx===f.value?'#fff':'rgba(255,255,255,.55)',
+                            border:`1px solid ${filterFx===f.value?'#c8102e':'rgba(255,255,255,.1)'}` }}>
+                          {f.label}
+                        </button>
+                      ))}
+                    </div>
+                    {[['Brightness',brightness,setBrightness,50,160],['Contrast',contrast,setContrast,50,200],['Saturation',saturation,setSaturation,0,250]].map(([label,val,setter,min,max])=>(
+                      <div key={label} style={{ marginBottom:12 }}>
+                        <div style={{ display:'flex', justifyContent:'space-between', marginBottom:4 }}>
+                          <span style={{ fontSize:10, fontWeight:700, textTransform:'uppercase', color:'rgba(255,255,255,.45)' }}>{label}</span>
+                          <span style={{ fontSize:11, color:'#fff' }}>{val}%</span>
+                        </div>
+                        <input type="range" min={min} max={max} value={val} onChange={e=>setter(parseInt(e.target.value))} style={{ width:'100%', accentColor:'#c8102e' }} />
+                      </div>
+                    ))}
+                    <button onClick={()=>{setBrightness(100);setContrast(100);setSaturation(100);setFilterFx('')}}
+                      style={{ width:'100%', padding:9, background:'rgba(255,255,255,.06)', border:'1px solid rgba(255,255,255,.12)', borderRadius:6, color:'rgba(255,255,255,.5)', fontSize:11, fontWeight:700, cursor:'pointer' }}>
+                      ↺ Reset Effects
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* Right: Summary + Order */}
+              <div style={{ flex:'0 1 260px', display:'flex', flexDirection:'column', gap:14 }}>
+                {/* Summary strip */}
+                <div style={{ background:'rgba(255,255,255,.06)', border:'1px solid rgba(255,255,255,.1)', borderRadius:12, padding:'14px 16px', display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
+                  {[
+                    ['Garment', selectedProduct?.name || garmentType],
+                    ['Colour',  color],
+                    ['Designs', SIDES.filter(s=>sideImgs[s]).map(s=>SIDE_LABELS[s]).join(', ') || '—'],
+                    ['Text',    textOn ? textVal : 'None'],
+                  ].map(([k,v])=>(
+                    <div key={k}>
+                      <div style={{ fontSize:9, fontWeight:700, letterSpacing:'.1em', textTransform:'uppercase', color:'rgba(255,255,255,.3)', marginBottom:2 }}>{k}</div>
+                      <div style={{ fontSize:12, fontWeight:700, color:'#fff', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{v}</div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Action buttons */}
+                <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
+                  <button onClick={()=>setStep(6)} className="btn-primary" style={{ width:'100%', padding:'14px', fontSize:14, letterSpacing:'.04em' }}>Place Order →</button>
+                  <button onClick={()=>setStep(4)} style={{ width:'100%', padding:'11px', borderRadius:8, border:'1px solid rgba(255,255,255,.15)', background:'transparent', color:'rgba(255,255,255,.5)', fontSize:13, fontWeight:600, cursor:'pointer' }}>← Back to Customise</button>
+                </div>
+              </div>
             </div>
           </div>
         )}

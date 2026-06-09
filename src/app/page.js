@@ -284,9 +284,9 @@ function IntroPage({ onGoToLogin }) {
 
         {/* Mute/Unmute button — bottom right */}
         <button onClick={toggleMute} style={{
-          position:'absolute', bottom:16, right:16, zIndex:3,
-          width:40, height:40, borderRadius:'50%',
-          background:'rgba(255,255,255,.15)', border:'1.5px solid rgba(255,255,255,.3)',
+          position:'absolute', bottom:12, right:12, zIndex:3,
+          width:28, height:28, borderRadius:'50%',
+          background:'rgba(255,255,255,.15)', border:'1px solid rgba(255,255,255,.3)',
           backdropFilter:'blur(8px)', cursor:'pointer',
           display:'flex', alignItems:'center', justifyContent:'center',
           transition:'background .2s',
@@ -296,14 +296,12 @@ function IntroPage({ onGoToLogin }) {
           title={muted ? 'Unmute' : 'Mute'}
         >
           {muted ? (
-            /* Muted icon */
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
               <line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/>
             </svg>
           ) : (
-            /* Unmuted icon */
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
               <path d="M15.54 8.46a5 5 0 0 1 0 7.07"/>
               <path d="M19.07 4.93a10 10 0 0 1 0 14.14"/>

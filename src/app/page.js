@@ -1949,10 +1949,10 @@ function HomePage({ user, onNav, cart, onAddToCart }) {
       <div style={{ background:'linear-gradient(135deg,#0a1f5d 0%,#1a0a2e 100%)', padding:'48px 20px 56px', position:'relative', overflow:'hidden' }}>
         <div style={{ position:'absolute', inset:0, background:'radial-gradient(ellipse at 70% 50%,rgba(200,16,46,.18) 0%,transparent 55%)', pointerEvents:'none' }} />
         <div style={{ maxWidth:1100, margin:'0 auto', position:'relative', zIndex:1, padding:'0 4px' }}>
-          <div style={{ display:'inline-flex', alignItems:'center', gap:16, marginBottom:14, background:'rgba(255,255,255,.07)', border:'1px solid rgba(255,255,255,.12)', borderRadius:10, padding:'8px 16px' }}>
-            <span style={{ fontSize:12, fontWeight:700, color:'#fff', letterSpacing:'.06em' }}>{fmtTime(now)}</span>
-            <span style={{ width:1, height:14, background:'rgba(255,255,255,.2)' }} />
-            <span style={{ fontSize:11, color:'rgba(255,255,255,.6)', letterSpacing:'.04em' }}>{fmtDate(now)}</span>
+          <div style={{ position:'absolute', top:12, right:16, display:'inline-flex', alignItems:'center', gap:8, background:'rgba(255,255,255,.07)', border:'1px solid rgba(255,255,255,.1)', borderRadius:6, padding:'4px 10px' }}>
+            <span style={{ fontSize:9, fontWeight:700, color:'#fff', letterSpacing:'.04em' }}>{fmtTime(now)}</span>
+            <span style={{ width:1, height:10, background:'rgba(255,255,255,.2)' }} />
+            <span style={{ fontSize:9, color:'rgba(255,255,255,.5)', letterSpacing:'.03em' }}>{fmtDate(now)}</span>
           </div>
           <div style={{ display:'inline-flex', alignItems:'center', gap:8, background:'rgba(200,16,46,.18)', border:'1px solid rgba(200,16,46,.35)', borderRadius:100, padding:'5px 14px', marginBottom:16 }}>
             <div style={{ width:5, height:5, borderRadius:'50%', background:'#c8102e' }} />

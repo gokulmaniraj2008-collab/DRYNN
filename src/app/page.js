@@ -1940,12 +1940,11 @@ function HomePage({ user, onNav, cart, onAddToCart }) {
       <div style={{ padding:'48px 20px 56px', position:'relative', overflow:'hidden', background:'#0a0a0a' }}>
         {/* Background video */}
         <video autoPlay muted loop playsInline
-          style={{ position:'absolute', inset:0, width:'100%', height:'100%', objectFit:'cover', opacity:0.45, pointerEvents:'none' }}>
+          style={{ position:'absolute', inset:0, width:'100%', height:'100%', objectFit:'cover', opacity:0.85, pointerEvents:'none' }}>
           <source src="https://res.cloudinary.com/dfhdyp4oq/video/upload/v1780972479/video_20260609_080102_edit_n46bhf.mp4" type="video/mp4" />
         </video>
-        {/* Dark overlay for readability */}
-        <div style={{ position:'absolute', inset:0, background:'linear-gradient(135deg,rgba(10,31,93,.75) 0%,rgba(26,10,46,.7) 100%)', pointerEvents:'none' }} />
-        <div style={{ position:'absolute', inset:0, background:'radial-gradient(ellipse at 70% 50%,rgba(200,16,46,.18) 0%,transparent 55%)', pointerEvents:'none' }} />
+        {/* Subtle dark overlay just for text readability */}
+        <div style={{ position:'absolute', inset:0, background:'rgba(0,0,0,.35)', pointerEvents:'none' }} />
         <div style={{ maxWidth:1100, margin:'0 auto', position:'relative', zIndex:1, padding:'0 4px' }}>
           <div style={{ display:'inline-flex', alignItems:'center', gap:8, background:'rgba(200,16,46,.18)', border:'1px solid rgba(200,16,46,.35)', borderRadius:100, padding:'5px 14px', marginBottom:16 }}>
             <div style={{ width:5, height:5, borderRadius:'50%', background:'#c8102e' }} />

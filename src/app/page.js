@@ -5300,7 +5300,13 @@ function MainSite({ user }) {
       duration_sec: 0,
       pages_visited: ['home'],
       device_info:  device,
-    }).then(({ error }) => { if (error) console.warn('[Tracking] Insert failed:', error.message) })
+    }).then(({ error, data }) => {
+      if (error) {
+        console.error('[Tracking] Insert failed:', error.message, error.code, error.details)
+      } else {
+        console.log('[Tracking] Session started:', sessionId, 'for', user.email)
+      }
+    })
 
     // On tab close / navigate away — update duration + ended_at
     const endSession = () => {

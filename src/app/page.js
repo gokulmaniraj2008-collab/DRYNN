@@ -1473,7 +1473,7 @@ function StudioPage({ user, onNav, onAddToCart }) {
                   style={{ padding:'10px 4px', borderRadius:10, border:`2px solid ${activeSide===s?'#c8102e':sideImgs[s]?'#00a86b':'rgba(255,255,255,.12)'}`,
                     background:activeSide===s?'rgba(200,16,46,.15)':sideImgs[s]?'rgba(0,168,107,.08)':'rgba(255,255,255,.04)',
                     cursor:'pointer', display:'flex', flexDirection:'column', alignItems:'center', gap:3, transition:'all .15s', position:'relative' }}>
-                  <span style={{ fontSize:20 }}>{s==='front'?'𝐅':s==='back'?'𝐁':s==='left'?'𝐋':'𝐑'}</span>
+                  <span style={{ fontSize:20 }}>{s==='front'?'▲':s==='back'?'▼':s==='left'?'◀':'▶'}</span>
                   <span style={{ fontSize:9, fontWeight:700, letterSpacing:'.06em', textTransform:'uppercase',
                     color:activeSide===s?'#fff':sideImgs[s]?'#00a86b':'rgba(255,255,255,.4)' }}>
                     {SIDE_LABELS[s]}
@@ -1609,7 +1609,7 @@ function StudioPage({ user, onNav, onAddToCart }) {
 
               {/* Sub-tabs */}
               <div style={{ display:'flex', overflowX:'auto', gap:0, background:'rgba(255,255,255,.05)', borderRadius:8, padding:3, scrollbarWidth:'none' }}>
-                {[['position','↔ Position'],['text','T Text'],['effects','✨ Effects']].map(([k,l])=>(
+                {[['position','↔ Position'],['text','T Text'],['effects',' Effects']].map(([k,l])=>(
                   <button key={k} onClick={()=>setCustTab(k)}
                     style={{ flex:'1 1 0', padding:'9px 16px', borderRadius:6, border:'none', cursor:'pointer', fontSize:12, fontWeight:700, whiteSpace:'nowrap',
                       background:custTab===k?'#0a1f5d':'transparent', color:custTab===k?'#fff':'rgba(255,255,255,.45)', transition:'all .15s' }}>

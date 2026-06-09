@@ -1948,12 +1948,13 @@ function HomePage({ user, onNav, cart, onAddToCart }) {
       {/* Hero Banner */}
       <div style={{ background:'linear-gradient(135deg,#0a1f5d 0%,#1a0a2e 100%)', padding:'48px 20px 56px', position:'relative', overflow:'hidden' }}>
         <div style={{ position:'absolute', inset:0, background:'radial-gradient(ellipse at 70% 50%,rgba(200,16,46,.18) 0%,transparent 55%)', pointerEvents:'none' }} />
+        {/* Date/time — pinned bottom-right of hero */}
+        <div style={{ position:'absolute', bottom:10, right:12, display:'inline-flex', alignItems:'center', gap:6, background:'rgba(0,0,0,.25)', border:'1px solid rgba(255,255,255,.08)', borderRadius:5, padding:'3px 8px', zIndex:2 }}>
+          <span style={{ fontSize:8, fontWeight:700, color:'rgba(255,255,255,.8)', letterSpacing:'.04em', fontVariantNumeric:'tabular-nums' }}>{fmtTime(now)}</span>
+          <span style={{ width:1, height:8, background:'rgba(255,255,255,.15)' }} />
+          <span style={{ fontSize:8, color:'rgba(255,255,255,.4)', letterSpacing:'.03em' }}>{fmtDate(now)}</span>
+        </div>
         <div style={{ maxWidth:1100, margin:'0 auto', position:'relative', zIndex:1, padding:'0 4px' }}>
-          <div style={{ position:'absolute', top:12, right:16, display:'inline-flex', alignItems:'center', gap:8, background:'rgba(255,255,255,.07)', border:'1px solid rgba(255,255,255,.1)', borderRadius:6, padding:'4px 10px' }}>
-            <span style={{ fontSize:9, fontWeight:700, color:'#fff', letterSpacing:'.04em' }}>{fmtTime(now)}</span>
-            <span style={{ width:1, height:10, background:'rgba(255,255,255,.2)' }} />
-            <span style={{ fontSize:9, color:'rgba(255,255,255,.5)', letterSpacing:'.03em' }}>{fmtDate(now)}</span>
-          </div>
           <div style={{ display:'inline-flex', alignItems:'center', gap:8, background:'rgba(200,16,46,.18)', border:'1px solid rgba(200,16,46,.35)', borderRadius:100, padding:'5px 14px', marginBottom:16 }}>
             <div style={{ width:5, height:5, borderRadius:'50%', background:'#c8102e' }} />
             <span style={{ fontSize:9, fontWeight:700, letterSpacing:'.22em', textTransform:'uppercase', color:'#c8102e' }}>Tamil Nadu's #1 Custom Print</span>

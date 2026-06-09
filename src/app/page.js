@@ -3435,7 +3435,7 @@ function AdminOrderPreview({ order }) {
 // ══════════════════════════════════════════════════════════════
 // ADMIN PANEL  -  restricted to ADMIN_EMAIL only
 // ══════════════════════════════════════════════════════════════
-const ADMIN_EMAIL = 'gokulmaniraj2008@gmail.com'
+const ADMIN_EMAIL = 'praneshsrinivasan2007@gmail.com'
 
 // ══════════════════════════════════════════════════════════════
 // MOCKUP UPLOADER — admin uploads garment views directly to Cloudinary

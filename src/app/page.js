@@ -1948,8 +1948,8 @@ function HomePage({ user, onNav, cart, onAddToCart }) {
       {/* Hero Banner */}
       <div style={{ background:'linear-gradient(135deg,#0a1f5d 0%,#1a0a2e 100%)', padding:'48px 20px 56px', position:'relative', overflow:'hidden' }}>
         <div style={{ position:'absolute', inset:0, background:'radial-gradient(ellipse at 70% 50%,rgba(200,16,46,.18) 0%,transparent 55%)', pointerEvents:'none' }} />
-        {/* Date/time — pinned bottom-right of hero */}
-        <div style={{ position:'absolute', bottom:10, right:12, display:'inline-flex', alignItems:'center', gap:6, background:'rgba(0,0,0,.25)', border:'1px solid rgba(255,255,255,.08)', borderRadius:5, padding:'3px 8px', zIndex:2 }}>
+        {/* Date/time — pinned top-right of hero */}
+        <div style={{ position:'absolute', top:10, right:12, display:'inline-flex', alignItems:'center', gap:6, background:'rgba(0,0,0,.25)', border:'1px solid rgba(255,255,255,.08)', borderRadius:5, padding:'3px 8px', zIndex:2 }}>
           <span style={{ fontSize:8, fontWeight:700, color:'rgba(255,255,255,.8)', letterSpacing:'.04em', fontVariantNumeric:'tabular-nums' }}>{fmtTime(now)}</span>
           <span style={{ width:1, height:8, background:'rgba(255,255,255,.15)' }} />
           <span style={{ fontSize:8, color:'rgba(255,255,255,.4)', letterSpacing:'.03em' }}>{fmtDate(now)}</span>

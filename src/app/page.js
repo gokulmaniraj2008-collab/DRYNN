@@ -5188,7 +5188,7 @@ function MainSite({ user }) {
       </nav>
 
       {/* ── AUDIO ── */}
-      <audio ref={audioRef} src="https://res.cloudinary.com/dfhdyp4oq/video/upload/v1780987405/I_Think_They_Call_This_Love_Cover_cx8rq1.mp3" loop preload="auto" />
+      <audio ref={audioRef} src="https://res.cloudinary.com/dfhdyp4oq/video/upload/v1780988236/Pavazha_Malli_ihrawx.mp3" loop preload="auto" />
 
       {/* ── MARQUEE + MUSIC PLAYER ── */}
       <div style={{ background:'#0a0a0a', color:'#fff', padding:'0', overflow:'hidden', display:'flex', alignItems:'stretch' }}>

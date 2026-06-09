@@ -1945,7 +1945,7 @@ function HomePage({ user, onNav, cart, onAddToCart }) {
             <span style={{ fontSize:9, fontWeight:700, letterSpacing:'.22em', textTransform:'uppercase', color:'#c8102e' }}>Tamil Nadu's #1 Custom Print</span>
           </div>
           <h1 style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:'clamp(30px,8vw,70px)', color:'#fff', letterSpacing:'.02em', lineHeight:1.05, marginBottom:14 }}>
-            YOUR DESIGN.<br/><span style={{ color:'#c8102e' }}>YOUR STYLE.</span> YOUR DRYNN.
+            YOUR DESIGN.<br/><span style={{ color:'#c8102e' }}>YOUR STYLE.</span><br/>YOUR DRYNN.
           </h1>
           <p style={{ fontSize:15, color:'rgba(255,255,255,.65)', maxWidth:440, lineHeight:1.8, marginBottom:24 }}>
             Upload artwork, pick a garment, and we deliver premium custom clothing across India in 5-7 days.

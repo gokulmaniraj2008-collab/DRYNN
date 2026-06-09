@@ -272,7 +272,7 @@ function IntroPage({ onGoToLogin }) {
       </div>
 
       {/* Hero — Cloudinary Background Video */}
-      <div style={{ position:'relative', width:'100%', minHeight:480, overflow:'hidden', display:'flex', alignItems:'center' }}>
+      <div style={{ position:'relative', width:'100%', overflow:'hidden', display:'flex', alignItems:'center' }}>
         <video
           ref={videoRef}
           autoPlay muted loop playsInline
@@ -309,7 +309,7 @@ function IntroPage({ onGoToLogin }) {
           )}
         </button>
 
-        <div style={{ position:'relative', zIndex:2, padding:'56px 20px 48px', maxWidth:680, margin:'0 auto', width:'100%' }} className="fade-in">
+        <div style={{ position:'relative', zIndex:2, padding:'48px 20px 32px', maxWidth:680, margin:'0 auto', width:'100%' }} className="fade-in">
           <span className="sec-label" style={{ color:'#c8102e' }}>Tamil Nadu's #1 Custom Print</span>
           <h1 style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:'clamp(42px,10vw,80px)', letterSpacing:'.02em', lineHeight:1, marginBottom:16, color:'#fff' }}>
             YOUR DESIGN.<br/><span style={{ color:'#c8102e' }}>YOUR STYLE.</span><br/>YOUR DRYNN.

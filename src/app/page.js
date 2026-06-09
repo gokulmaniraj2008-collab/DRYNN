@@ -259,20 +259,32 @@ function IntroPage({ onGoToLogin }) {
         <span style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:28, letterSpacing:'.15em' }}>DRYNN</span>
         <button className="btn-primary" style={{ padding:'10px 20px', fontSize:12 }} onClick={onGoToLogin}>Sign In →</button>
       </div>
-      {/* Hero */}
-      <div style={{ padding:'48px 20px 32px', maxWidth:680, margin:'0 auto', width:'100%' }} className="fade-in">
-        <span className="sec-label">Tamil Nadu's #1 Custom Print</span>
-        <h1 style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:'clamp(42px,10vw,80px)', letterSpacing:'.02em', lineHeight:1, marginBottom:16, color:'#0a0a0a' }}>
-          YOUR DESIGN.<br/><span style={{ color:'#c8102e' }}>YOUR STYLE.</span><br/>YOUR DRYNN.
-        </h1>
-        <p style={{ fontSize:15, lineHeight:1.85, color:'#555', marginBottom:28, maxWidth:480 }}>
-          Upload your artwork, pick your garment, and we deliver premium custom clothing straight to your door  -  anywhere in India.
-        </p>
-        <div className="hero-cta" style={{ display:'flex', gap:12, flexWrap:'wrap' }}>
-          <button className="btn-primary" style={{ fontSize:14, padding:'14px 28px' }} onClick={onGoToLogin}>Get Started Free</button>
-          <button className="btn-secondary" style={{ fontSize:14, padding:'14px 28px' }} onClick={onGoToLogin}>View Products</button>
+
+      {/* Hero — Cloudinary Background Video */}
+      <div style={{ position:'relative', width:'100%', minHeight:480, overflow:'hidden', display:'flex', alignItems:'center' }}>
+        <video
+          autoPlay muted loop playsInline
+          style={{ position:'absolute', inset:0, width:'100%', height:'100%', objectFit:'cover', zIndex:0 }}
+        >
+          <source src="https://res.cloudinary.com/dfhdyp4oq/video/upload/v1780972479/video_20260609_080102_edit_n46bhf.mp4" type="video/mp4" />
+        </video>
+        <div style={{ position:'absolute', inset:0, background:'linear-gradient(135deg,rgba(10,10,10,.72) 0%,rgba(10,31,93,.55) 100%)', zIndex:1 }} />
+        <div style={{ position:'relative', zIndex:2, padding:'56px 20px 48px', maxWidth:680, margin:'0 auto', width:'100%' }} className="fade-in">
+          <span className="sec-label" style={{ color:'#c8102e' }}>Tamil Nadu's #1 Custom Print</span>
+          <h1 style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:'clamp(42px,10vw,80px)', letterSpacing:'.02em', lineHeight:1, marginBottom:16, color:'#fff' }}>
+            YOUR DESIGN.<br/><span style={{ color:'#c8102e' }}>YOUR STYLE.</span><br/>YOUR DRYNN.
+          </h1>
+          <p style={{ fontSize:15, lineHeight:1.85, color:'rgba(255,255,255,.75)', marginBottom:28, maxWidth:480 }}>
+            Upload your artwork, pick your garment, and we deliver premium custom clothing straight to your door — anywhere in India.
+          </p>
+          <div className="hero-cta" style={{ display:'flex', gap:12, flexWrap:'wrap' }}>
+            <button className="btn-primary" style={{ fontSize:14, padding:'14px 28px' }} onClick={onGoToLogin}>Get Started Free</button>
+            <button style={{ fontSize:14, padding:'14px 28px', background:'rgba(255,255,255,.12)', color:'#fff', border:'1.5px solid rgba(255,255,255,.35)', borderRadius:4, fontWeight:700, cursor:'pointer' }} onClick={onGoToLogin}>View Products</button>
+          </div>
         </div>
       </div>
+              
+      
       {/* Feature strips */}
       <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(220px,1fr))', gap:16, padding:'0 20px 48px', maxWidth:900, margin:'0 auto', width:'100%' }}>
         {[

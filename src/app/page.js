@@ -1926,6 +1926,15 @@ function StudioPage({ user, onNav, onAddToCart }) {
 function HomePage({ user, onNav, cart, onAddToCart }) {
   const products = usePublicProducts()
   const [selectedProduct, setSelectedProduct] = React.useState(null)
+  const [now, setNow] = React.useState(new Date())
+
+  React.useEffect(() => {
+    const timer = setInterval(() => setNow(new Date()), 1000)
+    return () => clearInterval(timer)
+  }, [])
+
+  const fmtDate = (d) => d.toLocaleDateString('en-IN', { weekday:'long', day:'numeric', month:'long', year:'numeric' })
+  const fmtTime = (d) => d.toLocaleTimeString('en-IN', { hour:'2-digit', minute:'2-digit', second:'2-digit', hour12:true })
 
   if (selectedProduct) return (
     <ProductDetailPage
@@ -1940,6 +1949,11 @@ function HomePage({ user, onNav, cart, onAddToCart }) {
       <div style={{ background:'linear-gradient(135deg,#0a1f5d 0%,#1a0a2e 100%)', padding:'48px 20px 56px', position:'relative', overflow:'hidden' }}>
         <div style={{ position:'absolute', inset:0, background:'radial-gradient(ellipse at 70% 50%,rgba(200,16,46,.18) 0%,transparent 55%)', pointerEvents:'none' }} />
         <div style={{ maxWidth:1100, margin:'0 auto', position:'relative', zIndex:1, padding:'0 4px' }}>
+          <div style={{ display:'inline-flex', alignItems:'center', gap:16, marginBottom:14, background:'rgba(255,255,255,.07)', border:'1px solid rgba(255,255,255,.12)', borderRadius:10, padding:'8px 16px' }}>
+            <span style={{ fontSize:12, fontWeight:700, color:'#fff', letterSpacing:'.06em' }}>{fmtTime(now)}</span>
+            <span style={{ width:1, height:14, background:'rgba(255,255,255,.2)' }} />
+            <span style={{ fontSize:11, color:'rgba(255,255,255,.6)', letterSpacing:'.04em' }}>{fmtDate(now)}</span>
+          </div>
           <div style={{ display:'inline-flex', alignItems:'center', gap:8, background:'rgba(200,16,46,.18)', border:'1px solid rgba(200,16,46,.35)', borderRadius:100, padding:'5px 14px', marginBottom:16 }}>
             <div style={{ width:5, height:5, borderRadius:'50%', background:'#c8102e' }} />
             <span style={{ fontSize:9, fontWeight:700, letterSpacing:'.22em', textTransform:'uppercase', color:'#c8102e' }}>Tamil Nadu's #1 Custom Print</span>
@@ -3562,6 +3576,11 @@ function AdminPanel({ onBack }) {
   const [expandedGroup, setExpandedGroup]     = useState(null)
   const [groupMembers, setGroupMembers]       = useState({}) // { group_code: [...members] }
 
+  // Visitors state
+  const [visitors, setVisitors]               = useState([])
+  const [visitorsLoading, setVisitorsLoading] = useState(false)
+  const [visitorSearch, setVisitorSearch]     = useState('')
+
   const showToast = (m) => { setToast(m); setTimeout(()=>setToast(''),2500) }
 
   useEffect(() => {
@@ -3594,6 +3613,18 @@ function AdminPanel({ onBack }) {
     if (!error && data) setGroupOrders(data)
     else if (error) console.error('[Admin] Group orders load error:', error.message)
     setGroupOrdersLoading(false)
+  }
+
+  const loadVisitors = async () => {
+    setVisitorsLoading(true)
+    const { data, error } = await supabase
+      .from('drynn_user_sessions')
+      .select('*')
+      .order('started_at', { ascending: false })
+      .limit(200)
+    if (!error && data) setVisitors(data)
+    else if (error) console.error('[Admin] Visitors load error:', error.message)
+    setVisitorsLoading(false)
   }
 
   const loadGroupMembers = async (group_code) => {
@@ -3778,6 +3809,7 @@ function AdminPanel({ onBack }) {
           <button onClick={()=>{setTab('samples');loadSamples()}} style={{ flexShrink:0, padding:'6px 16px', borderRadius:4, border:'none', cursor:'pointer', background:tab==='samples'?'#c8102e':'#222', color:'#fff', fontSize:12, fontWeight:700 }}>Samples</button>
           <button onClick={()=>{setTab('uploads');loadOrders()}} style={{ flexShrink:0, padding:'6px 16px', borderRadius:4, border:'none', cursor:'pointer', background:tab==='uploads'?'#c8102e':'#222', color:'#fff', fontSize:12, fontWeight:700 }}>Uploads</button>
           <button onClick={()=>{setTab('analytics');loadOrders()}} style={{ flexShrink:0, padding:'6px 16px', borderRadius:4, border:'none', cursor:'pointer', background:tab==='analytics'?'#c8102e':'#222', color:'#fff', fontSize:12, fontWeight:700 }}>📊 Analytics</button>
+          <button onClick={()=>{setTab('visitors');loadVisitors()}} style={{ flexShrink:0, padding:'6px 16px', borderRadius:4, border:'none', cursor:'pointer', background:tab==='visitors'?'#c8102e':'#222', color:'#fff', fontSize:12, fontWeight:700 }}>👤 Visitors</button>
           <button onClick={()=>{setTab('grouporders');loadGroupOrders()}} style={{ flexShrink:0, padding:'6px 16px', borderRadius:4, border:'none', cursor:'pointer', background:tab==='grouporders'?'#c8102e':'#222', color:'#fff', fontSize:12, fontWeight:700 }}>👥 Group Orders</button>
         </div>
       </div>
@@ -4340,6 +4372,120 @@ function AdminPanel({ onBack }) {
                   ))}
                 </div>
               </div>
+            </div>
+          )
+        })()}
+
+        {/* VISITORS TAB */}
+        {tab==='visitors' && (() => {
+          const fmtDur = (sec) => {
+            if (!sec) return '—'
+            const m = Math.floor(sec / 60), s = sec % 60
+            return m > 0 ? `${m}m ${s}s` : `${s}s`
+          }
+          const fmtTime = (iso) => iso ? new Date(iso).toLocaleString('en-IN', { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' }) : '—'
+
+          // Aggregate by email
+          const byEmail = {}
+          visitors.forEach(v => {
+            if (!byEmail[v.user_email]) byEmail[v.user_email] = { email: v.user_email, name: v.user_name, visits: 0, totalSec: 0, allPages: new Set(), lastSeen: null, device: v.device_info, sessions: [] }
+            const e = byEmail[v.user_email]
+            e.visits++
+            e.totalSec += (v.duration_sec || 0)
+            ;(v.pages_visited || []).forEach(p => e.allPages.add(p))
+            if (!e.lastSeen || v.started_at > e.lastSeen) e.lastSeen = v.started_at
+            e.sessions.push(v)
+          })
+
+          const rows = Object.values(byEmail)
+            .filter(r => !visitorSearch || r.email.toLowerCase().includes(visitorSearch.toLowerCase()) || r.name?.toLowerCase().includes(visitorSearch.toLowerCase()))
+            .sort((a,b) => (b.lastSeen||'') > (a.lastSeen||'') ? 1 : -1)
+
+          return (
+            <div>
+              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16, flexWrap:'wrap', gap:10 }}>
+                <h2 style={{ fontSize:18, fontWeight:700 }}>👤 Visitor Monitoring</h2>
+                <div style={{ display:'flex', gap:8, alignItems:'center' }}>
+                  <input value={visitorSearch} onChange={e=>setVisitorSearch(e.target.value)} placeholder="Search by name or email…"
+                    style={{ border:'1.5px solid #e0e0e0', borderRadius:6, padding:'7px 12px', fontSize:12, outline:'none', width:220 }} />
+                  <button className="btn-secondary" style={{ padding:'7px 14px', fontSize:12 }} onClick={loadVisitors}>↻ Refresh</button>
+                </div>
+              </div>
+
+              {/* Summary cards */}
+              <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(150px,1fr))', gap:12, marginBottom:20 }}>
+                {[
+                  { label:'Total Sessions',  value: visitors.length,                                          color:'#0a1f5d', bg:'#f0f3ff' },
+                  { label:'Unique Users',    value: Object.keys(byEmail).length,                              color:'#00a86b', bg:'#e6f9f0' },
+                  { label:'Avg Time',        value: fmtDur(Math.round(visitors.reduce((a,v)=>a+(v.duration_sec||0),0) / (visitors.length||1))), color:'#c8102e', bg:'#fff3f3' },
+                  { label:'Today\'s Visits', value: visitors.filter(v=>v.started_at?.startsWith(new Date().toISOString().slice(0,10))).length, color:'#9b59b6', bg:'#f5eeff' },
+                ].map(c=>(
+                  <div key={c.label} style={{ background:c.bg, borderRadius:10, padding:'14px 16px' }}>
+                    <div style={{ fontSize:9, fontWeight:700, letterSpacing:'.1em', textTransform:'uppercase', color:'#888', marginBottom:6 }}>{c.label}</div>
+                    <div style={{ fontSize:20, fontWeight:800, color:c.color }}>{c.value}</div>
+                  </div>
+                ))}
+              </div>
+
+              {visitorsLoading ? (
+                <div style={{ textAlign:'center', padding:40, color:'#888' }}>Loading visitors…</div>
+              ) : rows.length === 0 ? (
+                <div style={{ textAlign:'center', padding:40, color:'#aaa', fontSize:13 }}>No visitor data yet. Data appears once logged-in users browse the site.</div>
+              ) : (
+                <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
+                  {rows.map(r => (
+                    <div key={r.email} style={{ background:'#fff', border:'1px solid #e8e8e8', borderRadius:12, padding:'16px 20px' }}>
+                      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', flexWrap:'wrap', gap:8 }}>
+                        <div>
+                          <div style={{ fontSize:14, fontWeight:700, color:'#0a0a0a' }}>{r.name || '—'}</div>
+                          <div style={{ fontSize:11, color:'#888', marginTop:2 }}>{r.email}</div>
+                        </div>
+                        <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
+                          <span style={{ background:'#f0f3ff', color:'#0a1f5d', fontSize:11, fontWeight:700, padding:'4px 10px', borderRadius:20 }}>🔁 {r.visits} visit{r.visits!==1?'s':''}</span>
+                          <span style={{ background:'#e6f9f0', color:'#00a86b', fontSize:11, fontWeight:700, padding:'4px 10px', borderRadius:20 }}>⏱ {fmtDur(r.totalSec)} total</span>
+                          <span style={{ background:'#fff3f3', color:'#c8102e', fontSize:11, fontWeight:700, padding:'4px 10px', borderRadius:20 }}>🕐 Last: {fmtTime(r.lastSeen)}</span>
+                        </div>
+                      </div>
+                      <div style={{ marginTop:12, display:'flex', gap:20, flexWrap:'wrap' }}>
+                        <div>
+                          <div style={{ fontSize:10, fontWeight:700, letterSpacing:'.1em', textTransform:'uppercase', color:'#aaa', marginBottom:4 }}>Pages Visited</div>
+                          <div style={{ display:'flex', gap:4, flexWrap:'wrap' }}>
+                            {[...r.allPages].map(p=>(
+                              <span key={p} style={{ background:'#f4f4f4', color:'#555', fontSize:10, fontWeight:600, padding:'3px 8px', borderRadius:4, textTransform:'capitalize' }}>{p}</span>
+                            ))}
+                          </div>
+                        </div>
+                        {r.device && (
+                          <div>
+                            <div style={{ fontSize:10, fontWeight:700, letterSpacing:'.1em', textTransform:'uppercase', color:'#aaa', marginBottom:4 }}>Device</div>
+                            <div style={{ fontSize:11, color:'#555' }}>
+                              {r.device.mobile ? '📱 Mobile' : '💻 Desktop'} · {r.device.screen} · {r.device.language}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                      {/* Per-session breakdown */}
+                      {r.sessions.length > 1 && (
+                        <div style={{ marginTop:12, borderTop:'1px solid #f0f0f0', paddingTop:10 }}>
+                          <div style={{ fontSize:10, fontWeight:700, letterSpacing:'.1em', textTransform:'uppercase', color:'#aaa', marginBottom:6 }}>Session History</div>
+                          <div style={{ display:'flex', flexDirection:'column', gap:4 }}>
+                            {r.sessions.slice(0,5).map(s=>(
+                              <div key={s.id} style={{ display:'flex', gap:12, fontSize:11, color:'#888', alignItems:'center' }}>
+                                <span style={{ color:'#555', fontWeight:600 }}>{fmtTime(s.started_at)}</span>
+                                <span>·</span>
+                                <span>{fmtDur(s.duration_sec)}</span>
+                                <span>·</span>
+                                <span>{(s.pages_visited||[]).join(', ')}</span>
+                              </div>
+                            ))}
+                            {r.sessions.length > 5 && <div style={{ fontSize:11, color:'#aaa' }}>+{r.sessions.length-5} more sessions</div>}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           )
         })()}
@@ -5118,6 +5264,78 @@ function MainSite({ user }) {
     else { audio.play().then(() => setPlaying(true)).catch(() => {}) }
   }
 
+  // ── SESSION TRACKING ──
+  const sessionIdRef   = useRef(null)
+  const sessionStartRef = useRef(null)
+  const pagesVisitedRef = useRef([])
+
+  useEffect(() => {
+    if (!user?.email) return // only track logged-in users
+
+    const sessionId   = crypto.randomUUID()
+    sessionIdRef.current    = sessionId
+    sessionStartRef.current = Date.now()
+    pagesVisitedRef.current = ['home']
+
+    const device = {
+      userAgent: navigator.userAgent,
+      platform:  navigator.platform || 'unknown',
+      language:  navigator.language,
+      screen:    `${window.screen.width}x${window.screen.height}`,
+      mobile:    /Mobi|Android/i.test(navigator.userAgent),
+    }
+
+    // Insert session row on mount
+    supabase.from('drynn_user_sessions').insert({
+      id:           sessionId,
+      user_email:   user.email,
+      user_name:    user.user_metadata?.full_name || user.email,
+      started_at:   new Date().toISOString(),
+      ended_at:     null,
+      duration_sec: 0,
+      pages_visited: ['home'],
+      device_info:  device,
+    }).then(({ error }) => { if (error) console.warn('[Tracking] Insert failed:', error.message) })
+
+    // On tab close / navigate away — update duration + ended_at
+    const endSession = () => {
+      const dur = Math.round((Date.now() - sessionStartRef.current) / 1000)
+      const payload = JSON.stringify({
+        ended_at:     new Date().toISOString(),
+        duration_sec: dur,
+        pages_visited: pagesVisitedRef.current,
+      })
+      // Use sendBeacon so it survives tab close
+      navigator.sendBeacon &&
+        navigator.sendBeacon(`https://www.drynn.in/api/end-session?id=${sessionId}`, payload)
+      // Also try supabase directly (works if tab stays open)
+      supabase.from('drynn_user_sessions').update({
+        ended_at:     new Date().toISOString(),
+        duration_sec: dur,
+        pages_visited: pagesVisitedRef.current,
+      }).eq('id', sessionId).then(() => {})
+    }
+
+    window.addEventListener('beforeunload', endSession)
+    return () => {
+      window.removeEventListener('beforeunload', endSession)
+      endSession()
+    }
+  }, [user?.email])
+
+  // Track page changes
+  useEffect(() => {
+    if (!user?.email || !sessionIdRef.current) return
+    if (!pagesVisitedRef.current.includes(page)) {
+      pagesVisitedRef.current = [...pagesVisitedRef.current, page]
+    }
+    // Update pages_visited in DB on each page change
+    supabase.from('drynn_user_sessions')
+      .update({ pages_visited: pagesVisitedRef.current })
+      .eq('id', sessionIdRef.current)
+      .then(() => {})
+  }, [page])
+
   const showToast = (msg) => {
     setToast(msg)
     setTimeout(() => setToast(''), 2200)
@@ -5210,10 +5428,6 @@ function MainSite({ user }) {
             </svg>
           )}
         </button>
-        {/* Song name */}
-        <div style={{ flexShrink:0, display:'flex', alignItems:'center', padding:'0 14px', borderRight:'1px solid #333', gap:6 }}>
-          <span style={{ fontSize:10, fontWeight:700, letterSpacing:'.16em', color: playing ? '#c8102e' : '#888', whiteSpace:'nowrap', transition:'color .3s' }}>♪ PAVAZHA MALLI</span>
-        </div>
         {/* Scrolling text */}
         <div style={{ flex:1, overflow:'hidden', padding:'10px 0' }}>
           <div style={{ display:'flex', gap:0, whiteSpace:'nowrap', animation:'marquee 22s linear infinite' }}>

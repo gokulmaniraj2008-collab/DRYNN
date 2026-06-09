@@ -1926,15 +1926,6 @@ function StudioPage({ user, onNav, onAddToCart }) {
 function HomePage({ user, onNav, cart, onAddToCart }) {
   const products = usePublicProducts()
   const [selectedProduct, setSelectedProduct] = React.useState(null)
-  const [now, setNow] = React.useState(new Date())
-
-  React.useEffect(() => {
-    const timer = setInterval(() => setNow(new Date()), 1000)
-    return () => clearInterval(timer)
-  }, [])
-
-  const fmtDate = (d) => d.toLocaleDateString('en-IN', { weekday:'long', day:'numeric', month:'long', year:'numeric' })
-  const fmtTime = (d) => d.toLocaleTimeString('en-IN', { hour:'2-digit', minute:'2-digit', second:'2-digit', hour12:true })
 
   if (selectedProduct) return (
     <ProductDetailPage
@@ -1948,12 +1939,6 @@ function HomePage({ user, onNav, cart, onAddToCart }) {
       {/* Hero Banner */}
       <div style={{ background:'linear-gradient(135deg,#0a1f5d 0%,#1a0a2e 100%)', padding:'48px 20px 56px', position:'relative', overflow:'hidden' }}>
         <div style={{ position:'absolute', inset:0, background:'radial-gradient(ellipse at 70% 50%,rgba(200,16,46,.18) 0%,transparent 55%)', pointerEvents:'none' }} />
-        {/* Date/time — pinned top-right of hero */}
-        <div style={{ position:'absolute', top:10, right:12, display:'inline-flex', alignItems:'center', gap:6, background:'rgba(0,0,0,.25)', border:'1px solid rgba(255,255,255,.08)', borderRadius:5, padding:'3px 8px', zIndex:2 }}>
-          <span style={{ fontSize:8, fontWeight:700, color:'rgba(255,255,255,.8)', letterSpacing:'.04em', fontVariantNumeric:'tabular-nums' }}>{fmtTime(now)}</span>
-          <span style={{ width:1, height:8, background:'rgba(255,255,255,.15)' }} />
-          <span style={{ fontSize:8, color:'rgba(255,255,255,.4)', letterSpacing:'.03em' }}>{fmtDate(now)}</span>
-        </div>
         <div style={{ maxWidth:1100, margin:'0 auto', position:'relative', zIndex:1, padding:'0 4px' }}>
           <div style={{ display:'inline-flex', alignItems:'center', gap:8, background:'rgba(200,16,46,.18)', border:'1px solid rgba(200,16,46,.35)', borderRadius:100, padding:'5px 14px', marginBottom:16 }}>
             <div style={{ width:5, height:5, borderRadius:'50%', background:'#c8102e' }} />
@@ -5242,6 +5227,15 @@ function MainSite({ user }) {
   const [cart, setCart]     = useState([])
   const [toast, setToast]   = useState('')
   const [playing, setPlaying] = useState(false)
+  const [now, setNow] = useState(new Date())
+
+  useEffect(() => {
+    const timer = setInterval(() => setNow(new Date()), 1000)
+    return () => clearInterval(timer)
+  }, [])
+
+  const fmtClockTime = (d) => d.toLocaleTimeString('en-IN', { hour:'2-digit', minute:'2-digit', second:'2-digit', hour12:true })
+  const fmtClockDate = (d) => d.toLocaleDateString('en-IN', { weekday:'short', day:'numeric', month:'short' })
   const audioRef = useRef(null)
 
   useEffect(() => {
@@ -5438,6 +5432,12 @@ function MainSite({ user }) {
               ))
             ))}
           </div>
+        </div>
+        {/* Clock */}
+        <div style={{ flexShrink:0, display:'flex', alignItems:'center', gap:6, padding:'0 12px', borderLeft:'1px solid #222' }}>
+          <span style={{ fontSize:9, fontWeight:700, color:'#fff', letterSpacing:'.04em', fontVariantNumeric:'tabular-nums' }}>{fmtClockTime(now)}</span>
+          <span style={{ width:1, height:8, background:'#333' }} />
+          <span style={{ fontSize:9, color:'#666', letterSpacing:'.03em' }}>{fmtClockDate(now)}</span>
         </div>
       </div>
 

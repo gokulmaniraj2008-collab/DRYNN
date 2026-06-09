@@ -319,7 +319,7 @@ function IntroPage({ onGoToLogin }) {
           </p>
           <div className="hero-cta" style={{ display:'flex', gap:12, flexWrap:'wrap' }}>
             <button className="btn-primary" style={{ fontSize:14, padding:'14px 28px' }} onClick={onGoToLogin}>Get Started Free</button>
-            <button style={{ fontSize:14, padding:'14px 28px', background:'rgba(255,255,255,.12)', color:'#fff', border:'1.5px solid rgba(255,255,255,.35)', borderRadius:4, fontWeight:700, cursor:'pointer' }} onClick={onGoToLogin}>View Products</button>
+            <button className="btn-secondary" style={{ fontSize:14, padding:'14px 28px' }} onClick={onGoToLogin}>View Products</button>
           </div>
         </div>
       </div>

@@ -5423,6 +5423,10 @@ function MainSite({ user }) {
             </svg>
           )}
         </button>
+        {/* Song name */}
+        <div style={{ flexShrink:0, display:'flex', alignItems:'center', padding:'0 14px', borderRight:'1px solid #333', gap:6 }}>
+          <span style={{ fontSize:10, fontWeight:700, letterSpacing:'.16em', color: playing ? '#c8102e' : '#888', whiteSpace:'nowrap', transition:'color .3s' }}>♪ PAVAZHA MALLI</span>
+        </div>
         {/* Scrolling text */}
         <div style={{ flex:1, overflow:'hidden', padding:'10px 0' }}>
           <div style={{ display:'flex', gap:0, whiteSpace:'nowrap', animation:'marquee 22s linear infinite' }}>

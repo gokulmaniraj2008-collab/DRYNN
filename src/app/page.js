@@ -1336,7 +1336,7 @@ function StudioPage({ user, onNav, onAddToCart }) {
       <div style={{ padding:'32px 16px 24px', position:'relative', overflow:'hidden', background:'#0a0a0a' }}>
         <video autoPlay muted loop playsInline
           style={{ position:'absolute', inset:0, width:'100%', height:'100%', objectFit:'cover', opacity:0.85, pointerEvents:'none' }}>
-          <source src="https://res.cloudinary.com/dfhdyp4oq/video/upload/v1780972479/video_20260609_080102_edit_n46bhf.mp4" type="video/mp4" />
+          <source src="https://res.cloudinary.com/dfhdyp4oq/video/upload/v1781006529/Cinthia_Duim_MP4_lpf7mx.mp4" type="video/mp4" />
         </video>
         <div style={{ position:'absolute', inset:0, background:'rgba(0,0,0,.35)', pointerEvents:'none' }} />
         <div style={{ maxWidth:960, margin:'0 auto', position:'relative', zIndex:1 }}>
@@ -1945,7 +1945,7 @@ function HomePage({ user, onNav, cart, onAddToCart }) {
         {/* Background video */}
         <video autoPlay muted loop playsInline
           style={{ position:'absolute', inset:0, width:'100%', height:'100%', objectFit:'cover', opacity:0.85, pointerEvents:'none' }}>
-          <source src="https://res.cloudinary.com/dfhdyp4oq/video/upload/v1780972479/video_20260609_080102_edit_n46bhf.mp4" type="video/mp4" />
+          <source src="https://res.cloudinary.com/dfhdyp4oq/video/upload/v1781005895/%E1%BA%A2nh_b%C3%ACa___%E1%BA%A2nh_%C4%91%E1%BB%99ng__H%C3%ACnh_gif__Ngh%E1%BB%87_thu%E1%BA%ADt_MP4_gm3r0e.mp4" type="video/mp4" />
         </video>
         {/* Subtle dark overlay just for text readability */}
         <div style={{ position:'absolute', inset:0, background:'rgba(0,0,0,.35)', pointerEvents:'none' }} />

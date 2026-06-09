@@ -1333,8 +1333,12 @@ function StudioPage({ user, onNav, onAddToCart }) {
     <div style={{ background:'#0d1b3e', minHeight:'100vh' }}>
 
       {/* ── Header ── */}
-      <div style={{ background:'linear-gradient(135deg,#0a1f5d,#1a0a2e)', padding:'32px 16px 24px', position:'relative', overflow:'hidden' }}>
-        <div style={{ position:'absolute', inset:0, background:'radial-gradient(ellipse at 50% 70%,rgba(200,16,46,.15) 0%,transparent 55%)', pointerEvents:'none' }} />
+      <div style={{ padding:'32px 16px 24px', position:'relative', overflow:'hidden', background:'#0a0a0a' }}>
+        <video autoPlay muted loop playsInline
+          style={{ position:'absolute', inset:0, width:'100%', height:'100%', objectFit:'cover', opacity:0.85, pointerEvents:'none' }}>
+          <source src="https://res.cloudinary.com/dfhdyp4oq/video/upload/v1780972479/video_20260609_080102_edit_n46bhf.mp4" type="video/mp4" />
+        </video>
+        <div style={{ position:'absolute', inset:0, background:'rgba(0,0,0,.35)', pointerEvents:'none' }} />
         <div style={{ maxWidth:960, margin:'0 auto', position:'relative', zIndex:1 }}>
           <button onClick={()=>onNav('home')} style={{ display:'inline-flex', alignItems:'center', gap:6, background:'rgba(255,255,255,.1)', border:'1px solid rgba(255,255,255,.2)', color:'rgba(255,255,255,.8)', padding:'6px 14px', borderRadius:50, fontSize:12, cursor:'pointer', fontWeight:600, marginBottom:16 }}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg>Back

@@ -248,6 +248,17 @@ function SplashScreen({ onDone }) {
 // INTRO PAGE (brand info  -  no login)
 // ══════════════════════════════════════════════════════════════
 function IntroPage({ onGoToLogin }) {
+  const [muted, setMuted] = React.useState(true)
+  const videoRef = React.useRef(null)
+
+  const toggleMute = () => {
+    setMuted(m => {
+      const next = !m
+      if (videoRef.current) videoRef.current.muted = next
+      return next
+    })
+  }
+
   return (
     <div style={{ minHeight:'100vh', background:'#fff', display:'flex', flexDirection:'column' }}>
       {/* Top stripe */}
@@ -263,12 +274,43 @@ function IntroPage({ onGoToLogin }) {
       {/* Hero — Cloudinary Background Video */}
       <div style={{ position:'relative', width:'100%', minHeight:480, overflow:'hidden', display:'flex', alignItems:'center' }}>
         <video
+          ref={videoRef}
           autoPlay muted loop playsInline
           style={{ position:'absolute', inset:0, width:'100%', height:'100%', objectFit:'cover', zIndex:0 }}
         >
           <source src="https://res.cloudinary.com/dfhdyp4oq/video/upload/v1780972479/video_20260609_080102_edit_n46bhf.mp4" type="video/mp4" />
         </video>
         <div style={{ position:'absolute', inset:0, background:'linear-gradient(135deg,rgba(10,10,10,.72) 0%,rgba(10,31,93,.55) 100%)', zIndex:1 }} />
+
+        {/* Mute/Unmute button — bottom right */}
+        <button onClick={toggleMute} style={{
+          position:'absolute', bottom:16, right:16, zIndex:3,
+          width:40, height:40, borderRadius:'50%',
+          background:'rgba(255,255,255,.15)', border:'1.5px solid rgba(255,255,255,.3)',
+          backdropFilter:'blur(8px)', cursor:'pointer',
+          display:'flex', alignItems:'center', justifyContent:'center',
+          transition:'background .2s',
+        }}
+          onMouseEnter={e=>e.currentTarget.style.background='rgba(255,255,255,.28)'}
+          onMouseLeave={e=>e.currentTarget.style.background='rgba(255,255,255,.15)'}
+          title={muted ? 'Unmute' : 'Mute'}
+        >
+          {muted ? (
+            /* Muted icon */
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+              <line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/>
+            </svg>
+          ) : (
+            /* Unmuted icon */
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+              <path d="M15.54 8.46a5 5 0 0 1 0 7.07"/>
+              <path d="M19.07 4.93a10 10 0 0 1 0 14.14"/>
+            </svg>
+          )}
+        </button>
+
         <div style={{ position:'relative', zIndex:2, padding:'56px 20px 48px', maxWidth:680, margin:'0 auto', width:'100%' }} className="fade-in">
           <span className="sec-label" style={{ color:'#c8102e' }}>Tamil Nadu's #1 Custom Print</span>
           <h1 style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:'clamp(42px,10vw,80px)', letterSpacing:'.02em', lineHeight:1, marginBottom:16, color:'#fff' }}>
@@ -285,9 +327,7 @@ function IntroPage({ onGoToLogin }) {
       </div>
               
       
-      </div>
-
-      {/* Steps — moved above feature strips */}
+      {/* Steps */}
       <div style={{ background:'#f8f8f8', padding:'48px 20px' }}>
         <div style={{ maxWidth:900, margin:'0 auto' }}>
           <span className="sec-label" style={{ textAlign:'center', display:'block' }}>How It Works</span>
@@ -303,7 +343,6 @@ function IntroPage({ onGoToLogin }) {
           </div>
         </div>
       </div>
-
       {/* Feature strips */}
       <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(220px,1fr))', gap:16, padding:'32px 20px 48px', maxWidth:900, margin:'0 auto', width:'100%' }}>
         {[
@@ -321,7 +360,6 @@ function IntroPage({ onGoToLogin }) {
           </div>
         ))}
       </div>
-        
       {/* CTA Banner */}
       <div style={{ background:'#0a1f5d', padding:'48px 20px', textAlign:'center' }}>
         <h2 style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:'clamp(28px,6vw,52px)', color:'#fff', letterSpacing:'.03em', marginBottom:12 }}>READY TO CREATE YOUR CUSTOM GARMENT?</h2>

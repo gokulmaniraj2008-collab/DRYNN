@@ -5094,6 +5094,29 @@ function MainSite({ user }) {
   const [page, setPage]     = useState('home')
   const [cart, setCart]     = useState([])
   const [toast, setToast]   = useState('')
+  const [playing, setPlaying] = useState(false)
+  const audioRef = useRef(null)
+
+  useEffect(() => {
+    const audio = audioRef.current
+    if (!audio) return
+    // Auto-play on mount — browsers require a user gesture, so we attempt and handle the rejection gracefully
+    const tryPlay = () => {
+      audio.play().then(() => setPlaying(true)).catch(() => setPlaying(false))
+    }
+    tryPlay()
+    // Fallback: also try on first user interaction anywhere on the page
+    const onInteract = () => { if (!playing) tryPlay(); document.removeEventListener('click', onInteract) }
+    document.addEventListener('click', onInteract)
+    return () => document.removeEventListener('click', onInteract)
+  }, [])
+
+  const togglePlay = () => {
+    const audio = audioRef.current
+    if (!audio) return
+    if (playing) { audio.pause(); setPlaying(false) }
+    else { audio.play().then(() => setPlaying(true)).catch(() => {}) }
+  }
 
   const showToast = (msg) => {
     setToast(msg)
@@ -5164,14 +5187,38 @@ function MainSite({ user }) {
         </div>
       </nav>
 
-      {/* ── MARQUEE ── */}
-      <div style={{ background:'#0a0a0a', color:'#fff', padding:'10px 0', overflow:'hidden' }}>
-        <div style={{ display:'flex', gap:0, whiteSpace:'nowrap', animation:'marquee 22s linear infinite' }}>
-          {[...Array(2)].map((_,rep)=>(
-            ['FREE DELIVERY ABOVE ₹1,500','PREMIUM HEAT PRESS PRINT','GROUP ORDERS AVAILABLE','5-7 DAY DELIVERY','REAL-TIME ORDER TRACKING','UPI & RAZORPAY ACCEPTED'].map((t,i)=>(
-              <span key={`${rep}-${i}`} style={{ fontSize:10, fontWeight:700, letterSpacing:'.16em', padding:'0 28px', borderRight:'1px solid #333' }}>{t}</span>
-            ))
-          ))}
+      {/* ── AUDIO ── */}
+      <audio ref={audioRef} src="https://res.cloudinary.com/dfhdyp4oq/video/upload/v1780986025/Until_I_Found_You_pfngqj.mp3" loop preload="auto" />
+
+      {/* ── MARQUEE + MUSIC PLAYER ── */}
+      <div style={{ background:'#0a0a0a', color:'#fff', padding:'0', overflow:'hidden', display:'flex', alignItems:'stretch' }}>
+        {/* Play/Pause button */}
+        <button onClick={togglePlay}
+          style={{ flexShrink:0, width:44, background:'none', border:'none', borderRight:'1px solid #222', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', padding:0, transition:'background .15s' }}
+          title={playing ? 'Pause music' : 'Play music'}
+          onMouseEnter={e=>e.currentTarget.style.background='rgba(200,16,46,.18)'}
+          onMouseLeave={e=>e.currentTarget.style.background='none'}>
+          {playing ? (
+            /* Pause icon */
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="#fff">
+              <rect x="5" y="3" width="4" height="18" rx="1"/><rect x="15" y="3" width="4" height="18" rx="1"/>
+            </svg>
+          ) : (
+            /* Play icon */
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="#c8102e">
+              <polygon points="5,3 19,12 5,21"/>
+            </svg>
+          )}
+        </button>
+        {/* Scrolling text */}
+        <div style={{ flex:1, overflow:'hidden', padding:'10px 0' }}>
+          <div style={{ display:'flex', gap:0, whiteSpace:'nowrap', animation:'marquee 22s linear infinite' }}>
+            {[...Array(2)].map((_,rep)=>(
+              ['FREE DELIVERY ABOVE ₹1,500','PREMIUM HEAT PRESS PRINT','GROUP ORDERS AVAILABLE','5-7 DAY DELIVERY','REAL-TIME ORDER TRACKING','UPI & RAZORPAY ACCEPTED'].map((t,i)=>(
+                <span key={`${rep}-${i}`} style={{ fontSize:10, fontWeight:700, letterSpacing:'.16em', padding:'0 28px', borderRight:'1px solid #333' }}>{t}</span>
+              ))
+            ))}
+          </div>
         </div>
       </div>
 

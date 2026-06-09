@@ -314,17 +314,18 @@ function IntroPage({ onGoToLogin }) {
           <h1 style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:'clamp(42px,10vw,80px)', letterSpacing:'.02em', lineHeight:1, marginBottom:16, color:'#fff' }}>
             YOUR DESIGN.<br/><span style={{ color:'#c8102e' }}>YOUR STYLE.</span><br/>YOUR DRYNN.
           </h1>
-          <p style={{ fontSize:15, lineHeight:1.85, color:'rgba(255,255,255,.75)', marginBottom:28, maxWidth:480 }}>
+          <p style={{ fontSize:15, lineHeight:1.85, color:'rgba(255,255,255,.75)', marginBottom:0, maxWidth:480 }}>
             Upload your artwork, pick your garment, and we deliver premium custom clothing straight to your door — anywhere in India.
           </p>
-          <div className="hero-cta" style={{ display:'flex', gap:12, flexWrap:'wrap' }}>
-            <button className="btn-primary" style={{ fontSize:14, padding:'14px 28px' }} onClick={onGoToLogin}>Get Started Free</button>
-            <button className="btn-secondary" style={{ fontSize:14, padding:'14px 28px' }} onClick={onGoToLogin}>View Products</button>
-          </div>
         </div>
       </div>
-              
-      
+
+      {/* CTA Buttons — white section below video */}
+      <div style={{ background:'#fff', padding:'24px 20px', display:'flex', flexDirection:'column', gap:12 }}>
+        <button className="btn-primary" style={{ fontSize:14, padding:'16px 28px', width:'100%' }} onClick={onGoToLogin}>GET STARTED FREE</button>
+        <button className="btn-secondary" style={{ fontSize:14, padding:'16px 28px', width:'100%' }} onClick={onGoToLogin}>View Products</button>
+      </div>
+
       {/* Steps */}
       <div style={{ background:'#f8f8f8', padding:'48px 20px' }}>
         <div style={{ maxWidth:900, margin:'0 auto' }}>

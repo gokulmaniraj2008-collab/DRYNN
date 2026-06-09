@@ -272,7 +272,7 @@ function IntroPage({ onGoToLogin }) {
       </div>
 
       {/* Hero — Cloudinary Background Video */}
-      <div style={{ position:'relative', width:'100%', overflow:'hidden', display:'flex', alignItems:'center' }}>
+      <div style={{ position:'relative', width:'100%', minHeight:480, overflow:'hidden', display:'flex', alignItems:'center' }}>
         <video
           ref={videoRef}
           autoPlay muted loop playsInline
@@ -284,9 +284,9 @@ function IntroPage({ onGoToLogin }) {
 
         {/* Mute/Unmute button — bottom right */}
         <button onClick={toggleMute} style={{
-          position:'absolute', bottom:12, right:12, zIndex:3,
-          width:28, height:28, borderRadius:'50%',
-          background:'rgba(255,255,255,.15)', border:'1px solid rgba(255,255,255,.3)',
+          position:'absolute', bottom:16, right:16, zIndex:3,
+          width:40, height:40, borderRadius:'50%',
+          background:'rgba(255,255,255,.15)', border:'1.5px solid rgba(255,255,255,.3)',
           backdropFilter:'blur(8px)', cursor:'pointer',
           display:'flex', alignItems:'center', justifyContent:'center',
           transition:'background .2s',
@@ -296,12 +296,14 @@ function IntroPage({ onGoToLogin }) {
           title={muted ? 'Unmute' : 'Mute'}
         >
           {muted ? (
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            /* Muted icon */
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
               <line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/>
             </svg>
           ) : (
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            /* Unmuted icon */
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
               <path d="M15.54 8.46a5 5 0 0 1 0 7.07"/>
               <path d="M19.07 4.93a10 10 0 0 1 0 14.14"/>
@@ -309,23 +311,22 @@ function IntroPage({ onGoToLogin }) {
           )}
         </button>
 
-        <div style={{ position:'relative', zIndex:2, padding:'48px 20px 32px', maxWidth:680, margin:'0 auto', width:'100%' }} className="fade-in">
+        <div style={{ position:'relative', zIndex:2, padding:'56px 20px 48px', maxWidth:680, margin:'0 auto', width:'100%' }} className="fade-in">
           <span className="sec-label" style={{ color:'#c8102e' }}>Tamil Nadu's #1 Custom Print</span>
           <h1 style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:'clamp(42px,10vw,80px)', letterSpacing:'.02em', lineHeight:1, marginBottom:16, color:'#fff' }}>
             YOUR DESIGN.<br/><span style={{ color:'#c8102e' }}>YOUR STYLE.</span><br/>YOUR DRYNN.
           </h1>
-          <p style={{ fontSize:15, lineHeight:1.85, color:'rgba(255,255,255,.75)', marginBottom:0, maxWidth:480 }}>
+          <p style={{ fontSize:15, lineHeight:1.85, color:'rgba(255,255,255,.75)', marginBottom:28, maxWidth:480 }}>
             Upload your artwork, pick your garment, and we deliver premium custom clothing straight to your door — anywhere in India.
           </p>
+          <div className="hero-cta" style={{ display:'flex', gap:12, flexWrap:'wrap' }}>
+            <button className="btn-primary" style={{ fontSize:14, padding:'14px 28px' }} onClick={onGoToLogin}>Get Started Free</button>
+            <button style={{ fontSize:14, padding:'14px 28px', background:'rgba(255,255,255,.12)', color:'#fff', border:'1.5px solid rgba(255,255,255,.35)', borderRadius:4, fontWeight:700, cursor:'pointer' }} onClick={onGoToLogin}>View Products</button>
+          </div>
         </div>
       </div>
-
-      {/* CTA Buttons — white section below video */}
-      <div style={{ background:'#fff', padding:'24px 20px', display:'flex', flexDirection:'column', gap:12 }}>
-        <button className="btn-primary" style={{ fontSize:14, padding:'16px 28px', width:'100%' }} onClick={onGoToLogin}>GET STARTED FREE</button>
-        <button className="btn-secondary" style={{ fontSize:14, padding:'16px 28px', width:'100%' }} onClick={onGoToLogin}>View Products</button>
-      </div>
-
+              
+      
       {/* Steps */}
       <div style={{ background:'#f8f8f8', padding:'48px 20px' }}>
         <div style={{ maxWidth:900, margin:'0 auto' }}>

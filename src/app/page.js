@@ -285,24 +285,9 @@ function IntroPage({ onGoToLogin }) {
       </div>
               
       
-      {/* Feature strips */}
-      <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(220px,1fr))', gap:16, padding:'0 20px 48px', maxWidth:900, margin:'0 auto', width:'100%' }}>
-        {[
-          { icon:'•', label:'Custom Print',        desc:'Any design, any garment, any colour',    bg:'rgba(200,16,46,0.07)'  },
-          { icon:'•', label:'Fast Delivery',        desc:'5-7 days across India, express available',   bg:'rgba(10,31,93,0.07)'   },
-          { icon:'•', label:'Quality Guaranteed',   desc:'Heat press, wash-proof, 100% guarantee', bg:'rgba(0,168,107,0.07)'  },
-          { icon:'•', label:'Easy Payment',         desc:'UPI & Razorpay  -  secure payment',       bg:'rgba(245,166,35,0.10)' },
-        ].map((f,i) => (
-          <div key={i} style={{ display:'flex', alignItems:'center', gap:14, background:f.bg, borderRadius:12, padding:'16px 18px' }}>
-            <div style={{ flexShrink:0, color:'#555' }}>{f.icon}</div>
-            <div>
-              <div style={{ fontSize:13, fontWeight:700, marginBottom:2 }}>{f.label}</div>
-              <div style={{ fontSize:11, color:'#888' }}>{f.desc}</div>
-            </div>
-          </div>
-        ))}
       </div>
-      {/* Steps */}
+
+      {/* Steps — moved above feature strips */}
       <div style={{ background:'#f8f8f8', padding:'48px 20px' }}>
         <div style={{ maxWidth:900, margin:'0 auto' }}>
           <span className="sec-label" style={{ textAlign:'center', display:'block' }}>How It Works</span>
@@ -318,6 +303,25 @@ function IntroPage({ onGoToLogin }) {
           </div>
         </div>
       </div>
+
+      {/* Feature strips */}
+      <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(220px,1fr))', gap:16, padding:'32px 20px 48px', maxWidth:900, margin:'0 auto', width:'100%' }}>
+        {[
+          { icon:'•', label:'Custom Print',        desc:'Any design, any garment, any colour',    bg:'rgba(200,16,46,0.07)'  },
+          { icon:'•', label:'Fast Delivery',        desc:'5-7 days across India, express available',   bg:'rgba(10,31,93,0.07)'   },
+          { icon:'•', label:'Quality Guaranteed',   desc:'Heat press, wash-proof, 100% guarantee', bg:'rgba(0,168,107,0.07)'  },
+          { icon:'•', label:'Easy Payment',         desc:'UPI & Razorpay  -  secure payment',       bg:'rgba(245,166,35,0.10)' },
+        ].map((f,i) => (
+          <div key={i} style={{ display:'flex', alignItems:'center', gap:14, background:f.bg, borderRadius:12, padding:'16px 18px' }}>
+            <div style={{ flexShrink:0, color:'#555' }}>{f.icon}</div>
+            <div>
+              <div style={{ fontSize:13, fontWeight:700, marginBottom:2 }}>{f.label}</div>
+              <div style={{ fontSize:11, color:'#888' }}>{f.desc}</div>
+            </div>
+          </div>
+        ))}
+      </div>
+        
       {/* CTA Banner */}
       <div style={{ background:'#0a1f5d', padding:'48px 20px', textAlign:'center' }}>
         <h2 style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:'clamp(28px,6vw,52px)', color:'#fff', letterSpacing:'.03em', marginBottom:12 }}>READY TO CREATE YOUR CUSTOM GARMENT?</h2>

@@ -3098,7 +3098,7 @@ function OrdersPage({ user, onBack, onNav }) {
 }
 
 function AccountPage({ user, onLogout, onNav }) {
-  const isAdmin = user?.email === 'gokulmaniraj2008@gmail.com'
+  const isAdmin = user?.email === 'praneshsrinivasan2007@gmail.com'
   return (
     <div>
       <div style={{ background:'linear-gradient(135deg,#0a1f5d,#1a0a2e)', padding:'40px 20px', textAlign:'center' }}>

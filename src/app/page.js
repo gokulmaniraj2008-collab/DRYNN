@@ -10,14 +10,14 @@ const GOOGLE_SHEET_WEBHOOK = process.env.NEXT_PUBLIC_GOOGLE_SHEET_WEBHOOK
 
 // ── Data ─────────────────────────────────────────────────────
 const PRODUCTS = [
-  { id: 1, name: 'Classic Oversized Tee', price: 699,  mrp: 999,  tag: 'Best Seller', tagColor: '#c8102e', category: 'T-Shirts',  emoji: '👕', rating: 4.5, reviews: 238 },
-  { id: 2, name: 'Premium Hoodie',         price: 1299, mrp: 1799, tag: 'New',         tagColor: '#0a1f5d', category: 'Hoodies',   emoji: '🧥', rating: 4.7, reviews: 91  },
-  { id: 3, name: 'Slim Fit Polo',          price: 849,  mrp: 1199, tag: 'Popular',     tagColor: '#00a86b', category: 'Polos',     emoji: '👔', rating: 4.3, reviews: 174 },
-  { id: 4, name: 'Cargo Joggers',          price: 999,  mrp: 1399, tag: 'New',         tagColor: '#0a0a0a', category: 'Joggers',   emoji: '👖', rating: 4.4, reviews: 62  },
-  { id: 5, name: 'Graphic Round Neck Tee', price: 599,  mrp: 849,  tag: 'Sale',        tagColor: '#c8102e', category: 'T-Shirts',  emoji: '👕', rating: 4.2, reviews: 312 },
-  { id: 6, name: 'Zip-Up Hoodie',          price: 1499, mrp: 1999, tag: 'Trending',    tagColor: '#9b59b6', category: 'Hoodies',   emoji: '🧥', rating: 4.6, reviews: 55  },
-  { id: 7, name: 'Classic Polo',           price: 749,  mrp: 999,  tag: 'Popular',     tagColor: '#00a86b', category: 'Polos',     emoji: '👔', rating: 4.1, reviews: 88  },
-  { id: 8, name: 'Track Pants',            price: 899,  mrp: 1199, tag: 'New',         tagColor: '#0a0a0a', category: 'Joggers',   emoji: '👖', rating: 4.3, reviews: 43  },
+  { id: 1, name: 'Classic Oversized Tee', price: 699,  mrp: 999,  tag: 'Best Seller', tagColor: '#c8102e', category: 'T-Shirts',  emoji: '.', rating: 4.5, reviews: 238 },
+  { id: 2, name: 'Premium Hoodie',         price: 1299, mrp: 1799, tag: 'New',         tagColor: '#0a1f5d', category: 'Hoodies',   emoji: '.', rating: 4.7, reviews: 91  },
+  { id: 3, name: 'Slim Fit Polo',          price: 849,  mrp: 1199, tag: 'Popular',     tagColor: '#00a86b', category: 'Polos',     emoji: '.', rating: 4.3, reviews: 174 },
+  { id: 4, name: 'Cargo Joggers',          price: 999,  mrp: 1399, tag: 'New',         tagColor: '#0a0a0a', category: 'Joggers',   emoji: '.', rating: 4.4, reviews: 62  },
+  { id: 5, name: 'Graphic Round Neck Tee', price: 599,  mrp: 849,  tag: 'Sale',        tagColor: '#c8102e', category: 'T-Shirts',  emoji: '.', rating: 4.2, reviews: 312 },
+  { id: 6, name: 'Zip-Up Hoodie',          price: 1499, mrp: 1999, tag: 'Trending',    tagColor: '#9b59b6', category: 'Hoodies',   emoji: '.', rating: 4.6, reviews: 55  },
+  { id: 7, name: 'Classic Polo',           price: 749,  mrp: 999,  tag: 'Popular',     tagColor: '#00a86b', category: 'Polos',     emoji: '.', rating: 4.1, reviews: 88  },
+  { id: 8, name: 'Track Pants',            price: 899,  mrp: 1199, tag: 'New',         tagColor: '#0a0a0a', category: 'Joggers',   emoji: '.', rating: 4.3, reviews: 43  },
 ]
 const SWATCHES = ['#ffffff','#0a0a0a','#c8102e','#0a1f5d','#00a86b','#f5a623','#9b59b6','#888888']
 
@@ -39,7 +39,7 @@ function useProducts() {
             reviews:   Number(p.reviews)  || 0,
             tagColor:  p.tagColor || p.tag_color || '#c8102e',
             tag_color: p.tag_color || p.tagColor || '#c8102e',
-            emoji:     p.emoji || '👕',
+            emoji:     p.emoji || '.',
             tag:       p.tag || 'New',
             img_front: p.img_front || null,
             img_back:  p.img_back  || null,
@@ -1190,7 +1190,7 @@ function StudioPage({ user, onNav, onAddToCart }) {
     'Polo':    'https://res.cloudinary.com/dfhdyp4oq/image/upload/drynn/products/polo_white.png',
     'Joggers': 'https://res.cloudinary.com/dfhdyp4oq/image/upload/drynn/products/joggers_black.png',
   }
-  const GARMENT_EMOJI = {'T-Shirt':'𝐓','Hoodie':'𝐇','Polo':'𝐏','Joggers':'𝐉'}
+  const GARMENT_EMOJI = {'T-Shirt':'.','Hoodie':'.','Polo':'.','Joggers':'.'}
   const garmentType = selectedProduct
     ? (selectedProduct.category==='Hoodies'?'Hoodie':selectedProduct.category==='Polos'?'Polo':selectedProduct.category==='Joggers'?'Joggers':'T-Shirt')
     : 'T-Shirt'
@@ -1338,7 +1338,7 @@ function StudioPage({ user, onNav, onAddToCart }) {
 
             {allProducts.length === 0 ? (
               <div style={{ textAlign:'center', padding:'48px 20px', background:'rgba(255,255,255,.04)', borderRadius:14 }}>
-                <div style={{ fontSize:52, marginBottom:12 }}>👕</div>
+                <div style={{ fontSize:52, marginBottom:12 }}>.</div>
                 <div style={{ fontSize:16, fontWeight:700, color:'rgba(255,255,255,.6)', marginBottom:6 }}>No products yet</div>
                 <p style={{ fontSize:13, color:'rgba(255,255,255,.35)', lineHeight:1.7 }}>Admin hasn't added any products.<br/>You can still continue with a standard garment.</p>
               </div>
@@ -1355,7 +1355,7 @@ function StudioPage({ user, onNav, onAddToCart }) {
                       <div style={{ height:160, background:'#f8f8f8', display:'flex', alignItems:'center', justifyContent:'center', position:'relative', overflow:'hidden' }}>
                         {p.image_url
                           ? <img src={p.image_url} alt={p.name} style={{ width:'100%', height:'100%', objectFit:'contain' }} />
-                          : <span style={{ fontSize:72 }}>{p.emoji||'👕'}</span>}
+                          : <span style={{ fontSize:72 }}>{p.emoji||'.'}</span>}
                         {/* Tag */}
                         <div style={{ position:'absolute', top:8, left:8, background:p.tag_color||p.tagColor||'#c8102e', color:'#fff', fontSize:8, fontWeight:700, letterSpacing:'.1em', textTransform:'uppercase', padding:'2px 8px', borderRadius:3 }}>{p.tag||'New'}</div>
                         {/* Studio exclusive */}
@@ -1909,10 +1909,10 @@ function HomePage({ user, onNav, cart, onAddToCart }) {
       <div style={{ background:'#fff', borderBottom:'1px solid #f0f0f0' }}>
         <div className="feature-bar" style={{ maxWidth:1100, margin:'0 auto', display:'grid', gridTemplateColumns:'repeat(4,1fr)', padding:'0 16px' }}>
           {[
-            { icon:'•', label:'Free Delivery', sub:'Above ₹1,500' },
-            { icon:'・', label:'Easy Returns',  sub:'Manufacturing defects' },
-            { icon:'•', label:'Secure Pay',    sub:'UPI · Razorpay · Secure' },
-            { icon:'•', label:'WhatsApp Support', sub:'2-hour response' },
+            { icon:'.', label:'Free Delivery', sub:'Above ₹1,500' },
+            { icon:'.', label:'Easy Returns',  sub:'Manufacturing defects' },
+            { icon:'.', label:'Secure Pay',    sub:'UPI · Razorpay · Secure' },
+            { icon:'.', label:'WhatsApp Support', sub:'2-hour response' },
           ].map((f,i) => (
             <div key={i} style={{ display:'flex', alignItems:'center', gap:10, padding:'14px 8px', borderRight:i<3?'1px solid #f0f0f0':'none' }}>
               <span style={{ fontSize:22, flexShrink:0 }}>{f.icon}</span>
@@ -3070,7 +3070,7 @@ function AccountPage({ user, onLogout, onNav }) {
           { icon:'•', label:'Payments',      sub:'UPI, Razorpay',                      page:null       },
           { icon:'•', label:'Addresses',     sub:'Manage delivery addresses',          page:null       },
           { icon:'•', label:'Notifications', sub:'Order updates on WhatsApp',          page:null       },
-          { icon:'ℹ',  label:'About DRYNN',  sub:'Our story & how it works',           page:'about'   },
+          { icon:'•',  label:'About DRYNN',  sub:'Our story & how it works',           page:'about'   },
           { icon:'•', label:'Contact Us',    sub:'WhatsApp, email & support',          page:'contact' },
           { icon:'•', label:'Privacy',       sub:'Data & privacy settings',            page:'privacy'  },
         ].map((item,i)=>(
@@ -3089,7 +3089,7 @@ function AccountPage({ user, onLogout, onNav }) {
           <div onClick={()=>onNav('admin')}
             style={{ display:'flex', alignItems:'center', gap:16, padding:'16px 0', borderBottom:'1px solid #f5f5f5', cursor:'pointer', transition:'padding .15s' }}
             onMouseEnter={e=>e.currentTarget.style.paddingLeft='8px'} onMouseLeave={e=>e.currentTarget.style.paddingLeft='0'}>
-            <div style={{ width:44, height:44, background:'rgba(200,16,46,.08)', borderRadius:12, display:'flex', alignItems:'center', justifyContent:'center', fontSize:22, flexShrink:0 }}>⚙️</div>
+            <div style={{ width:44, height:44, background:'rgba(200,16,46,.08)', borderRadius:12, display:'flex', alignItems:'center', justifyContent:'center', fontSize:22, flexShrink:0 }}>•</div>
             <div style={{ flex:1 }}>
               <div style={{ fontWeight:700, fontSize:14, color:'#c8102e' }}>Admin Panel</div>
               <div style={{ fontSize:12, color:'#aaa', marginTop:2 }}>Manage orders, products & users</div>
@@ -3394,7 +3394,7 @@ const MOCKUP_SLOTS = {
   'Polo':     ['front','back','left','right'],
 }
 const MOCKUP_KEY = (garment, view) => `mockup_${garment.toLowerCase().replace(' ','-')}_${view}`
-const MOCKUP_LABELS = { front:'👕 Front', back:'🔙 Back', left:'💪 Left', right:'💪 Right' }
+const MOCKUP_LABELS = { front:'▲ Front', back:'▼ Back', left:'◀ Left', right:'▶ Right' }
 
 function MockupUploader() {
   const [urls, setUrls]       = React.useState({})
@@ -3460,11 +3460,11 @@ function MockupUploader() {
                       onChange={e => handleFile(garment, view, e.target.files[0])} />
                     <div style={{ padding:'8px 12px', borderRadius:6, border:'1.5px dashed #d0d0d0', textAlign:'center', background: done?'rgba(0,168,107,.06)':busy?'#f8f8f8':'#fafafa', cursor:'pointer', transition:'all .2s' }}>
                       {busy ? (
-                        <span style={{ fontSize:11, color:'#888' }}>⏳ Uploading…</span>
+                        <span style={{ fontSize:11, color:'#888' }}>. Uploading…</span>
                       ) : done ? (
-                        <span style={{ fontSize:11, color:'#00a86b', fontWeight:700 }}>✅ Saved!</span>
+                        <span style={{ fontSize:11, color:'#00a86b', fontWeight:700 }}>. Saved!</span>
                       ) : (
-                        <span style={{ fontSize:11, color:'#c8102e', fontWeight:700 }}>{url ? '🔄 Replace' : '📤 Upload'}</span>
+                        <span style={{ fontSize:11, color:'#c8102e', fontWeight:700 }}>{url ? '. Replace' : '. Upload'}</span>
                       )}
                     </div>
                   </label>
@@ -3495,7 +3495,7 @@ function AdminPanel({ onBack }) {
   const [toast, setToast]         = useState('')
   // New product form state
   const [showAddProduct, setShowAddProduct] = useState(false)
-  const [newProduct, setNewProduct] = useState({ name:'', price:'', mrp:'', tag:'', category:'T-Shirts', emoji:'👕', rating:'4.5', reviews:'0', studio_only: false })
+  const [newProduct, setNewProduct] = useState({ name:'', price:'', mrp:'', tag:'', category:'T-Shirts', emoji:'.', rating:'4.5', reviews:'0', studio_only: false })
   const [addingProduct, setAddingProduct] = useState(false)
   // Samples state
   const [samples, setSamples]         = useState([])
@@ -3667,7 +3667,7 @@ function AdminPanel({ onBack }) {
     const { error } = await supabase.from('drynn_products').insert(product)
     if (error) { alert('Failed to add product: ' + error.message); setAddingProduct(false); return }
     setProducts(ps => [...ps, product])
-    setNewProduct({ name:'', price:'', mrp:'', tag:'', category:'T-Shirts', emoji:'👕', rating:'4.5', reviews:'0', studio_only: false })
+    setNewProduct({ name:'', price:'', mrp:'', tag:'', category:'T-Shirts', emoji:'.', rating:'4.5', reviews:'0', studio_only: false })
     setShowAddProduct(false)
     setAddingProduct(false)
     showToast('Product added ✓')
@@ -4323,7 +4323,7 @@ function ProductEditRow({ product, onSave, onCancel }) {
   // Mockup view uploads — saved directly to drynn_products columns (no drynn_settings)
   const garmentType = p.category==='Hoodies'?'Hoodie':p.category==='Polos'?'Polo':p.category==='Joggers'?'Joggers':'T-Shirt'
   const VIEWS = ['front','back','left','right']
-  const VIEW_LABELS = { front:'👕 Front', back:'🔙 Back', left:'💪 Left', right:'💪 Right' }
+  const VIEW_LABELS = { front:'▲ Front', back:'▼ Back', left:'◀ Left', right:'▶ Right' }
   const [mockupUploading, setMockupUploading] = useState({})
   const [mockupSaved, setMockupSaved]         = useState({})
 
@@ -4633,7 +4633,7 @@ function GroupOrderPage({ user, onNav }) {
                       <div style={{ background:'#f8f8f8', height:160, display:'flex', alignItems:'center', justifyContent:'center', position:'relative', overflow:'hidden' }}>
                         {(p.img_front||p.image_url)
                           ? <img src={p.img_front||p.image_url} alt={p.name} style={{ width:'100%', height:'100%', objectFit:'contain' }} />
-                          : <span style={{ fontSize:52 }}>{p.emoji||'👕'}</span>}
+                          : <span style={{ fontSize:52 }}>{p.emoji||'.'}</span>}
                         <div style={{ position:'absolute', top:8, left:8, background:p.tagColor||p.tag_color||'#c8102e', color:'#fff', fontSize:8, fontWeight:700, letterSpacing:'.1em', textTransform:'uppercase', padding:'3px 8px', borderRadius:2 }}>{p.tag}</div>
                         {isSelected && (
                           <div style={{ position:'absolute', inset:0, background:'rgba(200,16,46,.12)', display:'flex', alignItems:'center', justifyContent:'center' }}>
@@ -4811,7 +4811,7 @@ function CreateGroupOrder({ user, selectedProduct, onChangeProduct }) {
               <div style={{ width:56, height:56, background:'#fff', borderRadius:8, overflow:'hidden', flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center' }}>
                 {(selectedProduct.img_front||selectedProduct.image_url)
                   ? <img src={selectedProduct.img_front||selectedProduct.image_url} alt={selectedProduct.name} style={{ width:'100%', height:'100%', objectFit:'contain' }} />
-                  : <span style={{ fontSize:28 }}>{selectedProduct.emoji||'👕'}</span>}
+                  : <span style={{ fontSize:28 }}>{selectedProduct.emoji||'.'}</span>}
               </div>
               <div style={{ flex:1, minWidth:0 }}>
                 <div style={{ fontSize:13, fontWeight:700, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{selectedProduct.name}</div>

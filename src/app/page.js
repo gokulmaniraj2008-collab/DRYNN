@@ -4402,6 +4402,13 @@ function AdminPanel({ onBack }) {
             .filter(r => !visitorSearch || r.email.toLowerCase().includes(visitorSearch.toLowerCase()) || r.name?.toLowerCase().includes(visitorSearch.toLowerCase()))
             .sort((a,b) => (b.lastSeen||'') > (a.lastSeen||'') ? 1 : -1)
 
+          const deleteVisitor = async (email) => {
+            if (!window.confirm(`Delete all session history for ${email}?\nThis cannot be undone.`)) return
+            const { error: delErr } = await supabase.from('drynn_user_sessions').delete().eq('user_email', email)
+            if (delErr) { alert('Delete failed: ' + delErr.message); return }
+            loadVisitors()
+          }
+
           return (
             <div>
               <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16, flexWrap:'wrap', gap:10 }}>
@@ -4441,10 +4448,14 @@ function AdminPanel({ onBack }) {
                           <div style={{ fontSize:14, fontWeight:700, color:'#0a0a0a' }}>{r.name || '—'}</div>
                           <div style={{ fontSize:11, color:'#888', marginTop:2 }}>{r.email}</div>
                         </div>
-                        <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
+                        <div style={{ display:'flex', gap:8, flexWrap:'wrap', alignItems:'center' }}>
                           <span style={{ background:'#f0f3ff', color:'#0a1f5d', fontSize:11, fontWeight:700, padding:'4px 10px', borderRadius:20 }}>🔁 {r.visits} visit{r.visits!==1?'s':''}</span>
                           <span style={{ background:'#e6f9f0', color:'#00a86b', fontSize:11, fontWeight:700, padding:'4px 10px', borderRadius:20 }}>⏱ {fmtDur(r.totalSec)} total</span>
                           <span style={{ background:'#fff3f3', color:'#c8102e', fontSize:11, fontWeight:700, padding:'4px 10px', borderRadius:20 }}>🕐 Last: {fmtTime(r.lastSeen)}</span>
+                          <button onClick={()=>deleteVisitor(r.email)}
+                            style={{ padding:'4px 10px', fontSize:11, fontWeight:700, borderRadius:4, border:'1px solid #fdd', color:'#c8102e', background:'none', cursor:'pointer' }}>
+                            🗑 Delete
+                          </button>
                         </div>
                       </div>
                       <div style={{ marginTop:12, display:'flex', gap:20, flexWrap:'wrap' }}>

@@ -3618,8 +3618,13 @@ function AdminPanel({ onBack }) {
       .select('*')
       .order('started_at', { ascending: false })
       .limit(200)
-    if (!error && data) setVisitors(data)
-    else if (error) console.error('[Admin] Visitors load error:', error.message)
+    console.log('[Visitors] data:', data, 'error:', error)
+    if (error) {
+      console.error('[Admin] Visitors load error:', error.message, error.code)
+      showToast('Visitors load error: ' + error.message)
+    } else {
+      setVisitors(data || [])
+    }
     setVisitorsLoading(false)
   }
 
@@ -5300,13 +5305,7 @@ function MainSite({ user }) {
       duration_sec: 0,
       pages_visited: ['home'],
       device_info:  device,
-    }).then(({ error, data }) => {
-      if (error) {
-        console.error('[Tracking] Insert failed:', error.message, error.code, error.details)
-      } else {
-        console.log('[Tracking] Session started:', sessionId, 'for', user.email)
-      }
-    })
+    }).then(({ error }) => { if (error) console.warn('[Tracking] Insert failed:', error.message) })
 
     // On tab close / navigate away — update duration + ended_at
     const endSession = () => {

@@ -3808,11 +3808,12 @@ function AdminPanel({ onBack }) {
 
   const saveAdminColors = async (colors) => {
     setColorsSaving(true)
-    await supabase.from('drynn_settings').delete().eq('key','swatches')
-    await supabase.from('drynn_settings').insert({ key:'swatches', value: JSON.stringify(colors) })
+    const { error } = await supabase.from('drynn_settings')
+      .upsert({ key: 'swatches', value: JSON.stringify(colors) }, { onConflict: 'key' })
+    setColorsSaving(false)
+    if (error) { showToast('Save failed: ' + error.message); return }
     setAdminColors(colors)
     showToast('Colors saved!')
-    setColorsSaving(false)
   }
 
   const loadGroupMembers = async (group_code) => {
@@ -4614,16 +4615,11 @@ function AdminPanel({ onBack }) {
 
           const deleteVisitor = async (email) => {
             if (!window.confirm(`Delete all session history for ${email}?\nThis cannot be undone.`)) return
-            const { error: delErr, count } = await supabase
-              .from('drynn_user_sessions')
-              .delete({ count: 'exact' })
-              .eq('user_email', email)
-            if (delErr) {
-              alert('Delete failed: ' + delErr.message + '\nCode: ' + delErr.code)
-              return
-            }
+            const { error: delErr } = await supabase.from('drynn_user_sessions').delete().eq('user_email', email)
+            if (delErr) { alert('Delete failed: ' + delErr.message); return }
+            // Also remove from local state immediately
             setVisitors(prev => prev.filter(v => v.user_email !== email))
-            showToast(`Deleted ${count ?? ''} session(s) for ${email}`)
+            showToast('Visitor history deleted')
           }
 
           return (
@@ -4830,7 +4826,7 @@ function AdminPanel({ onBack }) {
                   <div key={i} style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:4 }}>
                     <div style={{ width:36, height:36, borderRadius:'50%', background:c, border: c==='#ffffff'?'2px solid #ccc':'2px solid transparent', boxShadow:'0 2px 8px rgba(0,0,0,.12)' }} />
                     <span style={{ fontSize:9, color:'#888' }}>{c}</span>
-                    <button onClick={() => { const nc = adminColors.filter((_,j)=>j!==i); saveAdminColors(nc) }}
+                    <button onClick={() => { if(window.confirm('Remove this colour?')){ const nc = adminColors.filter((_,j)=>j!==i); saveAdminColors(nc) } }}
                       style={{ fontSize:9, color:'#c8102e', background:'none', border:'none', cursor:'pointer', padding:0 }}>✕</button>
                   </div>
                 ))}

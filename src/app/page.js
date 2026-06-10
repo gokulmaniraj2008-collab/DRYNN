@@ -3601,7 +3601,8 @@ function MockupUploader() {
     setUploading(u => ({ ...u, [key]: true }))
     try {
       const url = await uploadToCloudinary(file, () => {})
-      const { error: insertErr } = await supabase.from('drynn_settings').upsert({ key, value: url }, { onConflict: 'key' })
+      await supabase.from('drynn_settings').delete().eq('key', key)
+      const { error: insertErr } = await supabase.from('drynn_settings').insert({ key, value: url })
       if (insertErr) { alert('Save failed: ' + insertErr.message); return }
       setUrls(u => ({ ...u, [key]: url }))
       setSaved(s => ({ ...s, [key]: true }))
@@ -3793,12 +3794,8 @@ function AdminPanel({ onBack }) {
 
   const saveMediaUrl = async (key, value) => {
     setMediaSaving(true)
-    if (value) {
-      const { error } = await supabase.from('drynn_settings').upsert({ key, value }, { onConflict: 'key' })
-      if (error) { showToast('Save failed: ' + error.message); setMediaSaving(false); return }
-    } else {
-      await supabase.from('drynn_settings').delete().eq('key', key)
-    }
+    await supabase.from('drynn_settings').delete().eq('key', key)
+    if (value) await supabase.from('drynn_settings').insert({ key, value })
     showToast('Saved!')
     setMediaSaving(false)
   }
@@ -3811,8 +3808,8 @@ function AdminPanel({ onBack }) {
 
   const saveAdminColors = async (colors) => {
     setColorsSaving(true)
-    const { error } = await supabase.from('drynn_settings').upsert({ key:'swatches', value: JSON.stringify(colors) }, { onConflict: 'key' })
-    if (error) { showToast('Save failed: ' + error.message); setColorsSaving(false); return }
+    await supabase.from('drynn_settings').delete().eq('key','swatches')
+    await supabase.from('drynn_settings').insert({ key:'swatches', value: JSON.stringify(colors) })
     setAdminColors(colors)
     showToast('Colors saved!')
     setColorsSaving(false)
@@ -3883,13 +3880,13 @@ function AdminPanel({ onBack }) {
   }
 
   const updateOrderStatus = async (id, status) => {
-    const { error } = await supabase.from('drynn_orders').update({ status, updated_at: new Date().toISOString() }).eq('id', id)
+    const { error } = await supabase.from('drynn_orders').update({ status }).eq('id', id)
     if (!error) { setOrders(o => o.map(x => x.id===id ? {...x, status} : x)); showToast('Status updated') }
   }
 
   const togglePaymentStatus = async (id, current) => {
     const next = current === 'Paid' ? 'Unpaid' : 'Paid'
-    const { error } = await supabase.from('drynn_orders').update({ payment_status: next, updated_at: new Date().toISOString() }).eq('id', id)
+    const { error } = await supabase.from('drynn_orders').update({ payment_status: next }).eq('id', id)
     if (!error) { setOrders(o => o.map(x => x.id===id ? {...x, payment_status: next} : x)); showToast(`Marked as ${next}`) }
     else alert('Update failed: ' + error.message)
   }
@@ -4127,15 +4124,15 @@ function AdminPanel({ onBack }) {
                                   : null
                               })()}
                               {/* ── PRINT SHEET (most important for printer) ── */}
-                              {o.print_sheet_url && (
+                              {o.print_sheet && (
                                 <div style={{ margin:'8px 0 6px', background:'#0a0a0a', borderRadius:8, overflow:'hidden', border:'2px solid #c8102e' }}>
                                   <div style={{ background:'#c8102e', padding:'4px 10px', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
                                     <span style={{ fontSize:10, fontWeight:700, letterSpacing:'.12em', textTransform:'uppercase', color:'#fff' }}>🖨️ Print-Ready Sheet</span>
-                                    <a href={o.print_sheet_url} target="_blank" rel="noopener noreferrer"
+                                    <a href={o.print_sheet} target="_blank" rel="noopener noreferrer"
                                       style={{ fontSize:10, fontWeight:700, color:'#fff', textDecoration:'underline', cursor:'pointer' }}>Open Full Size ↗</a>
                                   </div>
-                                  <a href={o.print_sheet_url} target="_blank" rel="noopener noreferrer">
-                                    <img src={o.print_sheet_url} alt="Print Sheet"
+                                  <a href={o.print_sheet} target="_blank" rel="noopener noreferrer">
+                                    <img src={o.print_sheet} alt="Print Sheet"
                                       style={{ width:'100%', display:'block', maxHeight:200, objectFit:'contain', background:'#fff' }}
                                       onError={e=>e.target.style.display='none'} />
                                   </a>
@@ -5691,19 +5688,7 @@ function MainSite({ user }) {
     }
   }, [mediaSettings.audio_song])
 
-  useEffect(() => {
-    const audio = audioRef.current
-    if (!audio) return
-    // Auto-play on mount — browsers require a user gesture, so we attempt and handle the rejection gracefully
-    const tryPlay = () => {
-      audio.play().then(() => setPlaying(true)).catch(() => setPlaying(false))
-    }
-    tryPlay()
-    // Fallback: also try on first user interaction anywhere on the page
-    const onInteract = () => { if (!playing) tryPlay(); document.removeEventListener('click', onInteract) }
-    document.addEventListener('click', onInteract)
-    return () => document.removeEventListener('click', onInteract)
-  }, [])
+
 
   const togglePlay = () => {
     const audio = audioRef.current

@@ -4614,11 +4614,16 @@ function AdminPanel({ onBack }) {
 
           const deleteVisitor = async (email) => {
             if (!window.confirm(`Delete all session history for ${email}?\nThis cannot be undone.`)) return
-            const { error: delErr } = await supabase.from('drynn_user_sessions').delete().eq('user_email', email)
-            if (delErr) { alert('Delete failed: ' + delErr.message); return }
-            // Also remove from local state immediately
+            const { error: delErr, count } = await supabase
+              .from('drynn_user_sessions')
+              .delete({ count: 'exact' })
+              .eq('user_email', email)
+            if (delErr) {
+              alert('Delete failed: ' + delErr.message + '\nCode: ' + delErr.code)
+              return
+            }
             setVisitors(prev => prev.filter(v => v.user_email !== email))
-            showToast('Visitor history deleted')
+            showToast(`Deleted ${count ?? ''} session(s) for ${email}`)
           }
 
           return (
@@ -5688,7 +5693,19 @@ function MainSite({ user }) {
     }
   }, [mediaSettings.audio_song])
 
-
+  useEffect(() => {
+    const audio = audioRef.current
+    if (!audio) return
+    // Auto-play on mount — browsers require a user gesture, so we attempt and handle the rejection gracefully
+    const tryPlay = () => {
+      audio.play().then(() => setPlaying(true)).catch(() => setPlaying(false))
+    }
+    tryPlay()
+    // Fallback: also try on first user interaction anywhere on the page
+    const onInteract = () => { if (!playing) tryPlay(); document.removeEventListener('click', onInteract) }
+    document.addEventListener('click', onInteract)
+    return () => document.removeEventListener('click', onInteract)
+  }, [])
 
   const togglePlay = () => {
     const audio = audioRef.current

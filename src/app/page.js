@@ -964,7 +964,7 @@ function colorToFilter(hex) {
 // LIVE T-SHIRT PREVIEW  -  canvas-based, design on fabric
 // ══════════════════════════════════════════════════════════════
 // ══════════════════════════════════════════════════════════════
-// DRYNN UNIFIED STUDIO  — 6-step flow
+// DRYNN UNIFIED STUDIO  — 5-step flow
 // ══════════════════════════════════════════════════════════════
 function StudioPage({ user, onNav, onAddToCart }) {
   // ── All admin products ────────────────────────────────────
@@ -972,7 +972,7 @@ function StudioPage({ user, onNav, onAddToCart }) {
   const allProducts = useProducts()
 
   // ── Step tracking ─────────────────────────────────────────
-  const STEPS_LIST = ['Product','Colour','Design','Customise','Preview','Order']
+  const STEPS_LIST = ['Product','Colour','Design','Customise','Order']
   const [step, setStep] = useState(1)
   const [previewView, setPreviewView] = useState('front')
 
@@ -1198,7 +1198,7 @@ function StudioPage({ user, onNav, onAddToCart }) {
     }
   }
 
-  // ── Step 6: Order ─────────────────────────────────────────
+  // ── Step 5: Order ─────────────────────────────────────────
   const [size,       setSize]     = useState('M')
   const [form,       setForm]     = useState({ name:user?.user_metadata?.full_name||user?.email||'', phone:'', qty:1, address:'' })
   const [status,     setStatus]   = useState('')
@@ -1291,7 +1291,6 @@ function StudioPage({ user, onNav, onAddToCart }) {
     if (step===2) return !!color
     if (step===3) return true
     if (step===4) return true
-    if (step===5) return true
     return false
   }
 
@@ -1384,7 +1383,7 @@ function StudioPage({ user, onNav, onAddToCart }) {
           <div style={{ textAlign:'center' }}>
             <span className="sec-label" style={{ color:'rgba(255,255,255,.6)' }}>Custom Design Studio</span>
             <h1 className="sec-title" style={{ color:'#fff' }}>DRYNN STUDIO</h1>
-            <p style={{ fontSize:13, color:'rgba(255,255,255,.45)', marginTop:6 }}>Pick product · Colour · Design · Customise · Preview · Order</p>
+            <p style={{ fontSize:13, color:'rgba(255,255,255,.45)', marginTop:6 }}>Pick product · Colour · Design · Customise · Order</p>
           </div>
         </div>
       </div>
@@ -1846,69 +1845,53 @@ function StudioPage({ user, onNav, onAddToCart }) {
           </div>
         )}
 
-        {/* ══ STEP 5: PREVIEW ══ */}
+        {/* ══ STEP 5: PREVIEW & ORDER ══ */}
         {step === 5 && (
-          <div style={{ display:'flex', gap:24, flexWrap:'wrap' }}>
-            <div style={{ flex:'1 1 280px' }}>
-            <h2 style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:28, color:'#fff', letterSpacing:'.06em', marginBottom:4 }}>STEP 5 — PREVIEW YOUR DESIGN</h2>
-            <p style={{ fontSize:13, color:'rgba(255,255,255,.45)', marginBottom:20 }}>Swipe or tap thumbnails to see all angles. Your design appears on each uploaded side.</p>
-
-            {/* 4-image swipe viewer */}
-            <ProductImageViewer
-              product={selectedProduct}
-              fallbackSrc={garmentImgSrc}
-              sideImgs={sideImgs}
-              sidePos={sidePos}
-              posX={posX} posY={posY} scale={scale} rotation={rotation}
-              textOn={textOn} textVal={textVal} textFont={textFont}
-              textSize={textSize} textColor={textColor}
-              textPosX={textPosX} textPosY={textPosY} textRot={textRot}
-              sideText={sideText}
-              colorToFilter={colorToFilter}
-              color={color}
-              canvasFilter={canvasFilter}
-              garmentEmoji={GARMENT_EMOJI[garmentType]}
-              bgColor={bgColor}
-            />
-
-            {/* Summary strip */}
-            <div style={{ maxWidth:420, margin:'16px auto 0', background:'rgba(255,255,255,.06)', border:'1px solid rgba(255,255,255,.1)', borderRadius:12, padding:'14px 18px', display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
-              {[
-                ['Garment', selectedProduct?.name || garmentType],
-                ['Colour',  color],
-                ['Designs', SIDES.filter(s=>sideImgs[s]).map(s=>SIDE_LABELS[s]).join(', ') || '—'],
-                ['Text', Object.values(sideText).filter(t=>t.on&&t.val).length > 0 ? Object.entries(sideText).filter(([,t])=>t.on&&t.val).map(([s])=>SIDE_LABELS[s]).join(', ') : 'None'],
-              ].map(([k,v])=>(
-                <div key={k}>
-                  <div style={{ fontSize:9, fontWeight:700, letterSpacing:'.1em', textTransform:'uppercase', color:'rgba(255,255,255,.3)', marginBottom:2 }}>{k}</div>
-                  <div style={{ fontSize:12, fontWeight:700, color:'#fff', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{v}</div>
-                </div>
-              ))}
-            </div>
-
-            <div style={{ display:'flex', gap:10, marginTop:20, justifyContent:'center' }}>
-              <button onClick={()=>setStep(4)} style={{ padding:'12px 20px', borderRadius:8, border:'1px solid rgba(255,255,255,.15)', background:'transparent', color:'rgba(255,255,255,.5)', fontSize:13, fontWeight:600, cursor:'pointer' }}>← Edit</button>
-              <button onClick={()=>setStep(6)} className="btn-primary" style={{ padding:'13px 36px', fontSize:14 }}>Place Order →</button>
-            </div>
-            </div>
-            <LivePreview />
-          </div>
-        )}
-
-        {/* ══ STEP 6: ORDER ══ */}
-        {step === 6 && (
           <div style={{ display:'flex', flexDirection:'column', gap:16 }}>
 
-            {/* ── Card 1: Header ── */}
+            {/* ── Header ── */}
             <div style={{ background:'rgba(255,255,255,.04)', border:'1px solid rgba(255,255,255,.09)', borderRadius:12, padding:'18px 16px' }}>
-              <h2 style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:28, color:'#fff', letterSpacing:'.06em', marginBottom:4 }}>STEP 6 — PLACE YOUR ORDER</h2>
-              <p style={{ fontSize:13, color:'rgba(255,255,255,.45)', marginBottom:0 }}>Fill your details. We'll WhatsApp you within 2 hours to confirm.</p>
+              <h2 style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:28, color:'#fff', letterSpacing:'.06em', marginBottom:4 }}>STEP 5 — PREVIEW & ORDER</h2>
+              <p style={{ fontSize:13, color:'rgba(255,255,255,.45)', marginBottom:0 }}>Review your design, then place your order below.</p>
             </div>
 
-            {/* ── Card 2: Live Preview (full width) ── */}
-            <LivePreview />
+            {/* ── 360° Preview ── */}
+            <div style={{ background:'rgba(255,255,255,.04)', border:'1px solid rgba(255,255,255,.09)', borderRadius:12, padding:'18px 16px' }}>
+              <p style={{ fontSize:12, color:'rgba(255,255,255,.35)', marginBottom:12, textAlign:'center' }}>Swipe or tap thumbnails to see all angles. Your design appears on each uploaded side.</p>
+              <ProductImageViewer
+                product={selectedProduct}
+                fallbackSrc={garmentImgSrc}
+                sideImgs={sideImgs}
+                sidePos={sidePos}
+                posX={posX} posY={posY} scale={scale} rotation={rotation}
+                textOn={textOn} textVal={textVal} textFont={textFont}
+                textSize={textSize} textColor={textColor}
+                textPosX={textPosX} textPosY={textPosY} textRot={textRot}
+                sideText={sideText}
+                colorToFilter={colorToFilter}
+                color={color}
+                canvasFilter={canvasFilter}
+                garmentEmoji={GARMENT_EMOJI[garmentType]}
+                bgColor={bgColor}
+              />
 
-            {/* ── Card 3: Controls (size + actions) ── */}
+              {/* Summary strip */}
+              <div style={{ maxWidth:420, margin:'16px auto 0', background:'rgba(255,255,255,.06)', border:'1px solid rgba(255,255,255,.1)', borderRadius:12, padding:'14px 18px', display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
+                {[
+                  ['Garment', selectedProduct?.name || garmentType],
+                  ['Colour',  color],
+                  ['Designs', SIDES.filter(s=>sideImgs[s]).map(s=>SIDE_LABELS[s]).join(', ') || '—'],
+                  ['Text', Object.values(sideText).filter(t=>t.on&&t.val).length > 0 ? Object.entries(sideText).filter(([,t])=>t.on&&t.val).map(([s])=>SIDE_LABELS[s]).join(', ') : 'None'],
+                ].map(([k,v])=>(
+                  <div key={k}>
+                    <div style={{ fontSize:9, fontWeight:700, letterSpacing:'.1em', textTransform:'uppercase', color:'rgba(255,255,255,.3)', marginBottom:2 }}>{k}</div>
+                    <div style={{ fontSize:12, fontWeight:700, color:'#fff', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{v}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* ── Order ── */}
             {status==='done' ? (
               <div style={{ textAlign:'center', padding:'48px 16px', background:'rgba(0,168,107,.07)', border:'1px solid rgba(0,168,107,.2)', borderRadius:12 }}>
                 <div style={{ fontSize:64, marginBottom:16 }}>🛒</div>
@@ -1947,7 +1930,7 @@ function StudioPage({ user, onNav, onAddToCart }) {
 
                 {/* ── Buttons ── */}
                 <div style={{ display:'flex', gap:10 }}>
-                  <button onClick={()=>setStep(5)} style={{ padding:'12px 20px', borderRadius:8, border:'1px solid rgba(255,255,255,.15)', background:'transparent', color:'rgba(255,255,255,.5)', fontSize:13, fontWeight:600, cursor:'pointer' }}>← Preview</button>
+                  <button onClick={()=>setStep(4)} style={{ padding:'12px 20px', borderRadius:8, border:'1px solid rgba(255,255,255,.15)', background:'transparent', color:'rgba(255,255,255,.5)', fontSize:13, fontWeight:600, cursor:'pointer' }}>← Edit</button>
                   <button className="btn-primary" style={{ flex:1, padding:'14px', fontSize:14, letterSpacing:'.04em', opacity:(status==='saving'||status==='uploading'||status==='sheet')?.6:1 }}
                     onClick={handleSubmit} disabled={status==='saving'||status==='uploading'||status==='sheet'}>
                     {status==='uploading'?`Uploading… ${uploadPct}%`:status==='saving'?'Placing Order…':status==='sheet'?'Generating print sheet…':'🛒 Place Custom Order'}

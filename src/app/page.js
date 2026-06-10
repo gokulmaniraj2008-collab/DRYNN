@@ -7,6 +7,10 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 )
 const GOOGLE_SHEET_WEBHOOK = process.env.NEXT_PUBLIC_GOOGLE_SHEET_WEBHOOK
+// process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID   — set in .env.local (rzp_live_xxxxxxxx)
+// process.env.NEXT_PUBLIC_ADMIN_EMAIL        — set in .env.local
+// process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME    — set in .env.local
+// process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET — set in .env.local
 
 // ── Data ─────────────────────────────────────────────────────
 const PRODUCTS = [
@@ -2013,7 +2017,7 @@ function HomePage({ user, onNav, cart, onAddToCart }) {
 // ── Product Detail Page ──────────────────────────────────────
 function ProductDetailPage({ product, onBack, onAddToCart }) {
   const [size,     setSize]     = useState('M')
-  const [color,    setColor]    = useState(product.color || '#ffffff')
+  const [color,    setColor]    = useState('#ffffff')
   const [qty,      setQty]      = useState(1)
   const [added,    setAdded]    = useState(false)
   const [activeView, setActiveView] = useState(0)
@@ -2442,7 +2446,7 @@ function ContactPage({ onNav }) {
       setForm({ name:'', phone:'', email:'', message:'' })
     } catch (e) {
       console.error('[Contact] Unexpected error during form submission:', e.message)
-      setError(`[Contact Form Error] Area: Contact submission · Reason: ${e.message || 'Unknown'}. Please WhatsApp us at +91 99447 61306.`)
+      setError(`Something went wrong. Please WhatsApp us at +91 99447 61306.`)
     } finally {
       setSaving(false)
     }
@@ -2507,59 +2511,149 @@ function CartPage({ cart, onRemove, onClear, user, onNav }) {
     name: '', phone: '', address: '', pincode: '', payment: 'upi',
   })
 
+  const saveOrdersToDb = async (paymentId, paymentStatus) => {
+    const placedAt = new Date().toISOString()
+    const orderIds = []
+    for (const item of cart) {
+      const orderId = crypto.randomUUID()
+      orderIds.push(orderId)
+      const cd = item.customDetails
+      const designUrls = cd?.designUrls || {}
+      const { error: dbErr } = await supabase.from('drynn_orders').insert({
+        id:               orderId,
+        user_id:          user?.id || null,
+        name:             cd?.name    || form.name,
+        phone:            cd?.phone   || form.phone,
+        address:          cd?.address || `${form.address}, ${form.pincode}`,
+        garment:          item.isCustom ? (cd?.garment || item.name) : item.name,
+        product_name:     item.name,
+        product_category: item.category || null,
+        color:            item.color || 'Various',
+        size:             item.size  || 'Various',
+        qty:              item.qty,
+        order_type:       item.isCustom ? 'custom' : 'catalog',
+        product_id:       item.isCustom ? null : (item.id || null),
+        product_image:    item.isCustom ? null : (item.image_url || null),
+        // design_file: full JSON blob (backward compat)
+        design_file:      item.isCustom ? (cd?.designUrls ? JSON.stringify(cd.designUrls) : '') : 'catalog-order',
+        // individual side URLs for easy admin querying
+        design_back:      item.isCustom ? (designUrls.back  || null) : null,
+        design_left:      item.isCustom ? (designUrls.left  || null) : null,
+        design_right:     item.isCustom ? (designUrls.right || null) : null,
+        // design_sides: comma-separated list of sides that have designs
+        design_sides:     item.isCustom ? Object.keys(designUrls).filter(s => designUrls[s]).join(',') || null : null,
+        // custom_text: combined text from all sides that have text enabled
+        custom_text:      item.isCustom && cd?.sideText
+          ? Object.entries(cd.sideText).filter(([,t]) => t?.on && t?.val).map(([s,t]) => `${s}: ${t.val}`).join(' | ') || null
+          : null,
+        print_sheet_url:  item.isCustom ? (cd?.printSheetUrl || null) : null,
+        side_pos:         item.isCustom ? (cd?.sidePos  ? JSON.stringify(cd.sidePos)  : null) : null,
+        text_on:          item.isCustom ? (cd?.textOn   ? true : false)                        : false,
+        text_val:         item.isCustom ? (cd?.textVal  || null)                                : null,
+        text_font:        item.isCustom ? (cd?.textFont || null)                                : null,
+        text_size:        item.isCustom ? (cd?.textSize || null)                                : null,
+        text_color:       item.isCustom ? (cd?.textColor|| null)                                : null,
+        text_pos_x:       item.isCustom ? (cd?.textPosX || 50)                                  : null,
+        text_pos_y:       item.isCustom ? (cd?.textPosY || 75)                                  : null,
+        text_rot:         item.isCustom ? (cd?.textRot  || 0)                                   : null,
+        side_text:        item.isCustom ? (cd?.sideText ? JSON.stringify(cd.sideText) : null)   : null,
+        status:           'Received',
+        payment_status:   paymentStatus,
+        payment_id:       paymentId || null,
+        total:            grandTotal,
+        placed_at:        placedAt,
+      })
+      if (dbErr) {
+        console.error('[Cart → Supabase] Order insert failed:', dbErr.message)
+        alert(`[Order Save Failed]\n\n${dbErr.message}\n\nPlease WhatsApp us at +91 99447 61306.`)
+      }
+    }
+    // Google Sheet — fire after successful DB save
+    const itemsSummary = cart.map(i => `${i.name} x${i.qty}`).join(', ')
+    if (GOOGLE_SHEET_WEBHOOK) fetch(GOOGLE_SHEET_WEBHOOK, {
+      method:'POST', mode:'no-cors', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ sheet:'DRYNN_Orders', name:form.name, phone:form.phone, address:form.address, pincode:form.pincode, items:itemsSummary, total:grandTotal, payment:paymentStatus, paymentId, placedAt }),
+    }).catch(e => console.error('[Cart → Google Sheets]:', e.message))
+    return orderIds
+  }
+
   const placeOrder = async () => {
     if (!form.name || !form.phone || !form.address || !form.pincode) {
       alert('Please fill all delivery details.'); return
     }
+
+    const RAZORPAY_KEY = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID
+    if (!RAZORPAY_KEY) {
+      // Fallback: no Razorpay key configured — save as Unpaid (manual WhatsApp payment)
+      setSaving(true)
+      try {
+        await saveOrdersToDb(null, 'Unpaid')
+        onClear()
+        setStep('done')
+      } catch(e) {
+        alert(`[Checkout Error]\n\n${e.message || 'Unknown error'}\n\nPlease WhatsApp us at +91 99447 61306.`)
+      } finally { setSaving(false) }
+      return
+    }
+
+    // ── Razorpay Checkout ─────────────────────────────────────────
     setSaving(true)
     try {
-      const placedAt = new Date().toISOString()
-      for (const item of cart) {
-        const orderId = crypto.randomUUID()
-        const cd = item.customDetails
-        const { error: dbErr } = await supabase.from('drynn_orders').insert({
-          id: orderId,
-          user_id: user?.id || null,
-          name: cd?.name || form.name,
-          phone: cd?.phone || form.phone,
-          address: cd?.address || `${form.address}, ${form.pincode}`,
-          garment: item.isCustom ? (cd?.garment || item.name) : item.name,
-          color: item.color || 'Various',
-          size: item.size || form.size || 'Various',
-          qty: item.qty,
-          design_file: item.isCustom ? (cd?.designUrls ? JSON.stringify(cd.designUrls) : '') : 'catalog-order',
-          side_pos:    item.isCustom ? (cd?.sidePos    ? JSON.stringify(cd.sidePos)    : null) : null,
-          text_on:     item.isCustom ? (cd?.textOn     ? true : false)                         : false,
-          text_val:    item.isCustom ? (cd?.textVal    || null)                                 : null,
-          text_font:   item.isCustom ? (cd?.textFont   || null)                                 : null,
-          text_size:   item.isCustom ? (cd?.textSize   || null)                                 : null,
-          text_color:  item.isCustom ? (cd?.textColor  || null)                                 : null,
-          text_pos_x:  item.isCustom ? (cd?.textPosX   || 50)                                   : null,
-          text_pos_y:  item.isCustom ? (cd?.textPosY   || 75)                                   : null,
-          text_rot:    item.isCustom ? (cd?.textRot    || 0)                                    : null,
-          side_text:   item.isCustom ? (cd?.sideText   ? JSON.stringify(cd.sideText) : null)    : null,
-          status: 'Received',
-          payment_status: 'Unpaid',
-          total: grandTotal,
-          placed_at: placedAt,
+      // Dynamically load Razorpay script
+      if (!window.Razorpay) {
+        await new Promise((resolve, reject) => {
+          const s = document.createElement('script')
+          s.src = 'https://checkout.razorpay.com/v1/checkout.js'
+          s.onload = resolve
+          s.onerror = () => reject(new Error('Failed to load Razorpay'))
+          document.head.appendChild(s)
         })
-        if (dbErr) {
-          console.error('[Cart → Supabase] Order insert failed:', dbErr.message)
-          alert(`[Order Save Failed]\n\n${dbErr.message}\n\nPlease WhatsApp us at +91 99447 61306.`)
-        }
       }
-      const itemsSummary = cart.map(i => `${i.name} x${i.qty}`).join(', ')
-      if (GOOGLE_SHEET_WEBHOOK) fetch(GOOGLE_SHEET_WEBHOOK, {
-        method:'POST', mode:'no-cors', headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({ sheet:'DRYNN_Orders', name:form.name, phone:form.phone, address:form.address, pincode:form.pincode, items:itemsSummary, total:grandTotal, payment:form.payment, placedAt }),
-      }).catch(e => console.error('[Cart → Google Sheets]:', e.message))
-      onClear()
-      setStep('done')
+
+      const options = {
+        key:         RAZORPAY_KEY,
+        amount:      grandTotal * 100, // paise
+        currency:    'INR',
+        name:        'DRYNN',
+        description: cart.map(i => `${i.name} x${i.qty}`).join(', '),
+        image:       'https://res.cloudinary.com/dfhdyp4oq/image/upload/drynn/drynn-logo.png',
+        prefill: {
+          name:    form.name,
+          contact: form.phone,
+        },
+        notes: {
+          address: `${form.address}, ${form.pincode}`,
+          items:   cart.map(i => `${i.name} x${i.qty}`).join(', '),
+        },
+        theme: { color: '#c8102e' },
+        handler: async (response) => {
+          // Payment successful
+          try {
+            await saveOrdersToDb(response.razorpay_payment_id, 'Paid')
+            onClear()
+            setStep('done')
+          } catch(e) {
+            alert(`Payment received but order save failed. Payment ID: ${response.razorpay_payment_id}\nPlease WhatsApp us at +91 99447 61306.`)
+          }
+          setSaving(false)
+        },
+        modal: {
+          ondismiss: () => {
+            setSaving(false)
+          },
+        },
+      }
+      const rzp = new window.Razorpay(options)
+      rzp.on('payment.failed', (response) => {
+        setSaving(false)
+        alert(`Payment failed: ${response.error.description}\nPlease try again or WhatsApp us at +91 99447 61306.`)
+      })
+      rzp.open()
     } catch(e) {
-      console.error('[Cart] Checkout error:', e.message)
-      alert(`[Checkout Error]\n\n${e.message || 'Unknown error'}\n\nPlease WhatsApp us at +91 99447 61306.`)
+      setSaving(false)
+      console.error('[Cart] Razorpay error:', e.message)
+      alert(`[Payment Error]\n\n${e.message || 'Unknown error'}\n\nPlease WhatsApp us at +91 99447 61306.`)
     }
-    finally { setSaving(false) }
   }
 
   if (step === 'done') return (
@@ -2575,7 +2669,7 @@ function CartPage({ cart, onRemove, onClear, user, onNav }) {
         <h2 style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:32, marginBottom:12 }}>ORDER CONFIRMED!</h2>
         <p style={{ fontSize:14, color:'#555', lineHeight:1.8, marginBottom:28 }}>We received your order and will WhatsApp you within 2 hours to confirm printing and delivery.</p>
         <div style={{ background:'#f8f8f8', borderRadius:12, padding:'20px', marginBottom:24, textAlign:'left' }}>
-          {[['Payment','UPI / Razorpay (link sent on WhatsApp)'],['Delivery','5-7 working days'],['Support','WhatsApp: +91 99447 61306']].map(([k,v])=>(
+          {[['Payment','Paid via Razorpay/UPI'],['Delivery','5-7 working days'],['Support','WhatsApp: +91 99447 61306']].map(([k,v])=>(
             <div key={k} style={{ display:'flex', justifyContent:'space-between', padding:'8px 0', borderBottom:'1px solid #eee', fontSize:13 }}>
               <span style={{ color:'#888' }}>{k}</span><span style={{ fontWeight:600 }}>{v}</span>
             </div>
@@ -2625,10 +2719,10 @@ function CartPage({ cart, onRemove, onClear, user, onNav }) {
           <div>
             <label style={{ fontSize:11, fontWeight:700, letterSpacing:'.12em', textTransform:'uppercase', color:'#555', display:'block', marginBottom:10 }}>Payment Method</label>
             <div style={{ padding:'14px 16px', border:'2px solid #c8102e', borderRadius:8, background:'rgba(200,16,46,.04)', display:'flex', alignItems:'center', gap:10 }}>
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z"/></svg>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
               <div>
-                <div style={{ fontWeight:700, fontSize:13, color:'#c8102e' }}>UPI / Razorpay</div>
-                <div style={{ fontSize:11, color:'#888', marginTop:2 }}>We'll send a payment link on WhatsApp within 30 minutes.</div>
+                <div style={{ fontWeight:700, fontSize:13, color:'#c8102e' }}>UPI / Cards / Net Banking</div>
+                <div style={{ fontSize:11, color:'#888', marginTop:2 }}>Secure checkout powered by Razorpay. Pay instantly online.</div>
               </div>
             </div>
           </div>
@@ -2834,7 +2928,8 @@ function OrdersPage({ user, onBack, onNav }) {
               ['Item(s)', selected.garment || '-'],
               ['Size',    selected.size    || '-'],
               ['Qty',     selected.qty     || '-'],
-              ['Payment', 'UPI / Razorpay'],
+              ['Total',   selected.total   ? `₹${Number(selected.total).toLocaleString()}` : '-'],
+              ['Payment', selected.payment_status || 'Pending'],
             ].map(([k,v]) => (
               <div key={k} style={{ display:'flex', justifyContent:'space-between', padding:'8px 0', borderBottom:'1px solid #f8f8f8', fontSize:13 }}>
                 <span style={{ color:'#888' }}>{k}</span>
@@ -2897,7 +2992,7 @@ function OrdersPage({ user, onBack, onNav }) {
 
   // ── Filter logic ──────────────────────────────────────────
   const ACTIVE_S    = ['Received','Approved','Printing','Packed','Shipped']
-  const COMPLETED_S = ['Delivered']
+  const COMPLETED_S = ['Delivered','Cancelled']
 
   const filteredOrders = orders
     .filter(o => {
@@ -2933,9 +3028,9 @@ function OrdersPage({ user, onBack, onNav }) {
       <div style={{ background:'#fff', borderBottom:'1px solid #f0f0f0', position:'sticky', top:56, zIndex:10 }}>
         <div style={{ maxWidth:600, margin:'0 auto', display:'flex' }}>
           {[
-            { key:'active',    label:'Active',     count: activeCount    },
-            { key:'completed', label:'History',    count: completedCount },
-            { key:'all',       label:'All Orders', count: orders.length  },
+            { key:'active',    label:'Active',          count: activeCount    },
+            { key:'completed', label:'History',          count: completedCount },
+            { key:'all',       label:'All Orders',       count: orders.length  },
           ].map(t => (
             <button key={t.key} onClick={() => setHistTab(t.key)}
               style={{ flex:1, padding:'13px 8px', background:'none', border:'none', borderBottom: histTab===t.key ? '2px solid #c8102e' : '2px solid transparent', cursor:'pointer', transition:'all .15s', display:'flex', flexDirection:'column', alignItems:'center', gap:2 }}>
@@ -3132,7 +3227,7 @@ function OrdersPage({ user, onBack, onNav }) {
 }
 
 function AccountPage({ user, onLogout, onNav }) {
-  const isAdmin = user?.email === 'praneshsrinivasan2007@gmail.com'
+  const isAdmin = user?.email === ADMIN_EMAIL
   return (
     <div>
       <div style={{ background:'linear-gradient(135deg,#0a1f5d,#1a0a2e)', padding:'40px 20px', textAlign:'center' }}>
@@ -3153,22 +3248,24 @@ function AccountPage({ user, onLogout, onNav }) {
           { icon:'•', label:'My Orders',     sub:'Track and manage your orders',      page:'orders'  },
           { icon:'•', label:'Track Order',   sub:'Check live delivery status',         page:'track'   },
           { icon:'•', label:'Group Order',   sub:'Bulk orders for teams & events',     page:'group'   },
-          { icon:'•', label:'Payments',      sub:'UPI, Razorpay',                      page:null       },
-          { icon:'•', label:'Addresses',     sub:'Manage delivery addresses',          page:null       },
-          { icon:'•', label:'Notifications', sub:'Order updates on WhatsApp',          page:null       },
+          { icon:'•', label:'Payments',      sub:'UPI, Razorpay — managed at checkout', page:null, soon:true },
+          { icon:'•', label:'Addresses',     sub:'Manage delivery addresses',           page:null, soon:true },
+          { icon:'•', label:'Notifications', sub:'Order updates on WhatsApp',           page:null, soon:true },
           { icon:'•',  label:'About DRYNN',  sub:'Our story & how it works',           page:'about'   },
           { icon:'•', label:'Contact Us',    sub:'WhatsApp, email & support',          page:'contact' },
           { icon:'•', label:'Privacy',       sub:'Data & privacy settings',            page:'privacy'  },
         ].map((item,i)=>(
           <div key={i} onClick={()=>{ if(item.page) onNav(item.page) }}
-            style={{ display:'flex', alignItems:'center', gap:16, padding:'16px 0', borderBottom:'1px solid #f5f5f5', cursor:'pointer', transition:'padding .15s' }}
-            onMouseEnter={e=>e.currentTarget.style.paddingLeft='8px'} onMouseLeave={e=>e.currentTarget.style.paddingLeft='0'}>
+            style={{ display:'flex', alignItems:'center', gap:16, padding:'16px 0', borderBottom:'1px solid #f5f5f5', cursor: item.page ? 'pointer' : 'default', transition:'padding .15s', opacity: item.soon ? 0.6 : 1 }}
+            onMouseEnter={e=>{ if(item.page) e.currentTarget.style.paddingLeft='8px' }} onMouseLeave={e=>e.currentTarget.style.paddingLeft='0'}>
             <div style={{ width:44, height:44, background:'#f8f8f8', borderRadius:12, display:'flex', alignItems:'center', justifyContent:'center', fontSize:22, flexShrink:0 }}>{item.icon}</div>
             <div style={{ flex:1 }}>
               <div style={{ fontWeight:600, fontSize:14 }}>{item.label}</div>
               <div style={{ fontSize:12, color:'#aaa', marginTop:2 }}>{item.sub}</div>
             </div>
-            <span style={{ color:'#ccc', fontSize:18 }}>›</span>
+            {item.soon
+              ? <span style={{ fontSize:9, fontWeight:700, letterSpacing:'.08em', color:'#aaa', background:'#f0f0f0', padding:'3px 8px', borderRadius:20, textTransform:'uppercase' }}>Soon</span>
+              : <span style={{ color:'#ccc', fontSize:18 }}>›</span>}
           </div>
         ))}
         {isAdmin && (
@@ -3469,7 +3566,7 @@ function AdminOrderPreview({ order }) {
 // ══════════════════════════════════════════════════════════════
 // ADMIN PANEL  -  restricted to ADMIN_EMAIL only
 // ══════════════════════════════════════════════════════════════
-const ADMIN_EMAIL = 'praneshsrinivasan2007@gmail.com'
+const ADMIN_EMAIL = process.env.NEXT_PUBLIC_ADMIN_EMAIL || 'praneshsrinivasan2007@gmail.com'
 
 // ══════════════════════════════════════════════════════════════
 // MOCKUP UPLOADER — admin uploads garment views directly to Cloudinary
@@ -3504,8 +3601,7 @@ function MockupUploader() {
     setUploading(u => ({ ...u, [key]: true }))
     try {
       const url = await uploadToCloudinary(file, () => {})
-      await supabase.from('drynn_settings').delete().eq('key', key)
-      const { error: insertErr } = await supabase.from('drynn_settings').insert({ key, value: url })
+      const { error: insertErr } = await supabase.from('drynn_settings').upsert({ key, value: url }, { onConflict: 'key' })
       if (insertErr) { alert('Save failed: ' + insertErr.message); return }
       setUrls(u => ({ ...u, [key]: url }))
       setSaved(s => ({ ...s, [key]: true }))
@@ -3697,8 +3793,12 @@ function AdminPanel({ onBack }) {
 
   const saveMediaUrl = async (key, value) => {
     setMediaSaving(true)
-    await supabase.from('drynn_settings').delete().eq('key', key)
-    if (value) await supabase.from('drynn_settings').insert({ key, value })
+    if (value) {
+      const { error } = await supabase.from('drynn_settings').upsert({ key, value }, { onConflict: 'key' })
+      if (error) { showToast('Save failed: ' + error.message); setMediaSaving(false); return }
+    } else {
+      await supabase.from('drynn_settings').delete().eq('key', key)
+    }
     showToast('Saved!')
     setMediaSaving(false)
   }
@@ -3711,8 +3811,8 @@ function AdminPanel({ onBack }) {
 
   const saveAdminColors = async (colors) => {
     setColorsSaving(true)
-    await supabase.from('drynn_settings').delete().eq('key','swatches')
-    await supabase.from('drynn_settings').insert({ key:'swatches', value: JSON.stringify(colors) })
+    const { error } = await supabase.from('drynn_settings').upsert({ key:'swatches', value: JSON.stringify(colors) }, { onConflict: 'key' })
+    if (error) { showToast('Save failed: ' + error.message); setColorsSaving(false); return }
     setAdminColors(colors)
     showToast('Colors saved!')
     setColorsSaving(false)
@@ -3783,13 +3883,13 @@ function AdminPanel({ onBack }) {
   }
 
   const updateOrderStatus = async (id, status) => {
-    const { error } = await supabase.from('drynn_orders').update({ status }).eq('id', id)
+    const { error } = await supabase.from('drynn_orders').update({ status, updated_at: new Date().toISOString() }).eq('id', id)
     if (!error) { setOrders(o => o.map(x => x.id===id ? {...x, status} : x)); showToast('Status updated') }
   }
 
   const togglePaymentStatus = async (id, current) => {
     const next = current === 'Paid' ? 'Unpaid' : 'Paid'
-    const { error } = await supabase.from('drynn_orders').update({ payment_status: next }).eq('id', id)
+    const { error } = await supabase.from('drynn_orders').update({ payment_status: next, updated_at: new Date().toISOString() }).eq('id', id)
     if (!error) { setOrders(o => o.map(x => x.id===id ? {...x, payment_status: next} : x)); showToast(`Marked as ${next}`) }
     else alert('Update failed: ' + error.message)
   }
@@ -4027,15 +4127,15 @@ function AdminPanel({ onBack }) {
                                   : null
                               })()}
                               {/* ── PRINT SHEET (most important for printer) ── */}
-                              {o.print_sheet && (
+                              {o.print_sheet_url && (
                                 <div style={{ margin:'8px 0 6px', background:'#0a0a0a', borderRadius:8, overflow:'hidden', border:'2px solid #c8102e' }}>
                                   <div style={{ background:'#c8102e', padding:'4px 10px', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
                                     <span style={{ fontSize:10, fontWeight:700, letterSpacing:'.12em', textTransform:'uppercase', color:'#fff' }}>🖨️ Print-Ready Sheet</span>
-                                    <a href={o.print_sheet} target="_blank" rel="noopener noreferrer"
+                                    <a href={o.print_sheet_url} target="_blank" rel="noopener noreferrer"
                                       style={{ fontSize:10, fontWeight:700, color:'#fff', textDecoration:'underline', cursor:'pointer' }}>Open Full Size ↗</a>
                                   </div>
-                                  <a href={o.print_sheet} target="_blank" rel="noopener noreferrer">
-                                    <img src={o.print_sheet} alt="Print Sheet"
+                                  <a href={o.print_sheet_url} target="_blank" rel="noopener noreferrer">
+                                    <img src={o.print_sheet_url} alt="Print Sheet"
                                       style={{ width:'100%', display:'block', maxHeight:200, objectFit:'contain', background:'#fff' }}
                                       onError={e=>e.target.style.display='none'} />
                                   </a>
@@ -4925,8 +5025,9 @@ function OrderTrackingPage({ onNav }) {
   const track = async () => {
     if (!orderId.trim() && !phone.trim()) { setError('Enter Order ID or phone number'); return }
     setLoading(true); setError(''); setOrder(null)
+    const cleanId = orderId.trim().replace(/^#/,'')
     let query = supabase.from('drynn_orders').select('*')
-    if (orderId.trim()) query = query.eq('id', orderId.trim())
+    if (cleanId) query = query.ilike('id', `${cleanId}%`)
     else query = query.eq('phone', phone.trim()).order('placed_at',{ascending:false}).limit(1)
     const { data, error: dbErr } = await query
     setLoading(false)
@@ -5417,8 +5518,9 @@ function JoinGroupOrder({ user }) {
       .catch(()=>({ data:null, error:{message:'Group orders table not found'} }))
     setLoading(false)
     if (dbErr || !data || data.length===0) {
-      // Demo mode: show a fake group for testing
-      setGroup({ group_code: code.trim().toUpperCase(), title:'Demo Group Order', garment:'T-Shirt', color:'#ffffff', organizer_name:'Demo Organizer', status:'open', deadline: null })
+      setError(dbErr?.message === 'Group orders table not found'
+        ? 'Group orders feature is not yet set up. Contact the organizer directly.'
+        : 'Group not found. Check the code and try again.')
       return
     }
     setGroup(data[0])
@@ -5653,7 +5755,7 @@ function MainSite({ user }) {
       })
       // Use sendBeacon so it survives tab close
       navigator.sendBeacon &&
-        navigator.sendBeacon(`https://www.drynn.in/api/end-session?id=${sessionId}`, payload)
+        navigator.sendBeacon(`${typeof window !== 'undefined' ? window.location.origin : ''}/api/end-session?id=${sessionId}`, payload)
       // Also try supabase directly (works if tab stays open)
       supabase.from('drynn_user_sessions').update({
         ended_at:     new Date().toISOString(),
@@ -5688,10 +5790,11 @@ function MainSite({ user }) {
   }
 
   const addToCart = (product) => {
+    const incomingQty = product.qty || 1
     setCart(c => {
-      const idx = c.findIndex(x => x.id === product.id)
-      if (idx >= 0) { const n=[...c]; n[idx]={...n[idx],qty:n[idx].qty+1}; return n }
-      return [...c, { ...product, qty:1 }]
+      const idx = c.findIndex(x => x.id === product.id && x.size === product.size && x.color === product.color)
+      if (idx >= 0) { const n=[...c]; n[idx]={...n[idx],qty:n[idx].qty+incomingQty}; return n }
+      return [...c, { ...product, qty: incomingQty }]
     })
     showToast(`${product.name} added to cart`)
   }
@@ -5796,12 +5899,12 @@ function MainSite({ user }) {
       {page==='contact'  && <ContactPage  onNav={setPage} />}
       {page==='cart'     && <CartPage cart={cart} onRemove={i=>setCart(c=>c.filter((_,idx)=>idx!==i))} onClear={()=>setCart([])} user={user} onNav={setPage} />}
       {page==='account'  && <AccountPage user={user} onLogout={handleLogout} onNav={setPage} />}
-      {page==='orders'   && <OrdersPage  user={user} onBack={()=>setPage('account')} />}
+      {page==='orders'   && <OrdersPage  user={user} onBack={()=>setPage('account')} onNav={setPage} />}
       {page==='track'    && <OrderTrackingPage onNav={setPage} />}
       {page==='group'    && <GroupOrderPage user={user} onNav={setPage} />}
 
       {/* ── FOOTER (only on main pages) ── */}
-      {['home','about','contact','track','group'].includes(page) && page !== 'products' && (
+      {['home','products','about','contact','track','group'].includes(page) && (
         <footer style={{ background:'#0a0a0a', color:'#fff', padding:'48px 16px 80px' }}>
           <div style={{ maxWidth:1100, margin:'0 auto' }}>
             <div className="footer-cols" style={{ display:'grid', gridTemplateColumns:'2fr 1fr 1fr 1fr', gap:40, marginBottom:40 }}>

@@ -5264,19 +5264,7 @@ function MainSite({ user }) {
   const fmtClockDate = (d) => d.toLocaleDateString('en-IN', { weekday:'short', day:'numeric', month:'short' })
   const audioRef = useRef(null)
 
-  useEffect(() => {
-    const audio = audioRef.current
-    if (!audio) return
-    // Auto-play on mount — browsers require a user gesture, so we attempt and handle the rejection gracefully
-    const tryPlay = () => {
-      audio.play().then(() => setPlaying(true)).catch(() => setPlaying(false))
-    }
-    tryPlay()
-    // Fallback: also try on first user interaction anywhere on the page
-    const onInteract = () => { if (!playing) tryPlay(); document.removeEventListener('click', onInteract) }
-    document.addEventListener('click', onInteract)
-    return () => document.removeEventListener('click', onInteract)
-  }, [])
+  
 
   const togglePlay = () => {
     const audio = audioRef.current

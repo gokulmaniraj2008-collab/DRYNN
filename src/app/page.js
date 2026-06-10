@@ -973,7 +973,7 @@ function StudioPage({ user, onNav, onAddToCart }) {
 
   // ── Step tracking ─────────────────────────────────────────
   const STEPS_LIST = ['Product','Colour','Design','Customise','Preview','Order']
-  const [step, setStep] = useState(1)
+  const [step, setStep] = useState(1) // kept for compatibility but unused in one-page layout
   const [previewView, setPreviewView] = useState('front')
 
   // ── Step 1: Product ───────────────────────────────────────
@@ -1389,576 +1389,492 @@ function StudioPage({ user, onNav, onAddToCart }) {
         </div>
       </div>
 
-      {/* ── Step progress bar ── */}
-      <div style={{ background:'#111827', borderBottom:'1px solid rgba(255,255,255,.07)', padding:'0 16px', overflowX:'auto' }}>
-        <div style={{ display:'flex', maxWidth:960, margin:'0 auto', minWidth:'max-content' }}>
-          {STEPS_LIST.map((label, i) => {
-            const n = i+1
-            const done   = n < step
-            const active = n === step
-            return (
-              <button key={n} onClick={()=>{ if(n<step || (n===step+1 && canGoNext())) setStep(n) }}
-                style={{ flex:'0 0 auto', display:'flex', flexDirection:'column', alignItems:'center', gap:4, padding:'12px 16px', background:'none', border:'none', cursor:'pointer', position:'relative',
-                  borderBottom: active ? '2.5px solid #c8102e' : '2.5px solid transparent' }}>
-                <div style={{ width:24, height:24, borderRadius:'50%', fontSize:11, fontWeight:700, display:'flex', alignItems:'center', justifyContent:'center',
-                  background: done?'#00a86b':active?'#c8102e':'rgba(255,255,255,.1)',
-                  color:'#fff', transition:'background .2s' }}>
-                  {done ? '✓' : n}
-                </div>
-                <span style={{ fontSize:10, fontWeight:700, letterSpacing:'.08em', textTransform:'uppercase', color:active?'#fff':'rgba(255,255,255,.35)', whiteSpace:'nowrap' }}>{label}</span>
-              </button>
-            )
-          })}
+      {/* ── Studio header ── */}
+      <div style={{ background:'#111827', borderBottom:'1px solid rgba(255,255,255,.07)', padding:'12px 16px' }}>
+        <div style={{ maxWidth:960, margin:'0 auto', display:'flex', alignItems:'center', gap:10 }}>
+          <span style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:18, color:'#c8102e', letterSpacing:'.1em' }}>DRYNN STUDIO</span>
+          <span style={{ fontSize:11, color:'rgba(255,255,255,.3)', fontWeight:600 }}>· Custom Design Builder</span>
         </div>
       </div>
 
       {/* ── Step content ── */}
       <div style={{ maxWidth:960, margin:'0 auto', padding:'24px 16px 80px' }}>
 
-        {/* ══ STEP 1: PICK PRODUCT ══ */}
-        {step === 1 && (
-          <div>
-            <div style={{ marginBottom:20 }}>
-              <h2 style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:28, color:'#fff', letterSpacing:'.06em', marginBottom:6 }}>STEP 1 — CHOOSE YOUR GARMENT</h2>
-              <p style={{ fontSize:13, color:'rgba(255,255,255,.45)' }}>Pick a product from our collection. This becomes the base of your custom design.</p>
-            </div>
+        {/* ══ SECTION 1: PICK PRODUCT ══ */}
+        <div style={{ marginBottom:32 }}>
+          <div style={{ marginBottom:16 }}>
+            <h2 style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:22, color:'#fff', letterSpacing:'.06em', marginBottom:4 }}>
+              <span style={{ color:'#c8102e', marginRight:8 }}>01</span>CHOOSE YOUR GARMENT
+            </h2>
+            <p style={{ fontSize:13, color:'rgba(255,255,255,.45)', margin:0 }}>Pick a product from our collection. This becomes the base of your custom design.</p>
+          </div>
 
-            {/* Search */}
-            <div style={{ display:'flex', alignItems:'center', gap:10, background:'rgba(255,255,255,.07)', border:'1.5px solid rgba(255,255,255,.12)', borderRadius:10, padding:'10px 14px', marginBottom:16 }}>
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.4)" strokeWidth="2" strokeLinecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-              <input value={productSearch} onChange={e=>setProductSearch(e.target.value)} placeholder="Search garments…"
-                style={{ flex:1, background:'none', border:'none', outline:'none', fontSize:13, color:'#fff', fontFamily:'DM Sans,sans-serif' }} />
-            </div>
+          {/* Search */}
+          <div style={{ display:'flex', alignItems:'center', gap:10, background:'rgba(255,255,255,.07)', border:'1.5px solid rgba(255,255,255,.12)', borderRadius:10, padding:'10px 14px', marginBottom:16 }}>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.4)" strokeWidth="2" strokeLinecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input value={productSearch} onChange={e=>setProductSearch(e.target.value)} placeholder="Search garments…"
+              style={{ flex:1, background:'none', border:'none', outline:'none', fontSize:13, color:'#fff', fontFamily:'DM Sans,sans-serif' }} />
+          </div>
 
-            {allProducts.length === 0 ? (
-              <div style={{ textAlign:'center', padding:'48px 20px', background:'rgba(255,255,255,.04)', borderRadius:14 }}>
-                <div style={{ fontSize:52, marginBottom:12 }}>.</div>
-                <div style={{ fontSize:16, fontWeight:700, color:'rgba(255,255,255,.6)', marginBottom:6 }}>No products yet</div>
-                <p style={{ fontSize:13, color:'rgba(255,255,255,.35)', lineHeight:1.7 }}>Admin hasn't added any products.<br/>You can still continue with a standard garment.</p>
-              </div>
-            ) : (
-              <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(160px,1fr))', gap:12 }}>
-                {filteredProducts.map(p => {
-                  const isSelected = selectedProduct?.id === p.id
-                  return (
-                    <div key={p.id} onClick={()=>setSelectedProduct(isSelected ? null : p)}
-                      style={{ background: isSelected?'rgba(200,16,46,.12)':'rgba(255,255,255,.05)', border:`2px solid ${isSelected?'#c8102e':'rgba(255,255,255,.1)'}`, borderRadius:12, overflow:'hidden', cursor:'pointer', transition:'all .15s', position:'relative' }}
-                      onMouseEnter={e=>{ if(!isSelected) e.currentTarget.style.borderColor='rgba(255,255,255,.3)' }}
-                      onMouseLeave={e=>{ if(!isSelected) e.currentTarget.style.borderColor='rgba(255,255,255,.1)' }}>
-                      {/* Product image */}
-                      <div style={{ height:160, background:'#f8f8f8', display:'flex', alignItems:'center', justifyContent:'center', position:'relative', overflow:'hidden' }}>
-                        {p.image_url
-                          ? <img src={p.image_url} alt={p.name} style={{ width:'100%', height:'100%', objectFit:'contain' }} />
-                          : <span style={{ fontSize:72 }}>{p.emoji||'.'}</span>}
-                        {/* Tag */}
-                        <div style={{ position:'absolute', top:8, left:8, background:p.tag_color||p.tagColor||'#c8102e', color:'#fff', fontSize:8, fontWeight:700, letterSpacing:'.1em', textTransform:'uppercase', padding:'2px 8px', borderRadius:3 }}>{p.tag||'New'}</div>
-                        {/* Studio exclusive */}
-                        {p.studio_only && <div style={{ position:'absolute', top:8, right:8, background:'#0a1f5d', color:'#fff', fontSize:8, fontWeight:700, padding:'2px 7px', borderRadius:3 }}>Studio</div>}
-                        {/* Selected tick */}
-                        {isSelected && (
-                          <div style={{ position:'absolute', inset:0, background:'rgba(200,16,46,.18)', display:'flex', alignItems:'center', justifyContent:'center' }}>
-                            <div style={{ width:44, height:44, borderRadius:'50%', background:'#c8102e', display:'flex', alignItems:'center', justifyContent:'center', fontSize:22, color:'#fff', fontWeight:700, boxShadow:'0 4px 16px rgba(200,16,46,.5)' }}>✓</div>
-                          </div>
-                        )}
-                      </div>
-                      <div style={{ padding:'10px 12px', background: isSelected?'rgba(200,16,46,.08)':'#1a2744' }}>
-                        <div style={{ fontSize:13, fontWeight:700, color:'#fff', marginBottom:2, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{p.name}</div>
-                        <div style={{ fontSize:11, color:'rgba(255,255,255,.4)' }}>{p.category}</div>
-                        <div style={{ fontSize:13, fontWeight:700, color:'#c8102e', marginTop:4 }}>₹{Number(p.price).toLocaleString()}</div>
-                      </div>
+          {allProducts.length === 0 ? (
+            <div style={{ textAlign:'center', padding:'48px 20px', background:'rgba(255,255,255,.04)', borderRadius:14 }}>
+              <div style={{ fontSize:52, marginBottom:12 }}>.</div>
+              <div style={{ fontSize:16, fontWeight:700, color:'rgba(255,255,255,.6)', marginBottom:6 }}>No products yet</div>
+              <p style={{ fontSize:13, color:'rgba(255,255,255,.35)', lineHeight:1.7 }}>Admin hasn't added any products.<br/>You can still continue with a standard garment.</p>
+            </div>
+          ) : (
+            <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(160px,1fr))', gap:12 }}>
+              {filteredProducts.map(p => {
+                const isSelected = selectedProduct?.id === p.id
+                return (
+                  <div key={p.id} onClick={()=>setSelectedProduct(isSelected ? null : p)}
+                    style={{ background: isSelected?'rgba(200,16,46,.12)':'rgba(255,255,255,.05)', border:`2px solid ${isSelected?'#c8102e':'rgba(255,255,255,.1)'}`, borderRadius:12, overflow:'hidden', cursor:'pointer', transition:'all .15s', position:'relative' }}
+                    onMouseEnter={e=>{ if(!isSelected) e.currentTarget.style.borderColor='rgba(255,255,255,.3)' }}
+                    onMouseLeave={e=>{ if(!isSelected) e.currentTarget.style.borderColor='rgba(255,255,255,.1)' }}>
+                    <div style={{ height:160, background:'#f8f8f8', display:'flex', alignItems:'center', justifyContent:'center', position:'relative', overflow:'hidden' }}>
+                      {p.image_url
+                        ? <img src={p.image_url} alt={p.name} style={{ width:'100%', height:'100%', objectFit:'contain' }} />
+                        : <span style={{ fontSize:72 }}>{p.emoji||'.'}</span>}
+                      <div style={{ position:'absolute', top:8, left:8, background:p.tag_color||p.tagColor||'#c8102e', color:'#fff', fontSize:8, fontWeight:700, letterSpacing:'.1em', textTransform:'uppercase', padding:'2px 8px', borderRadius:3 }}>{p.tag||'New'}</div>
+                      {p.studio_only && <div style={{ position:'absolute', top:8, right:8, background:'#0a1f5d', color:'#fff', fontSize:8, fontWeight:700, padding:'2px 7px', borderRadius:3 }}>Studio</div>}
+                      {isSelected && (
+                        <div style={{ position:'absolute', inset:0, background:'rgba(200,16,46,.18)', display:'flex', alignItems:'center', justifyContent:'center' }}>
+                          <div style={{ width:44, height:44, borderRadius:'50%', background:'#c8102e', display:'flex', alignItems:'center', justifyContent:'center', fontSize:22, color:'#fff', fontWeight:700, boxShadow:'0 4px 16px rgba(200,16,46,.5)' }}>✓</div>
+                        </div>
+                      )}
                     </div>
-                  )
-                })}
-              </div>
-            )}
-
-            <div style={{ marginTop:20, display:'flex', gap:10, justifyContent:'flex-end', flexWrap:'wrap' }}>
-              {selectedProduct && (
-                <button onClick={()=>setSelectedProduct(null)} style={{ padding:'12px 20px', borderRadius:8, border:'1px solid rgba(255,255,255,.15)', background:'transparent', color:'rgba(255,255,255,.5)', fontSize:13, fontWeight:600, cursor:'pointer' }}>
-                  Deselect
-                </button>
-              )}
-              <button onClick={()=>setStep(2)} className="btn-primary" style={{ padding:'13px 32px', fontSize:14 }}>
-                {selectedProduct ? `Continue with ${selectedProduct.name} →` : 'Continue without product →'}
+                    <div style={{ padding:'10px 12px', background: isSelected?'rgba(200,16,46,.08)':'#1a2744' }}>
+                      <div style={{ fontSize:13, fontWeight:700, color:'#fff', marginBottom:2, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{p.name}</div>
+                      <div style={{ fontSize:11, color:'rgba(255,255,255,.4)' }}>{p.category}</div>
+                      <div style={{ fontSize:13, fontWeight:700, color:'#c8102e', marginTop:4 }}>₹{Number(p.price).toLocaleString()}</div>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+          {selectedProduct && (
+            <div style={{ marginTop:12, display:'flex', justifyContent:'flex-end' }}>
+              <button onClick={()=>setSelectedProduct(null)} style={{ padding:'8px 16px', borderRadius:8, border:'1px solid rgba(255,255,255,.15)', background:'transparent', color:'rgba(255,255,255,.5)', fontSize:12, fontWeight:600, cursor:'pointer' }}>
+                ✕ Deselect
               </button>
             </div>
+          )}
+        </div>
+
+        <div style={{ height:1, background:'rgba(255,255,255,.07)', marginBottom:32 }} />
+
+        {/* ══ SECTION 2: COLOUR ══ */}
+        <div style={{ marginBottom:32 }}>
+          <div style={{ marginBottom:16 }}>
+            <h2 style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:22, color:'#fff', letterSpacing:'.06em', marginBottom:4 }}>
+              <span style={{ color:'#c8102e', marginRight:8 }}>02</span>CHOOSE COLOUR
+            </h2>
+            <p style={{ fontSize:13, color:'rgba(255,255,255,.45)', margin:0 }}>Select the garment colour. The live preview updates instantly.</p>
           </div>
-        )}
 
-        {/* ══ STEP 2: COLOUR ══ */}
-        {step === 2 && (
-          <div style={{ display:'flex', flexDirection:'column', gap:16 }}>
+          <LivePreview />
 
-            {/* Header */}
-            <div style={{ background:'rgba(255,255,255,.05)', borderRadius:12, padding:'18px 20px' }}>
-              <h2 style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:28, color:'#fff', letterSpacing:'.06em', marginBottom:4 }}>STEP 2 — CHOOSE COLOUR</h2>
-              <p style={{ fontSize:13, color:'rgba(255,255,255,.45)', margin:0 }}>Select the garment colour. The live preview updates instantly.</p>
-            </div>
-
-            {/* Live Preview — full width on top */}
-            <LivePreview />
-
-            {/* Preset Colours */}
-            <div style={{ background:'rgba(255,255,255,.05)', borderRadius:12, padding:'16px 20px' }}>
-              <span style={lblStyle}>Preset Colours</span>
-              <div style={{ display:'flex', flexWrap:'wrap', gap:10, marginTop:8 }}>
-                {SWATCHES.map(c => (
-                  <div key={c} onClick={()=>setColor(c)}
-                    style={{ width:32, height:32, borderRadius:'50%', background:c, cursor:'pointer',
-                      border: c==='#ffffff' ? '2px solid rgba(255,255,255,.4)' : '2px solid transparent',
-                      boxShadow: color===c ? `0 0 0 2px #0d1b3e, 0 0 0 4px #c8102e` : '0 1px 4px rgba(0,0,0,.4)',
-                      transition:'box-shadow .15s', flexShrink:0 }} />
-                ))}
-              </div>
-            </div>
-
-            {/* Custom Colour */}
-            <div style={{ background:'rgba(255,255,255,.05)', borderRadius:12, padding:'16px 20px' }}>
-              <span style={lblStyle}>Custom Colour</span>
-              <div style={{ display:'flex', alignItems:'center', gap:12, marginTop:8 }}>
-                <input type="color" value={color} onChange={e=>setColor(e.target.value)}
-                  style={{ width:44, height:36, border:'none', borderRadius:6, cursor:'pointer', background:'none' }} />
-                <span style={{ fontSize:13, color:'rgba(255,255,255,.6)', fontFamily:'monospace', fontWeight:600 }}>{color.toUpperCase()}</span>
-              </div>
-            </div>
-
-            {/* Preview Background */}
-            <div style={{ background:'rgba(255,255,255,.05)', borderRadius:12, padding:'16px 20px' }}>
-              <span style={lblStyle}>Preview Background</span>
-              <div style={{ display:'flex', flexWrap:'wrap', gap:10, marginTop:8, marginBottom:10 }}>
-                {['#000000','#111111','#1a1a2e','#0a1f5d','#1a0a2e','#ffffff','#f5f5f0','#e8e8e8'].map(c => (
-                  <div key={c} onClick={()=>setBgColor(c)}
-                    style={{ width:32, height:32, borderRadius:6, background:c, cursor:'pointer',
-                      border: c==='#ffffff'||c==='#f5f5f0'||c==='#e8e8e8' ? '2px solid rgba(255,255,255,.3)' : '2px solid transparent',
-                      boxShadow: bgColor===c ? `0 0 0 2px #0d1b3e, 0 0 0 4px #c8102e` : '0 1px 4px rgba(0,0,0,.5)',
-                      transition:'box-shadow .15s', flexShrink:0 }} />
-                ))}
-              </div>
-              <div style={{ display:'flex', alignItems:'center', gap:12 }}>
-                <input type="color" value={bgColor} onChange={e=>setBgColor(e.target.value)}
-                  style={{ width:44, height:36, border:'none', borderRadius:6, cursor:'pointer', background:'none' }} />
-                <span style={{ fontSize:13, color:'rgba(255,255,255,.6)', fontFamily:'monospace', fontWeight:600 }}>{bgColor.toUpperCase()}</span>
-              </div>
-            </div>
-
-            {/* Back / Continue */}
-            <div style={{ display:'flex', gap:10 }}>
-              <button onClick={()=>setStep(1)} style={{ padding:'13px 20px', borderRadius:8, border:'1px solid rgba(255,255,255,.15)', background:'transparent', color:'rgba(255,255,255,.6)', fontSize:13, fontWeight:600, cursor:'pointer' }}>← Back</button>
-              <button onClick={()=>setStep(3)} className="btn-primary" style={{ flex:1, padding:'13px', fontSize:14 }}>CONTINUE →</button>
-            </div>
-
-          </div>
-        )}
-
-        {/* ══ STEP 3: DESIGN ══ */}
-        {step === 3 && (
-          <div style={{ display:'flex', flexDirection:'column', gap:16 }}>
-
-            {/* Header */}
-            <div style={{ background:'rgba(255,255,255,.05)', borderRadius:12, padding:'18px 20px' }}>
-              <h2 style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:28, color:'#fff', letterSpacing:'.06em', marginBottom:4 }}>STEP 3 — ADD YOUR DESIGN</h2>
-              <p style={{ fontSize:13, color:'rgba(255,255,255,.45)', margin:0 }}>Upload for Front (main) or add designs for other sides too — optional.</p>
-            </div>
-
-            {/* Side tabs */}
-            <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:6 }}>
-              {SIDES.map(s=>(
-                <button key={s} onClick={()=>setActiveSide(s)}
-                  style={{ padding:'10px 4px', borderRadius:10, border:`2px solid ${activeSide===s?'#c8102e':sideImgs[s]?'#00a86b':'rgba(255,255,255,.12)'}`,
-                    background:activeSide===s?'rgba(200,16,46,.15)':sideImgs[s]?'rgba(0,168,107,.08)':'rgba(255,255,255,.04)',
-                    cursor:'pointer', display:'flex', flexDirection:'column', alignItems:'center', gap:3, transition:'all .15s', position:'relative' }}>
-                  <span style={{ fontSize:20 }}>{s==='front'?'▲':s==='back'?'▼':s==='left'?'◀':'▶'}</span>
-                  <span style={{ fontSize:9, fontWeight:700, letterSpacing:'.06em', textTransform:'uppercase',
-                    color:activeSide===s?'#fff':sideImgs[s]?'#00a86b':'rgba(255,255,255,.4)' }}>
-                    {SIDE_LABELS[s]}
-                  </span>
-                  {sideImgs[s] && <span style={{ fontSize:8, color:'#00a86b', fontWeight:700 }}>✓</span>}
-                </button>
+          <div style={{ background:'rgba(255,255,255,.05)', borderRadius:12, padding:'16px 20px', marginTop:16 }}>
+            <span style={lblStyle}>Preset Colours</span>
+            <div style={{ display:'flex', flexWrap:'wrap', gap:10, marginTop:8 }}>
+              {SWATCHES.map(c => (
+                <div key={c} onClick={()=>setColor(c)}
+                  style={{ width:32, height:32, borderRadius:'50%', background:c, cursor:'pointer',
+                    border: c==='#ffffff' ? '2px solid rgba(255,255,255,.4)' : '2px solid transparent',
+                    boxShadow: color===c ? `0 0 0 2px #0d1b3e, 0 0 0 4px #c8102e` : '0 1px 4px rgba(0,0,0,.4)',
+                    transition:'box-shadow .15s', flexShrink:0 }} />
               ))}
             </div>
+          </div>
 
-            {/* Live Preview — full width */}
-            <LivePreview previewSide={activeSide} />
+          <div style={{ background:'rgba(255,255,255,.05)', borderRadius:12, padding:'16px 20px', marginTop:12 }}>
+            <span style={lblStyle}>Custom Colour</span>
+            <div style={{ display:'flex', alignItems:'center', gap:12, marginTop:8 }}>
+              <input type="color" value={color} onChange={e=>setColor(e.target.value)}
+                style={{ width:44, height:36, border:'none', borderRadius:6, cursor:'pointer', background:'none' }} />
+              <span style={{ fontSize:13, color:'rgba(255,255,255,.6)', fontFamily:'monospace', fontWeight:600 }}>{color.toUpperCase()}</span>
+            </div>
+          </div>
 
-            {/* Design source tabs (upload / samples) */}
-            <div style={{ display:'flex', gap:0, background:'rgba(255,255,255,.05)', borderRadius:10, padding:4 }}>
-              {[['upload','➜] Upload'],['samples','▶ Samples']].map(([k,l])=>(
-                <button key={k} onClick={()=>{ setDesignTab(k); if(k==='samples') loadSamples() }}
-                  style={{ flex:1, padding:'11px', borderRadius:8, border:'none', cursor:'pointer', fontSize:13, fontWeight:700,
-                    background:designTab===k?'#c8102e':'transparent', color:designTab===k?'#fff':'rgba(255,255,255,.5)', transition:'all .15s' }}>
-                  {l}
-                </button>
+          <div style={{ background:'rgba(255,255,255,.05)', borderRadius:12, padding:'16px 20px', marginTop:12 }}>
+            <span style={lblStyle}>Preview Background</span>
+            <div style={{ display:'flex', flexWrap:'wrap', gap:10, marginTop:8, marginBottom:10 }}>
+              {['#000000','#111111','#1a1a2e','#0a1f5d','#1a0a2e','#ffffff','#f5f5f0','#e8e8e8'].map(c => (
+                <div key={c} onClick={()=>setBgColor(c)}
+                  style={{ width:32, height:32, borderRadius:6, background:c, cursor:'pointer',
+                    border: c==='#ffffff'||c==='#f5f5f0'||c==='#e8e8e8' ? '2px solid rgba(255,255,255,.3)' : '2px solid transparent',
+                    boxShadow: bgColor===c ? `0 0 0 2px #0d1b3e, 0 0 0 4px #c8102e` : '0 1px 4px rgba(0,0,0,.5)',
+                    transition:'box-shadow .15s', flexShrink:0 }} />
               ))}
             </div>
+            <div style={{ display:'flex', alignItems:'center', gap:12 }}>
+              <input type="color" value={bgColor} onChange={e=>setBgColor(e.target.value)}
+                style={{ width:44, height:36, border:'none', borderRadius:6, cursor:'pointer', background:'none' }} />
+              <span style={{ fontSize:13, color:'rgba(255,255,255,.6)', fontFamily:'monospace', fontWeight:600 }}>{bgColor.toUpperCase()}</span>
+            </div>
+          </div>
+        </div>
 
-            {/* Clear design button */}
-            {sideImgs[activeSide] && (
-              <div style={{ display:'flex', justifyContent:'flex-end' }}>
-                <button onClick={()=>{ setSideImgs(p=>({...p,[activeSide]:null})); setSideFiles(p=>({...p,[activeSide]:null})); setSideSamples(p=>({...p,[activeSide]:null})) }}
-                  style={{ fontSize:11, color:'rgba(255,255,255,.4)', background:'none', border:'1px solid rgba(255,255,255,.15)', borderRadius:4, padding:'5px 12px', cursor:'pointer' }}>✕ Clear design</button>
-              </div>
-            )}
+        <div style={{ height:1, background:'rgba(255,255,255,.07)', marginBottom:32 }} />
 
-            {/* Upload tab */}
-            {designTab==='upload' && (
-              <div>
-                <div onClick={()=>document.getElementById(`studioFile_${activeSide}`).click()}
-                  style={{ border:`2px dashed ${uploadedFile?'rgba(0,168,107,.5)':'rgba(255,255,255,.18)'}`, borderRadius:12, padding:'32px 16px', textAlign:'center', cursor:'pointer', background:'rgba(255,255,255,.03)', transition:'all .2s' }}>
-                  <input id={`studioFile_${activeSide}`} type="file" accept=".png,.jpg,.jpeg,.svg" style={{ display:'none' }} onChange={handleFile} />
-                  {uploadedFile ? (
-                    <div>
-                      <img src={designImgSrc} alt="" style={{ maxHeight:110, maxWidth:'100%', borderRadius:8, marginBottom:8, objectFit:'contain' }} />
-                      <div style={{ fontSize:13, color:'#00a86b', fontWeight:700, marginBottom:3 }}>✓ {uploadedFile.name}</div>
-                      <div style={{ fontSize:11, color:'rgba(255,255,255,.4)' }}>{(uploadedFile.size/1024/1024).toFixed(1)} MB · Tap to change</div>
-                    </div>
-                  ) : designImgSrc ? (
-                    <div>
-                      <img src={designImgSrc} alt="" style={{ maxHeight:110, maxWidth:'100%', borderRadius:8, marginBottom:8, objectFit:'contain' }} />
-                      <div style={{ fontSize:12, color:'#00a86b', fontWeight:700, marginBottom:3 }}>✓ Sample selected · Tap to upload instead</div>
-                    </div>
-                  ) : (
-                    <div>
-                      <div style={{ fontSize:52, marginBottom:10 }}>📁</div>
-                      <div style={{ fontSize:14, color:'rgba(255,255,255,.8)', fontWeight:700, marginBottom:6 }}>Tap to upload {SIDE_LABELS[activeSide]} design</div>
-                      <div style={{ fontSize:11, color:'rgba(255,255,255,.4)' }}>PNG · JPG · SVG · Max 20MB · Min 300 DPI</div>
-                    </div>
-                  )}
-                </div>
-                {uploadErr && <div style={{ fontSize:12, color:'#c8102e', padding:'8px 12px', background:'rgba(200,16,46,.08)', borderRadius:6, marginTop:10 }}>⚠ {uploadErr}</div>}
-              </div>
-            )}
+        {/* ══ SECTION 3: DESIGN ══ */}
+        <div style={{ marginBottom:32 }}>
+          <div style={{ marginBottom:16 }}>
+            <h2 style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:22, color:'#fff', letterSpacing:'.06em', marginBottom:4 }}>
+              <span style={{ color:'#c8102e', marginRight:8 }}>03</span>ADD YOUR DESIGN
+            </h2>
+            <p style={{ fontSize:13, color:'rgba(255,255,255,.45)', margin:0 }}>Upload for Front (main) or add designs for other sides too — optional.</p>
+          </div>
 
-            {/* Samples tab */}
-            {designTab==='samples' && (
-              <div>
-                {samples.length > 0 && (
-                  <div style={{ display:'flex', gap:6, flexWrap:'wrap', marginBottom:12 }}>
-                    {['All',...new Set(samples.map(s=>s.category).filter(Boolean))].map(cat=>(
-                      <button key={cat} onClick={()=>setSampleCat(cat)}
-                        style={{ padding:'5px 12px', borderRadius:100, fontSize:10, fontWeight:700, cursor:'pointer',
-                          background:sampleCat===cat?'#c8102e':'transparent',
-                          color:sampleCat===cat?'#fff':'rgba(255,255,255,.5)',
-                          border:`1.5px solid ${sampleCat===cat?'#c8102e':'rgba(255,255,255,.15)'}` }}>
-                        {cat}
-                      </button>
-                    ))}
+          {/* Side tabs */}
+          <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:6, marginBottom:16 }}>
+            {SIDES.map(s=>(
+              <button key={s} onClick={()=>setActiveSide(s)}
+                style={{ padding:'10px 4px', borderRadius:10, border:`2px solid ${activeSide===s?'#c8102e':sideImgs[s]?'#00a86b':'rgba(255,255,255,.12)'}`,
+                  background:activeSide===s?'rgba(200,16,46,.15)':sideImgs[s]?'rgba(0,168,107,.08)':'rgba(255,255,255,.04)',
+                  cursor:'pointer', display:'flex', flexDirection:'column', alignItems:'center', gap:3, transition:'all .15s' }}>
+                <span style={{ fontSize:20 }}>{s==='front'?'▲':s==='back'?'▼':s==='left'?'◀':'▶'}</span>
+                <span style={{ fontSize:9, fontWeight:700, letterSpacing:'.06em', textTransform:'uppercase',
+                  color:activeSide===s?'#fff':sideImgs[s]?'#00a86b':'rgba(255,255,255,.4)' }}>
+                  {SIDE_LABELS[s]}
+                </span>
+                {sideImgs[s] && <span style={{ fontSize:8, color:'#00a86b', fontWeight:700 }}>✓</span>}
+              </button>
+            ))}
+          </div>
+
+          <LivePreview previewSide={activeSide} />
+
+          {/* Design source tabs */}
+          <div style={{ display:'flex', gap:0, background:'rgba(255,255,255,.05)', borderRadius:10, padding:4, marginTop:16 }}>
+            {[['upload','⬆ Upload'],['samples','▶ Samples']].map(([k,l])=>(
+              <button key={k} onClick={()=>{ setDesignTab(k); if(k==='samples') loadSamples() }}
+                style={{ flex:1, padding:'11px', borderRadius:8, border:'none', cursor:'pointer', fontSize:13, fontWeight:700,
+                  background:designTab===k?'#c8102e':'transparent', color:designTab===k?'#fff':'rgba(255,255,255,.5)', transition:'all .15s' }}>
+                {l}
+              </button>
+            ))}
+          </div>
+
+          {sideImgs[activeSide] && (
+            <div style={{ display:'flex', justifyContent:'flex-end', marginTop:8 }}>
+              <button onClick={()=>{ setSideImgs(p=>({...p,[activeSide]:null})); setSideFiles(p=>({...p,[activeSide]:null})); setSideSamples(p=>({...p,[activeSide]:null})) }}
+                style={{ fontSize:11, color:'rgba(255,255,255,.4)', background:'none', border:'1px solid rgba(255,255,255,.15)', borderRadius:4, padding:'5px 12px', cursor:'pointer' }}>✕ Clear design</button>
+            </div>
+          )}
+
+          {designTab==='upload' && (
+            <div style={{ marginTop:12 }}>
+              <div onClick={()=>document.getElementById(`studioFile_${activeSide}`).click()}
+                style={{ border:`2px dashed ${uploadedFile?'rgba(0,168,107,.5)':'rgba(255,255,255,.18)'}`, borderRadius:12, padding:'32px 16px', textAlign:'center', cursor:'pointer', background:'rgba(255,255,255,.03)', transition:'all .2s' }}>
+                <input id={`studioFile_${activeSide}`} type="file" accept=".png,.jpg,.jpeg,.svg" style={{ display:'none' }} onChange={handleFile} />
+                {uploadedFile ? (
+                  <div>
+                    <img src={designImgSrc} alt="" style={{ maxHeight:110, maxWidth:'100%', borderRadius:8, marginBottom:8, objectFit:'contain' }} />
+                    <div style={{ fontSize:13, color:'#00a86b', fontWeight:700, marginBottom:3 }}>✓ {uploadedFile.name}</div>
+                    <div style={{ fontSize:11, color:'rgba(255,255,255,.4)' }}>{(uploadedFile.size/1024/1024).toFixed(1)} MB · Tap to change</div>
+                  </div>
+                ) : designImgSrc ? (
+                  <div>
+                    <img src={designImgSrc} alt="" style={{ maxHeight:110, maxWidth:'100%', borderRadius:8, marginBottom:8, objectFit:'contain' }} />
+                    <div style={{ fontSize:12, color:'#00a86b', fontWeight:700, marginBottom:3 }}>✓ Sample selected · Tap to upload instead</div>
+                  </div>
+                ) : (
+                  <div>
+                    <div style={{ fontSize:52, marginBottom:10 }}>📁</div>
+                    <div style={{ fontSize:14, color:'rgba(255,255,255,.8)', fontWeight:700, marginBottom:6 }}>Tap to upload {SIDE_LABELS[activeSide]} design</div>
+                    <div style={{ fontSize:11, color:'rgba(255,255,255,.4)' }}>PNG · JPG · SVG · Max 20MB · Min 300 DPI</div>
                   </div>
                 )}
-                {samplesLoading
-                  ? <div style={{ textAlign:'center', padding:32, color:'rgba(255,255,255,.4)', fontSize:13 }}>Loading samples…</div>
-                  : samples.length===0
-                    ? <div style={{ textAlign:'center', padding:32, background:'rgba(255,255,255,.04)', borderRadius:10, color:'rgba(255,255,255,.35)', fontSize:13 }}>No samples added yet.</div>
-                    : <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:8 }}>
-                        {samples.filter(s=>sampleCat==='All'||s.category===sampleCat).map(s=>(
-                          <div key={s.id} onClick={()=>pickSample(s)}
-                            style={{ borderRadius:8, overflow:'hidden', cursor:'pointer', position:'relative',
-                              border:`2px solid ${selectedSample?.id===s.id?'#c8102e':'rgba(255,255,255,.1)'}`, transition:'all .15s' }}>
-                            <img src={s.image_url} alt={s.name} style={{ width:'100%', aspectRatio:'1', objectFit:'cover', display:'block' }} />
-                            {selectedSample?.id===s.id && (
-                              <div style={{ position:'absolute', top:4, right:4, width:18, height:18, borderRadius:'50%', background:'#c8102e', display:'flex', alignItems:'center', justifyContent:'center', fontSize:10, color:'#fff', fontWeight:700 }}>✓</div>
-                            )}
-                            <div style={{ padding:'4px 6px', background:'rgba(0,0,0,.65)' }}>
-                              <div style={{ fontSize:9, fontWeight:700, color:'rgba(255,255,255,.8)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{s.name}</div>
-                            </div>
-                          </div>
-                        ))}
-                      </div>}
               </div>
-            )}
-
-            {/* Back / Continue */}
-            <div style={{ display:'flex', gap:10 }}>
-              <button onClick={()=>setStep(2)} style={{ padding:'13px 20px', borderRadius:8, border:'1px solid rgba(255,255,255,.15)', background:'transparent', color:'rgba(255,255,255,.6)', fontSize:13, fontWeight:600, cursor:'pointer' }}>← Back</button>
-              <button onClick={()=>setStep(4)} className="btn-primary" style={{ flex:1, padding:'13px', fontSize:14 }}>
-                {SIDES.filter(s=>sideImgs[s]).length > 0 ? `CONTINUE (${SIDES.filter(s=>sideImgs[s]).length} side${SIDES.filter(s=>sideImgs[s]).length>1?'s':''}) →` : 'CONTINUE →'}
-              </button>
+              {uploadErr && <div style={{ fontSize:12, color:'#c8102e', padding:'8px 12px', background:'rgba(200,16,46,.08)', borderRadius:6, marginTop:10 }}>⚠ {uploadErr}</div>}
             </div>
+          )}
 
-          </div>
-        )}
-
-        {/* ══ STEP 4: CUSTOMISE ══ */}
-        {step === 4 && (
-          <div style={{ display:'flex', flexDirection:'column', gap:16 }}>
-
-            {/* ── Card 1: Header + Side Selector + Sub-tabs ── */}
-            <div style={{ background:'rgba(255,255,255,.04)', border:'1px solid rgba(255,255,255,.09)', borderRadius:12, padding:'18px 16px' }}>
-              <h2 style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:28, color:'#fff', letterSpacing:'.06em', marginBottom:4 }}>STEP 4 — CUSTOMISE</h2>
-              <p style={{ fontSize:13, color:'rgba(255,255,255,.45)', marginBottom:16 }}>Select a side to customise its position. Add text and effects below.</p>
-
-              {/* Side selector — only sides with designs */}
-              {SIDES.filter(s=>sideImgs[s]).length > 1 && (
-                <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:4, marginBottom:16 }}>
-                  {SIDES.filter(s=>sideImgs[s]).map(s=>(
-                    <button key={s} onClick={()=>setCustSide(s)}
-                      style={{ padding:'8px 4px', borderRadius:8, border:`2px solid ${custSide===s?'#c8102e':'rgba(255,255,255,.15)'}`,
-                        background:custSide===s?'rgba(200,16,46,.18)':'rgba(255,255,255,.04)',
-                        cursor:'pointer', display:'flex', flexDirection:'column', alignItems:'center', gap:3, transition:'all .15s' }}>
-                      <img src={sideImgs[s]} alt={s} style={{ width:32, height:32, objectFit:'contain', borderRadius:4, background:'rgba(255,255,255,.1)' }} />
-                      <span style={{ fontSize:9, fontWeight:700, textTransform:'uppercase', color:custSide===s?'#fff':'rgba(255,255,255,.4)' }}>{SIDE_LABELS[s]}</span>
+          {designTab==='samples' && (
+            <div style={{ marginTop:12 }}>
+              {samples.length > 0 && (
+                <div style={{ display:'flex', gap:6, flexWrap:'wrap', marginBottom:12 }}>
+                  {['All',...new Set(samples.map(s=>s.category).filter(Boolean))].map(cat=>(
+                    <button key={cat} onClick={()=>setSampleCat(cat)}
+                      style={{ padding:'5px 12px', borderRadius:100, fontSize:10, fontWeight:700, cursor:'pointer',
+                        background:sampleCat===cat?'#c8102e':'transparent',
+                        color:sampleCat===cat?'#fff':'rgba(255,255,255,.5)',
+                        border:`1.5px solid ${sampleCat===cat?'#c8102e':'rgba(255,255,255,.15)'}` }}>
+                      {cat}
                     </button>
                   ))}
                 </div>
               )}
-
-              {/* Sub-tabs */}
-              <div style={{ display:'flex', overflowX:'auto', gap:0, background:'rgba(255,255,255,.05)', borderRadius:8, padding:3, scrollbarWidth:'none' }}>
-                {[['position','↔ Position'],['text','T Text'],['effects',' Effects']].map(([k,l])=>(
-                  <button key={k} onClick={()=>setCustTab(k)}
-                    style={{ flex:'1 1 0', padding:'9px 16px', borderRadius:6, border:'none', cursor:'pointer', fontSize:12, fontWeight:700, whiteSpace:'nowrap',
-                      background:custTab===k?'#0a1f5d':'transparent', color:custTab===k?'#fff':'rgba(255,255,255,.45)', transition:'all .15s' }}>
-                    {l}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* ── Card 2: Live Preview (full width) ── */}
-            <LivePreview previewSide={custSide} />
-
-            {/* ── Card 3: Controls (sliders / text / effects based on active tab) ── */}
-            <div style={{ background:'rgba(255,255,255,.04)', border:'1px solid rgba(255,255,255,.09)', borderRadius:12, padding:'18px 16px' }}>
-
-              {/* Position */}
-              {custTab==='position' && (
-                <div>
-                  {[
-                    ['Up / Down',    posY,      setPosY,      15, 75],
-                    ['Left / Right', posX,      setPosX,      15, 85],
-                    ['Size',         scale,     setScale,     10, 70],
-                    ['Rotation',     rotation,  setRotation, -45, 45],
-                  ].map(([label, val, setter, min, max])=>(
-                    <div key={label} style={{ marginBottom:18 }}>
-                      <div style={{ display:'flex', justifyContent:'space-between', marginBottom:6 }}>
-                        <span style={{ fontSize:11, fontWeight:700, letterSpacing:'.1em', textTransform:'uppercase', color:'rgba(255,255,255,.45)' }}>{label}</span>
-                        <span style={{ fontSize:12, color:'#fff', fontWeight:700 }}>{val}{label==='Rotation'?'°':'%'}</span>
-                      </div>
-                      <input type="range" min={min} max={max} value={val} onChange={e=>setter(Number(e.target.value))} style={{ width:'100%', accentColor:'#c8102e' }} />
-                    </div>
-                  ))}
-                  <button onClick={()=>{setPosY(38);setPosX(50);setScale(38);setRotation(0)}}
-                    style={{ width:'100%', padding:10, background:'rgba(255,255,255,.06)', border:'1px solid rgba(255,255,255,.12)', borderRadius:6, color:'rgba(255,255,255,.5)', fontSize:12, fontWeight:700, cursor:'pointer' }}>
-                    ↺ Reset Position
-                  </button>
-                </div>
-              )}
-
-              {/* Text */}
-              {custTab==='text' && (
-                <div>
-                  <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16 }}>
-                    <span style={{ fontSize:11, fontWeight:700, letterSpacing:'.1em', textTransform:'uppercase', color:'rgba(255,255,255,.45)' }}>Text — {SIDE_LABELS[custSide]}</span>
-                    <button onClick={()=>setTextOn(v=>!v)}
-                      style={{ padding:'6px 16px', borderRadius:50, fontSize:11, fontWeight:700, cursor:'pointer', border:'none',
-                        background:textOn?'#c8102e':'rgba(255,255,255,.1)', color:'#fff' }}>
-                      {textOn?'ON ✓':'OFF'}
-                    </button>
-                  </div>
-                  {textOn ? (
-                    <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
-                      <input value={textVal} onChange={e=>setTextVal(e.target.value)} placeholder="Your text here"
-                        style={{ ...inputStyle, fontSize:15, fontWeight:700 }} />
-                      <div>
-                        <span style={lblStyle}>Font</span>
-                        <select value={textFont} onChange={e=>setTextFont(e.target.value)} style={{ ...inputStyle }}>
-                          {TEXT_FONTS.map(f=><option key={f} value={f}>{f}</option>)}
-                        </select>
-                      </div>
-                      {[
-                        ['Up / Down',    textPosY,  setTextPosY,  5,  95],
-                        ['Left / Right', textPosX,  setTextPosX,  5,  95],
-                        ['Size',         textSize,  setTextSize,  12, 60],
-                        ['Rotation',     textRot,   setTextRot,  -45, 45],
-                      ].map(([label, val, setter, min, max])=>(
-                        <div key={label}>
-                          <div style={{ display:'flex', justifyContent:'space-between', marginBottom:6 }}>
-                            <span style={{ fontSize:11, fontWeight:700, letterSpacing:'.1em', textTransform:'uppercase', color:'rgba(255,255,255,.45)' }}>{label}</span>
-                            <span style={{ fontSize:12, color:'#fff', fontWeight:700 }}>{val}{label==='Rotation'?'°':label==='Size'?'px':'%'}</span>
+              {samplesLoading
+                ? <div style={{ textAlign:'center', padding:32, color:'rgba(255,255,255,.4)', fontSize:13 }}>Loading samples…</div>
+                : samples.length===0
+                  ? <div style={{ textAlign:'center', padding:32, background:'rgba(255,255,255,.04)', borderRadius:10, color:'rgba(255,255,255,.35)', fontSize:13 }}>No samples added yet.</div>
+                  : <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:8 }}>
+                      {samples.filter(s=>sampleCat==='All'||s.category===sampleCat).map(s=>(
+                        <div key={s.id} onClick={()=>pickSample(s)}
+                          style={{ borderRadius:8, overflow:'hidden', cursor:'pointer', position:'relative',
+                            border:`2px solid ${selectedSample?.id===s.id?'#c8102e':'rgba(255,255,255,.1)'}`, transition:'all .15s' }}>
+                          <img src={s.image_url} alt={s.name} style={{ width:'100%', aspectRatio:'1', objectFit:'cover', display:'block' }} />
+                          {selectedSample?.id===s.id && (
+                            <div style={{ position:'absolute', top:4, right:4, width:18, height:18, borderRadius:'50%', background:'#c8102e', display:'flex', alignItems:'center', justifyContent:'center', fontSize:10, color:'#fff', fontWeight:700 }}>✓</div>
+                          )}
+                          <div style={{ padding:'4px 6px', background:'rgba(0,0,0,.65)' }}>
+                            <div style={{ fontSize:9, fontWeight:700, color:'rgba(255,255,255,.8)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{s.name}</div>
                           </div>
-                          <input type="range" min={min} max={max} value={val} onChange={e=>setter(Number(e.target.value))} style={{ width:'100%', accentColor:'#c8102e' }} />
                         </div>
                       ))}
-                      <div>
-                        <span style={lblStyle}>Text Colour</span>
-                        <div style={{ display:'flex', flexWrap:'wrap', gap:8, marginBottom:8 }}>
-                          {['#ffffff','#0a0a0a','#c8102e','#0a1f5d','#00a86b','#f5a623','#9b59b6','#f0e68c'].map(c => (
-                            <div key={c} onClick={()=>setTextColor(c)}
-                              style={{ width:28, height:28, borderRadius:'50%', background:c, cursor:'pointer',
-                                border: c==='#ffffff' ? '2px solid rgba(255,255,255,.4)' : '2px solid transparent',
-                                boxShadow: textColor===c ? `0 0 0 2px #0d1b3e, 0 0 0 4px #c8102e` : '0 1px 4px rgba(0,0,0,.4)',
-                                transition:'box-shadow .15s', flexShrink:0 }} />
-                          ))}
-                        </div>
-                        <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-                          <input type="color" value={textColor} onChange={e=>setTextColor(e.target.value)} style={{ width:40, height:32, border:'none', borderRadius:6, cursor:'pointer', background:'none' }} />
-                          <span style={{ fontSize:12, color:'rgba(255,255,255,.5)', fontFamily:'monospace' }}>{textColor.toUpperCase()}</span>
-                        </div>
-                      </div>
-                      <button onClick={()=>{setTextPosY(75);setTextPosX(50);setTextSize(24);setTextRot(0)}}
-                        style={{ width:'100%', padding:10, background:'rgba(255,255,255,.06)', border:'1px solid rgba(255,255,255,.12)', borderRadius:6, color:'rgba(255,255,255,.5)', fontSize:12, fontWeight:700, cursor:'pointer' }}>
-                        ↺ Reset Text Position
-                      </button>
-                    </div>
-                  ) : (
-                    <p style={{ fontSize:12, color:'rgba(255,255,255,.3)', lineHeight:1.7 }}>Toggle ON to add your custom text — brand name, slogan, or anything you want.</p>
-                  )}
-                </div>
-              )}
-
-              {/* Effects */}
-              {custTab==='effects' && (
-                <div>
-                  <span style={lblStyle}>Filter Presets</span>
-                  <div style={{ display:'flex', flexWrap:'wrap', gap:6, marginBottom:18 }}>
-                    {FILTERS.map(f=>(
-                      <button key={f.label} onClick={()=>setFilterFx(f.value)}
-                        style={{ padding:'6px 12px', borderRadius:50, fontSize:11, fontWeight:700, cursor:'pointer',
-                          background:filterFx===f.value?'#c8102e':'rgba(255,255,255,.07)',
-                          color:filterFx===f.value?'#fff':'rgba(255,255,255,.55)',
-                          border:`1px solid ${filterFx===f.value?'#c8102e':'rgba(255,255,255,.1)'}` }}>
-                        {f.label}
-                      </button>
-                    ))}
-                  </div>
-                  {[['Brightness',brightness,setBrightness,50,160],['Contrast',contrast,setContrast,50,200],['Saturation',saturation,setSaturation,0,250]].map(([label,val,setter,min,max])=>(
-                    <div key={label} style={{ marginBottom:14 }}>
-                      <div style={{ display:'flex', justifyContent:'space-between', marginBottom:6 }}>
-                        <span style={{ fontSize:11, fontWeight:700, letterSpacing:'.1em', textTransform:'uppercase', color:'rgba(255,255,255,.45)' }}>{label}</span>
-                        <span style={{ fontSize:12, color:'#fff' }}>{val}%</span>
-                      </div>
-                      <input type="range" min={min} max={max} value={val} onChange={e=>setter(parseInt(e.target.value))} style={{ width:'100%', accentColor:'#c8102e' }} />
-                    </div>
-                  ))}
-                  <button onClick={()=>{setBrightness(100);setContrast(100);setSaturation(100);setFilterFx('')}}
-                    style={{ width:'100%', padding:10, background:'rgba(255,255,255,.06)', border:'1px solid rgba(255,255,255,.12)', borderRadius:6, color:'rgba(255,255,255,.5)', fontSize:12, fontWeight:700, cursor:'pointer' }}>
-                    ↺ Reset Effects
-                  </button>
-                </div>
-              )}
+                    </div>}
             </div>
+          )}
+        </div>
 
-            {/* ── Card 4: Back + Preview buttons ── */}
-            <div style={{ display:'flex', gap:10 }}>
-              <button onClick={()=>setStep(3)} style={{ padding:'12px 20px', borderRadius:8, border:'1px solid rgba(255,255,255,.15)', background:'transparent', color:'rgba(255,255,255,.5)', fontSize:13, fontWeight:600, cursor:'pointer' }}>← Back</button>
-              <button onClick={()=>setStep(5)} className="btn-primary" style={{ flex:1, padding:'13px', fontSize:14 }}>PREVIEW →</button>
-            </div>
+        <div style={{ height:1, background:'rgba(255,255,255,.07)', marginBottom:32 }} />
 
+        {/* ══ SECTION 4: CUSTOMISE ══ */}
+        <div style={{ marginBottom:32 }}>
+          <div style={{ marginBottom:16 }}>
+            <h2 style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:22, color:'#fff', letterSpacing:'.06em', marginBottom:4 }}>
+              <span style={{ color:'#c8102e', marginRight:8 }}>04</span>CUSTOMISE
+            </h2>
+            <p style={{ fontSize:13, color:'rgba(255,255,255,.45)', margin:0 }}>Adjust position, add text and effects for each side.</p>
           </div>
-        )}
 
-        {/* ══ STEP 5: PREVIEW ══ */}
-        {step === 5 && (
-          <div style={{ display:'flex', gap:24, flexWrap:'wrap' }}>
-            <div style={{ flex:'1 1 280px' }}>
-            <h2 style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:28, color:'#fff', letterSpacing:'.06em', marginBottom:4 }}>STEP 5 — PREVIEW YOUR DESIGN</h2>
-            <p style={{ fontSize:13, color:'rgba(255,255,255,.45)', marginBottom:20 }}>Swipe or tap thumbnails to see all angles. Your design appears on each uploaded side.</p>
-
-            {/* 4-image swipe viewer */}
-            <ProductImageViewer
-              product={selectedProduct}
-              fallbackSrc={garmentImgSrc}
-              sideImgs={sideImgs}
-              sidePos={sidePos}
-              posX={posX} posY={posY} scale={scale} rotation={rotation}
-              textOn={textOn} textVal={textVal} textFont={textFont}
-              textSize={textSize} textColor={textColor}
-              textPosX={textPosX} textPosY={textPosY} textRot={textRot}
-              sideText={sideText}
-              colorToFilter={colorToFilter}
-              color={color}
-              canvasFilter={canvasFilter}
-              garmentEmoji={GARMENT_EMOJI[garmentType]}
-              bgColor={bgColor}
-            />
-
-            {/* Summary strip */}
-            <div style={{ maxWidth:420, margin:'16px auto 0', background:'rgba(255,255,255,.06)', border:'1px solid rgba(255,255,255,.1)', borderRadius:12, padding:'14px 18px', display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
-              {[
-                ['Garment', selectedProduct?.name || garmentType],
-                ['Colour',  color],
-                ['Designs', SIDES.filter(s=>sideImgs[s]).map(s=>SIDE_LABELS[s]).join(', ') || '—'],
-                ['Text', Object.values(sideText).filter(t=>t.on&&t.val).length > 0 ? Object.entries(sideText).filter(([,t])=>t.on&&t.val).map(([s])=>SIDE_LABELS[s]).join(', ') : 'None'],
-              ].map(([k,v])=>(
-                <div key={k}>
-                  <div style={{ fontSize:9, fontWeight:700, letterSpacing:'.1em', textTransform:'uppercase', color:'rgba(255,255,255,.3)', marginBottom:2 }}>{k}</div>
-                  <div style={{ fontSize:12, fontWeight:700, color:'#fff', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{v}</div>
-                </div>
+          {/* Side selector */}
+          {SIDES.filter(s=>sideImgs[s]).length > 1 && (
+            <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:4, marginBottom:16 }}>
+              {SIDES.filter(s=>sideImgs[s]).map(s=>(
+                <button key={s} onClick={()=>setCustSide(s)}
+                  style={{ padding:'8px 4px', borderRadius:8, border:`2px solid ${custSide===s?'#c8102e':'rgba(255,255,255,.15)'}`,
+                    background:custSide===s?'rgba(200,16,46,.18)':'rgba(255,255,255,.04)',
+                    cursor:'pointer', display:'flex', flexDirection:'column', alignItems:'center', gap:3, transition:'all .15s' }}>
+                  <img src={sideImgs[s]} alt={s} style={{ width:32, height:32, objectFit:'contain', borderRadius:4, background:'rgba(255,255,255,.1)' }} />
+                  <span style={{ fontSize:9, fontWeight:700, textTransform:'uppercase', color:custSide===s?'#fff':'rgba(255,255,255,.4)' }}>{SIDE_LABELS[s]}</span>
+                </button>
               ))}
             </div>
+          )}
 
-            <div style={{ display:'flex', gap:10, marginTop:20, justifyContent:'center' }}>
-              <button onClick={()=>setStep(4)} style={{ padding:'12px 20px', borderRadius:8, border:'1px solid rgba(255,255,255,.15)', background:'transparent', color:'rgba(255,255,255,.5)', fontSize:13, fontWeight:600, cursor:'pointer' }}>← Edit</button>
-              <button onClick={()=>setStep(6)} className="btn-primary" style={{ padding:'13px 36px', fontSize:14 }}>Place Order →</button>
-            </div>
-            </div>
-            <LivePreview />
+          <LivePreview previewSide={custSide} />
+
+          {/* Sub-tabs */}
+          <div style={{ display:'flex', gap:0, background:'rgba(255,255,255,.05)', borderRadius:8, padding:3, marginTop:16 }}>
+            {[['position','↔ Position'],['text','T Text'],['effects','✦ Effects']].map(([k,l])=>(
+              <button key={k} onClick={()=>setCustTab(k)}
+                style={{ flex:'1 1 0', padding:'9px 16px', borderRadius:6, border:'none', cursor:'pointer', fontSize:12, fontWeight:700, whiteSpace:'nowrap',
+                  background:custTab===k?'#0a1f5d':'transparent', color:custTab===k?'#fff':'rgba(255,255,255,.45)', transition:'all .15s' }}>
+                {l}
+              </button>
+            ))}
           </div>
-        )}
 
-        {/* ══ STEP 6: ORDER ══ */}
-        {step === 6 && (
-          <div style={{ display:'flex', flexDirection:'column', gap:16 }}>
-
-            {/* ── Card 1: Header ── */}
-            <div style={{ background:'rgba(255,255,255,.04)', border:'1px solid rgba(255,255,255,.09)', borderRadius:12, padding:'18px 16px' }}>
-              <h2 style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:28, color:'#fff', letterSpacing:'.06em', marginBottom:4 }}>STEP 6 — PLACE YOUR ORDER</h2>
-              <p style={{ fontSize:13, color:'rgba(255,255,255,.45)', marginBottom:0 }}>Fill your details. We'll WhatsApp you within 2 hours to confirm.</p>
-            </div>
-
-            {/* ── Card 2: Live Preview (full width) ── */}
-            <LivePreview />
-
-            {/* ── Card 3: Controls (size + actions) ── */}
-            {status==='done' ? (
-              <div style={{ textAlign:'center', padding:'48px 16px', background:'rgba(0,168,107,.07)', border:'1px solid rgba(0,168,107,.2)', borderRadius:12 }}>
-                <div style={{ fontSize:64, marginBottom:16 }}>🛒</div>
-                <div style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:28, color:'#fff', letterSpacing:'.06em', marginBottom:8 }}>ADDED TO CART!</div>
-                <p style={{ fontSize:13, color:'rgba(255,255,255,.55)', lineHeight:1.8 }}>Taking you to cart to review your bill…</p>
-              </div>
-            ) : (
-              <div style={{ background:'rgba(255,255,255,.04)', border:'1px solid rgba(255,255,255,.09)', borderRadius:12, padding:'18px 16px', display:'flex', flexDirection:'column', gap:18 }}>
-
-                {/* Size */}
-                <div>
-                  <span style={lblStyle}>Size</span>
-                  <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
-                    {SIZES.map(s=>(
-                      <button key={s} onClick={()=>setSize(s)}
-                        style={{ padding:'9px 16px', borderRadius:6, fontSize:13, fontWeight:700, cursor:'pointer', border:'1.5px solid',
-                          borderColor:size===s?'#c8102e':'rgba(255,255,255,.15)',
-                          background:size===s?'#c8102e':'rgba(255,255,255,.04)', color:'#fff', transition:'all .15s' }}>
-                        {s}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Upload progress */}
-                {status==='uploading' && (
-                  <div>
-                    <div style={{ display:'flex', justifyContent:'space-between', fontSize:11, color:'rgba(255,255,255,.6)', marginBottom:6 }}>
-                      <span>Uploading design…</span><span>{uploadPct}%</span>
+          <div style={{ background:'rgba(255,255,255,.04)', border:'1px solid rgba(255,255,255,.09)', borderRadius:12, padding:'18px 16px', marginTop:12 }}>
+            {custTab==='position' && (
+              <div>
+                {[
+                  ['Up / Down',    posY,      setPosY,      15, 75],
+                  ['Left / Right', posX,      setPosX,      15, 85],
+                  ['Size',         scale,     setScale,     10, 70],
+                  ['Rotation',     rotation,  setRotation, -45, 45],
+                ].map(([label, val, setter, min, max])=>(
+                  <div key={label} style={{ marginBottom:18 }}>
+                    <div style={{ display:'flex', justifyContent:'space-between', marginBottom:6 }}>
+                      <span style={{ fontSize:11, fontWeight:700, letterSpacing:'.1em', textTransform:'uppercase', color:'rgba(255,255,255,.45)' }}>{label}</span>
+                      <span style={{ fontSize:12, color:'#fff', fontWeight:700 }}>{val}{label==='Rotation'?'°':'%'}</span>
                     </div>
-                    <div style={{ height:5, background:'rgba(255,255,255,.1)', borderRadius:3 }}>
-                      <div style={{ height:'100%', width:`${uploadPct}%`, background:'#c8102e', borderRadius:3, transition:'width .3s' }} />
-                    </div>
+                    <input type="range" min={min} max={max} value={val} onChange={e=>setter(Number(e.target.value))} style={{ width:'100%', accentColor:'#c8102e' }} />
                   </div>
-                )}
-
-                {/* ── Buttons ── */}
-                <div style={{ display:'flex', gap:10 }}>
-                  <button onClick={()=>setStep(5)} style={{ padding:'12px 20px', borderRadius:8, border:'1px solid rgba(255,255,255,.15)', background:'transparent', color:'rgba(255,255,255,.5)', fontSize:13, fontWeight:600, cursor:'pointer' }}>← Preview</button>
-                  <button className="btn-primary" style={{ flex:1, padding:'14px', fontSize:14, letterSpacing:'.04em', opacity:(status==='saving'||status==='uploading'||status==='sheet')?.6:1 }}
-                    onClick={handleSubmit} disabled={status==='saving'||status==='uploading'||status==='sheet'}>
-                    {status==='uploading'?`Uploading… ${uploadPct}%`:status==='saving'?'Placing Order…':status==='sheet'?'Generating print sheet…':'🛒 Place Custom Order'}
-                  </button>
-                </div>
-                <p style={{ fontSize:11, color:'rgba(255,255,255,.3)', textAlign:'center' }}>Our team will WhatsApp you within 2 hours · Pay via UPI link</p>
+                ))}
+                <button onClick={()=>{setPosY(38);setPosX(50);setScale(38);setRotation(0)}}
+                  style={{ width:'100%', padding:10, background:'rgba(255,255,255,.06)', border:'1px solid rgba(255,255,255,.12)', borderRadius:6, color:'rgba(255,255,255,.5)', fontSize:12, fontWeight:700, cursor:'pointer' }}>
+                  ↺ Reset Position
+                </button>
               </div>
             )}
 
+            {custTab==='text' && (
+              <div>
+                <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16 }}>
+                  <span style={{ fontSize:11, fontWeight:700, letterSpacing:'.1em', textTransform:'uppercase', color:'rgba(255,255,255,.45)' }}>Text — {SIDE_LABELS[custSide]}</span>
+                  <button onClick={()=>setTextOn(v=>!v)}
+                    style={{ padding:'6px 16px', borderRadius:50, fontSize:11, fontWeight:700, cursor:'pointer', border:'none',
+                      background:textOn?'#c8102e':'rgba(255,255,255,.1)', color:'#fff' }}>
+                    {textOn?'ON ✓':'OFF'}
+                  </button>
+                </div>
+                {textOn ? (
+                  <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
+                    <input value={textVal} onChange={e=>setTextVal(e.target.value)} placeholder="Your text here"
+                      style={{ ...inputStyle, fontSize:15, fontWeight:700 }} />
+                    <div>
+                      <span style={lblStyle}>Font</span>
+                      <select value={textFont} onChange={e=>setTextFont(e.target.value)} style={{ ...inputStyle }}>
+                        {TEXT_FONTS.map(f=><option key={f} value={f}>{f}</option>)}
+                      </select>
+                    </div>
+                    {[
+                      ['Up / Down',    textPosY,  setTextPosY,  5,  95],
+                      ['Left / Right', textPosX,  setTextPosX,  5,  95],
+                      ['Size',         textSize,  setTextSize,  12, 60],
+                      ['Rotation',     textRot,   setTextRot,  -45, 45],
+                    ].map(([label, val, setter, min, max])=>(
+                      <div key={label}>
+                        <div style={{ display:'flex', justifyContent:'space-between', marginBottom:6 }}>
+                          <span style={{ fontSize:11, fontWeight:700, letterSpacing:'.1em', textTransform:'uppercase', color:'rgba(255,255,255,.45)' }}>{label}</span>
+                          <span style={{ fontSize:12, color:'#fff', fontWeight:700 }}>{val}{label==='Rotation'?'°':label==='Size'?'px':'%'}</span>
+                        </div>
+                        <input type="range" min={min} max={max} value={val} onChange={e=>setter(Number(e.target.value))} style={{ width:'100%', accentColor:'#c8102e' }} />
+                      </div>
+                    ))}
+                    <div>
+                      <span style={lblStyle}>Text Colour</span>
+                      <div style={{ display:'flex', flexWrap:'wrap', gap:8, marginBottom:8 }}>
+                        {['#ffffff','#0a0a0a','#c8102e','#0a1f5d','#00a86b','#f5a623','#9b59b6','#f0e68c'].map(c => (
+                          <div key={c} onClick={()=>setTextColor(c)}
+                            style={{ width:28, height:28, borderRadius:'50%', background:c, cursor:'pointer',
+                              border: c==='#ffffff' ? '2px solid rgba(255,255,255,.4)' : '2px solid transparent',
+                              boxShadow: textColor===c ? `0 0 0 2px #0d1b3e, 0 0 0 4px #c8102e` : '0 1px 4px rgba(0,0,0,.4)',
+                              transition:'box-shadow .15s', flexShrink:0 }} />
+                        ))}
+                      </div>
+                      <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+                        <input type="color" value={textColor} onChange={e=>setTextColor(e.target.value)} style={{ width:40, height:32, border:'none', borderRadius:6, cursor:'pointer', background:'none' }} />
+                        <span style={{ fontSize:12, color:'rgba(255,255,255,.5)', fontFamily:'monospace' }}>{textColor.toUpperCase()}</span>
+                      </div>
+                    </div>
+                    <button onClick={()=>{setTextPosY(75);setTextPosX(50);setTextSize(24);setTextRot(0)}}
+                      style={{ width:'100%', padding:10, background:'rgba(255,255,255,.06)', border:'1px solid rgba(255,255,255,.12)', borderRadius:6, color:'rgba(255,255,255,.5)', fontSize:12, fontWeight:700, cursor:'pointer' }}>
+                      ↺ Reset Text Position
+                    </button>
+                  </div>
+                ) : (
+                  <p style={{ fontSize:12, color:'rgba(255,255,255,.3)', lineHeight:1.7 }}>Toggle ON to add your custom text — brand name, slogan, or anything you want.</p>
+                )}
+              </div>
+            )}
+
+            {custTab==='effects' && (
+              <div>
+                <span style={lblStyle}>Filter Presets</span>
+                <div style={{ display:'flex', flexWrap:'wrap', gap:6, marginBottom:18 }}>
+                  {FILTERS.map(f=>(
+                    <button key={f.label} onClick={()=>setFilterFx(f.value)}
+                      style={{ padding:'6px 12px', borderRadius:50, fontSize:11, fontWeight:700, cursor:'pointer',
+                        background:filterFx===f.value?'#c8102e':'rgba(255,255,255,.07)',
+                        color:filterFx===f.value?'#fff':'rgba(255,255,255,.55)',
+                        border:`1px solid ${filterFx===f.value?'#c8102e':'rgba(255,255,255,.1)'}` }}>
+                      {f.label}
+                    </button>
+                  ))}
+                </div>
+                {[['Brightness',brightness,setBrightness,50,160],['Contrast',contrast,setContrast,50,200],['Saturation',saturation,setSaturation,0,250]].map(([label,val,setter,min,max])=>(
+                  <div key={label} style={{ marginBottom:14 }}>
+                    <div style={{ display:'flex', justifyContent:'space-between', marginBottom:6 }}>
+                      <span style={{ fontSize:11, fontWeight:700, letterSpacing:'.1em', textTransform:'uppercase', color:'rgba(255,255,255,.45)' }}>{label}</span>
+                      <span style={{ fontSize:12, color:'#fff' }}>{val}%</span>
+                    </div>
+                    <input type="range" min={min} max={max} value={val} onChange={e=>setter(parseInt(e.target.value))} style={{ width:'100%', accentColor:'#c8102e' }} />
+                  </div>
+                ))}
+                <button onClick={()=>{setBrightness(100);setContrast(100);setSaturation(100);setFilterFx('')}}
+                  style={{ width:'100%', padding:10, background:'rgba(255,255,255,.06)', border:'1px solid rgba(255,255,255,.12)', borderRadius:6, color:'rgba(255,255,255,.5)', fontSize:12, fontWeight:700, cursor:'pointer' }}>
+                  ↺ Reset Effects
+                </button>
+              </div>
+            )}
           </div>
-        )}
+        </div>
+
+        <div style={{ height:1, background:'rgba(255,255,255,.07)', marginBottom:32 }} />
+
+        {/* ══ SECTION 5: PREVIEW & ORDER ══ */}
+        <div style={{ marginBottom:32 }}>
+          <div style={{ marginBottom:16 }}>
+            <h2 style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:22, color:'#fff', letterSpacing:'.06em', marginBottom:4 }}>
+              <span style={{ color:'#c8102e', marginRight:8 }}>05</span>PREVIEW & ORDER
+            </h2>
+            <p style={{ fontSize:13, color:'rgba(255,255,255,.45)', margin:0 }}>Review your design and place your order below.</p>
+          </div>
+
+          {/* 360° viewer */}
+          <ProductImageViewer
+            product={selectedProduct}
+            fallbackSrc={garmentImgSrc}
+            sideImgs={sideImgs}
+            sidePos={sidePos}
+            posX={posX} posY={posY} scale={scale} rotation={rotation}
+            textOn={textOn} textVal={textVal} textFont={textFont}
+            textSize={textSize} textColor={textColor}
+            textPosX={textPosX} textPosY={textPosY} textRot={textRot}
+            sideText={sideText}
+            colorToFilter={colorToFilter}
+            color={color}
+            canvasFilter={canvasFilter}
+            garmentEmoji={GARMENT_EMOJI[garmentType]}
+            bgColor={bgColor}
+          />
+
+          {/* Summary strip */}
+          <div style={{ maxWidth:420, margin:'16px auto 0', background:'rgba(255,255,255,.06)', border:'1px solid rgba(255,255,255,.1)', borderRadius:12, padding:'14px 18px', display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
+            {[
+              ['Garment', selectedProduct?.name || garmentType],
+              ['Colour',  color],
+              ['Designs', SIDES.filter(s=>sideImgs[s]).map(s=>SIDE_LABELS[s]).join(', ') || '—'],
+              ['Text', Object.values(sideText).filter(t=>t.on&&t.val).length > 0 ? Object.entries(sideText).filter(([,t])=>t.on&&t.val).map(([s])=>SIDE_LABELS[s]).join(', ') : 'None'],
+            ].map(([k,v])=>(
+              <div key={k}>
+                <div style={{ fontSize:9, fontWeight:700, letterSpacing:'.1em', textTransform:'uppercase', color:'rgba(255,255,255,.3)', marginBottom:2 }}>{k}</div>
+                <div style={{ fontSize:12, fontWeight:700, color:'#fff', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{v}</div>
+              </div>
+            ))}
+          </div>
+
+          {/* Order */}
+          {status==='done' ? (
+            <div style={{ textAlign:'center', padding:'48px 16px', background:'rgba(0,168,107,.07)', border:'1px solid rgba(0,168,107,.2)', borderRadius:12, marginTop:20 }}>
+              <div style={{ fontSize:64, marginBottom:16 }}>🛒</div>
+              <div style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:28, color:'#fff', letterSpacing:'.06em', marginBottom:8 }}>ADDED TO CART!</div>
+              <p style={{ fontSize:13, color:'rgba(255,255,255,.55)', lineHeight:1.8 }}>Taking you to cart to review your bill…</p>
+            </div>
+          ) : (
+            <div style={{ background:'rgba(255,255,255,.04)', border:'1px solid rgba(255,255,255,.09)', borderRadius:12, padding:'18px 16px', display:'flex', flexDirection:'column', gap:18, marginTop:20 }}>
+
+              {/* Size */}
+              <div>
+                <span style={lblStyle}>Size</span>
+                <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
+                  {SIZES.map(s=>(
+                    <button key={s} onClick={()=>setSize(s)}
+                      style={{ padding:'9px 16px', borderRadius:6, fontSize:13, fontWeight:700, cursor:'pointer', border:'1.5px solid',
+                        borderColor:size===s?'#c8102e':'rgba(255,255,255,.15)',
+                        background:size===s?'#c8102e':'rgba(255,255,255,.04)', color:'#fff', transition:'all .15s' }}>
+                      {s}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Upload progress */}
+              {status==='uploading' && (
+                <div>
+                  <div style={{ display:'flex', justifyContent:'space-between', fontSize:11, color:'rgba(255,255,255,.6)', marginBottom:6 }}>
+                    <span>Uploading design…</span><span>{uploadPct}%</span>
+                  </div>
+                  <div style={{ height:5, background:'rgba(255,255,255,.1)', borderRadius:3 }}>
+                    <div style={{ height:'100%', width:`${uploadPct}%`, background:'#c8102e', borderRadius:3, transition:'width .3s' }} />
+                  </div>
+                </div>
+              )}
+
+              <button className="btn-primary" style={{ width:'100%', padding:'14px', fontSize:14, letterSpacing:'.04em', opacity:(status==='saving'||status==='uploading'||status==='sheet')?.6:1 }}
+                onClick={handleSubmit} disabled={status==='saving'||status==='uploading'||status==='sheet'}>
+                {status==='uploading'?`Uploading… ${uploadPct}%`:status==='saving'?'Placing Order…':status==='sheet'?'Generating print sheet…':'🛒 Place Custom Order'}
+              </button>
+              <p style={{ fontSize:11, color:'rgba(255,255,255,.3)', textAlign:'center', margin:0 }}>Our team will WhatsApp you within 2 hours · Pay via UPI link</p>
+            </div>
+          )}
+        </div>
 
       </div>
     </div>

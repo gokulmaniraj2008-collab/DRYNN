@@ -19,7 +19,22 @@ const PRODUCTS = [
   { id: 7, name: 'Classic Polo',           price: 749,  mrp: 999,  tag: 'Popular',     tagColor: '#00a86b', category: 'Polos',     emoji: '.', rating: 4.1, reviews: 88  },
   { id: 8, name: 'Track Pants',            price: 899,  mrp: 1199, tag: 'New',         tagColor: '#0a0a0a', category: 'Joggers',   emoji: '.', rating: 4.3, reviews: 43  },
 ]
-const SWATCHES = ['#ffffff','#0a0a0a','#c8102e','#0a1f5d','#00a86b','#f5a623','#9b59b6','#888888']
+const DEFAULT_SWATCHES = ['#ffffff','#0a0a0a','#c8102e','#0a1f5d','#00a86b','#f5a623','#9b59b6','#888888']
+
+// Shared hook — loads admin-managed color list from drynn_settings, falls back to DEFAULT_SWATCHES
+function useSwatches() {
+  const [swatches, setSwatches] = React.useState(DEFAULT_SWATCHES)
+  React.useEffect(() => {
+    supabase.from('drynn_settings').select('value').eq('key','swatches').single()
+      .then(({ data }) => {
+        if (data?.value) {
+          try { const parsed = JSON.parse(data.value); if (Array.isArray(parsed) && parsed.length) setSwatches(parsed) } catch {}
+        }
+      })
+  }, [])
+  return swatches
+}
+const SWATCHES = DEFAULT_SWATCHES // keep for any legacy inline references
 
 // Shared hook to load products from Supabase, fallback to hardcoded PRODUCTS
 // Returns all products. Use usePublicProducts() for store/home pages.
@@ -61,6 +76,27 @@ function usePublicProducts() {
 // Only studio-only products - used in StudioPage
 function useStudioProducts() {
   return useProducts().filter(p => p.studio_only)
+}
+
+// Shared hook — loads admin-managed media (videos + song) from drynn_settings
+const DEFAULT_MEDIA = {
+  video_intro:  'https://res.cloudinary.com/dfhdyp4oq/video/upload/v1780972479/video_20260609_080102_edit_n46bhf.mp4',
+  video_studio: 'https://res.cloudinary.com/dfhdyp4oq/video/upload/v1781006529/Cinthia_Duim_MP4_lpf7mx.mp4',
+  video_home:   'https://res.cloudinary.com/dfhdyp4oq/video/upload/v1781005895/%E1%BA%A2nh_b%C3%ACa___%E1%BA%A2nh_%C4%91%E1%BB%99ng__H%C3%ACnh_gif__Ngh%E1%BB%87_thu%E1%BA%ADt_MP4_gm3r0e.mp4',
+  audio_song:   '',
+}
+function useMediaSettings() {
+  const [media, setMedia] = React.useState(DEFAULT_MEDIA)
+  React.useEffect(() => {
+    supabase.from('drynn_settings').select('key,value').in('key',['video_intro','video_studio','video_home','audio_song'])
+      .then(({ data }) => {
+        if (!data || !data.length) return
+        const m = { ...DEFAULT_MEDIA }
+        data.forEach(row => { if (row.value) m[row.key] = row.value })
+        setMedia(m)
+      })
+  }, [])
+  return media
 }
 const SIZES = ['S','M','L','XL','XXL']
 const GARMENTS = ['T-Shirt','Hoodie','Polo','Joggers']
@@ -248,6 +284,7 @@ function SplashScreen({ onDone }) {
 // INTRO PAGE (brand info  -  no login)
 // ══════════════════════════════════════════════════════════════
 function IntroPage({ onGoToLogin }) {
+  const mediaSettings = useMediaSettings()
   const [muted, setMuted] = React.useState(true)
   const videoRef = React.useRef(null)
 
@@ -278,7 +315,7 @@ function IntroPage({ onGoToLogin }) {
           autoPlay muted loop playsInline
           style={{ position:'absolute', inset:0, width:'100%', height:'100%', objectFit:'cover', zIndex:0 }}
         >
-          <source src="https://res.cloudinary.com/dfhdyp4oq/video/upload/v1780972479/video_20260609_080102_edit_n46bhf.mp4" type="video/mp4" />
+          <source src={mediaSettings.video_intro} type="video/mp4" />
         </video>
         <div style={{ position:'absolute', inset:0, background:'rgba(0,0,0,.35)', zIndex:1 }} />
 
@@ -931,6 +968,7 @@ function colorToFilter(hex) {
 // ══════════════════════════════════════════════════════════════
 function StudioPage({ user, onNav, onAddToCart }) {
   // ── All admin products ────────────────────────────────────
+  const mediaSettings = useMediaSettings()
   const allProducts = useProducts()
 
   // ── Step tracking ─────────────────────────────────────────
@@ -1218,7 +1256,7 @@ function StudioPage({ user, onNav, onAddToCart }) {
   }
 
   // ── Derived ───────────────────────────────────────────────
-  const SWATCHES = ['#ffffff','#0a0a0a','#c8102e','#0a1f5d','#00a86b','#f5a623','#9b59b6','#888888','#e8d5b7','#2c3e50']
+  const SWATCHES = useSwatches()
   const SIZES    = ['XS','S','M','L','XL','XXL','3XL']
   const TEXT_FONTS = ['Bebas Neue','DM Sans','Georgia','Courier New','Impact','Arial Black']
   const FILTERS  = [
@@ -1336,7 +1374,7 @@ function StudioPage({ user, onNav, onAddToCart }) {
       <div style={{ padding:'32px 16px 24px', position:'relative', overflow:'hidden', background:'#0a0a0a' }}>
         <video autoPlay muted loop playsInline
           style={{ position:'absolute', inset:0, width:'100%', height:'100%', objectFit:'cover', opacity:0.85, pointerEvents:'none' }}>
-          <source src="https://res.cloudinary.com/dfhdyp4oq/video/upload/v1781006529/Cinthia_Duim_MP4_lpf7mx.mp4" type="video/mp4" />
+          <source src={mediaSettings.video_studio} type="video/mp4" />
         </video>
         <div style={{ position:'absolute', inset:0, background:'rgba(0,0,0,.35)', pointerEvents:'none' }} />
         <div style={{ maxWidth:960, margin:'0 auto', position:'relative', zIndex:1 }}>
@@ -1928,6 +1966,7 @@ function StudioPage({ user, onNav, onAddToCart }) {
 }
 
 function HomePage({ user, onNav, cart, onAddToCart }) {
+  const mediaSettings = useMediaSettings()
   const products = usePublicProducts()
   const [selectedProduct, setSelectedProduct] = React.useState(null)
 
@@ -1945,7 +1984,7 @@ function HomePage({ user, onNav, cart, onAddToCart }) {
         {/* Background video */}
         <video autoPlay muted loop playsInline
           style={{ position:'absolute', inset:0, width:'100%', height:'100%', objectFit:'cover', opacity:0.85, pointerEvents:'none' }}>
-          <source src="https://res.cloudinary.com/dfhdyp4oq/video/upload/v1781005895/%E1%BA%A2nh_b%C3%ACa___%E1%BA%A2nh_%C4%91%E1%BB%99ng__H%C3%ACnh_gif__Ngh%E1%BB%87_thu%E1%BA%ADt_MP4_gm3r0e.mp4" type="video/mp4" />
+          <source src={mediaSettings.video_home} type="video/mp4" />
         </video>
         {/* Subtle dark overlay just for text readability */}
         <div style={{ position:'absolute', inset:0, background:'rgba(0,0,0,.35)', pointerEvents:'none' }} />
@@ -2239,6 +2278,7 @@ function ProductCard({ p, onSelect, onAddToCart }) {
 }
 
 function ProductsPage({ onAddToCart, onNav }) {
+  const sharedSwatches = useSwatches()
   const products  = usePublicProducts()
   const [activeTab,    setActiveTab]    = useState('All')
   const [sort,         setSort]         = useState('popular')
@@ -2774,7 +2814,37 @@ function OrdersPage({ user, onBack, onNav }) {
     setOrders(data || [])
   }
 
-  useEffect(() => { loadOrders() }, [user])
+  const cancelOrder = async (orderId) => {
+    if (!window.confirm('Cancel this order? This cannot be undone.')) return
+    const { error } = await supabase.from('drynn_orders').update({ status: 'Cancelled', updated_at: new Date().toISOString() }).eq('id', orderId).eq('user_id', user.id)
+    if (error) { alert('Cancel failed: ' + error.message); return }
+    setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: 'Cancelled' } : o))
+    if (selected?.id === orderId) setSelected(prev => ({ ...prev, status: 'Cancelled' }))
+  }
+
+  const parseDesignUrls = (df) => {
+    if (!df || df === 'catalog-order') return {}
+    try { const p = JSON.parse(df); return typeof p === 'object' ? p : { front: df } } catch { return df?.startsWith('http') ? { front: df } : {} }
+  }
+
+  useEffect(() => {
+    loadOrders()
+    if (!user) return
+    // Subscribe to real-time updates for this user's orders
+    const channel = supabase
+      .channel('user-orders-' + user.id)
+      .on('postgres_changes', {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'drynn_orders',
+        filter: `user_id=eq.${user.id}`
+      }, payload => {
+        setOrders(prev => prev.map(o => o.id === payload.new.id ? { ...o, ...payload.new } : o))
+        if (selected?.id === payload.new.id) setSelected(prev => ({ ...prev, ...payload.new }))
+      })
+      .subscribe()
+    return () => { supabase.removeChannel(channel) }
+  }, [user])
 
   const STATUS_COLORS = {
     Received: { bg:'#fff8e1', color:'#f5a623', border:'#ffe082' },
@@ -2783,6 +2853,7 @@ function OrdersPage({ user, onBack, onNav }) {
     Packed:   { bg:'#e8f5e9', color:'#00a86b', border:'#c8e6c9' },
     Shipped:  { bg:'#fce4ec', color:'#c8102e', border:'#f8bbd0' },
     Delivered:{ bg:'#e8f5e9', color:'#00a86b', border:'#c8e6c9' },
+    Cancelled:{ bg:'#fce4ec', color:'#c8102e', border:'#f8bbd0' },
   }
   const STATUS_STEPS = ['Received','Approved','Printing','Packed','Shipped','Delivered']
 
@@ -2818,6 +2889,27 @@ function OrdersPage({ user, onBack, onNav }) {
             <span style={{ fontSize:12, color:'#888' }}>{selected.placed_at ? new Date(selected.placed_at).toLocaleDateString('en-IN',{day:'numeric',month:'long',year:'numeric'}) : '-'}</span>
             <span style={{ fontSize:12, fontWeight:700, padding:'5px 14px', borderRadius:20, background:sc.bg, color:sc.color, border:`1px solid ${sc.border}` }}>{selected.status || 'Received'}</span>
           </div>
+
+          {/* 4-side design preview */}
+          {(() => {
+            const designs = parseDesignUrls(selected.design_file)
+            const sides = ['front','back','left','right'].filter(s => designs[s])
+            if (!sides.length) return null
+            return (
+              <div style={{ border:'1px solid #f0f0f0', borderRadius:12, padding:'18px', marginBottom:24 }}>
+                <p style={{ fontSize:11, fontWeight:700, letterSpacing:'.12em', textTransform:'uppercase', color:'#aaa', marginBottom:14 }}>Your Design</p>
+                <div style={{ display:'flex', gap:10, flexWrap:'wrap' }}>
+                  {sides.map(s => (
+                    <div key={s} style={{ textAlign:'center' }}>
+                      <img src={designs[s]} alt={s} style={{ width:80, height:80, objectFit:'contain', borderRadius:8, border:'1.5px solid #e0e0e0', background:'#f8f8f8' }}
+                        onError={e=>e.target.style.display='none'} />
+                      <div style={{ fontSize:10, color:'#888', marginTop:4, fontWeight:600, textTransform:'capitalize' }}>{s}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )
+          })()}
 
           {/* Order info card */}
           <div style={{ border:'1px solid #f0f0f0', borderRadius:12, padding:'18px', marginBottom:24 }}>
@@ -2866,6 +2958,22 @@ function OrdersPage({ user, onBack, onNav }) {
           <div style={{ background:'#f8f8f8', borderRadius:10, padding:'14px 16px', marginTop:24, fontSize:13, color:'#555', lineHeight:1.7 }}>
             WhatsApp updates sent at every stage. Need help? <strong>+91 99447 61306</strong>
           </div>
+
+          {/* Cancel order button — only if order is Received/Approved */}
+          {['Received','Approved'].includes(selected.status) && (
+            <button
+              onClick={() => cancelOrder(selected.id)}
+              style={{ marginTop:16, width:'100%', padding:'12px', background:'none', border:'1.5px solid #c8102e', color:'#c8102e', borderRadius:8, fontSize:13, fontWeight:700, cursor:'pointer', transition:'all .15s' }}
+              onMouseEnter={e=>{e.currentTarget.style.background='#c8102e';e.currentTarget.style.color='#fff'}}
+              onMouseLeave={e=>{e.currentTarget.style.background='none';e.currentTarget.style.color='#c8102e'}}>
+              Cancel Order
+            </button>
+          )}
+          {selected.status === 'Cancelled' && (
+            <div style={{ marginTop:16, padding:'12px', background:'rgba(200,16,46,.06)', border:'1px solid rgba(200,16,46,.2)', borderRadius:8, textAlign:'center', fontSize:13, color:'#c8102e', fontWeight:700 }}>
+              This order has been cancelled.
+            </div>
+          )}
         </div>
       </div>
     )
@@ -3576,6 +3684,16 @@ function AdminPanel({ onBack }) {
   const [visitors, setVisitors]               = useState([])
   const [visitorsLoading, setVisitorsLoading] = useState(false)
   const [visitorSearch, setVisitorSearch]     = useState('')
+  // Users state
+  const [allUsers, setAllUsers]               = useState([])
+  const [usersLoading, setUsersLoading]       = useState(false)
+  // Media state
+  const [mediaUrls, setMediaUrls]             = useState({ video_intro:'', video_studio:'', video_home:'', audio_song:'' })
+  const [mediaSaving, setMediaSaving]         = useState(false)
+  // Colors state
+  const [adminColors, setAdminColors]         = useState([...DEFAULT_SWATCHES])
+  const [newColor, setNewColor]               = useState('#000000')
+  const [colorsSaving, setColorsSaving]       = useState(false)
 
   const showToast = (m) => { setToast(m); setTimeout(()=>setToast(''),2500) }
 
@@ -3626,6 +3744,62 @@ function AdminPanel({ onBack }) {
       setVisitors(data || [])
     }
     setVisitorsLoading(false)
+  }
+
+  const loadAllUsers = async () => {
+    setUsersLoading(true)
+    // Load all users from orders (unique by user_id/email) + their uploads
+    const { data: ordersData } = await supabase.from('drynn_orders').select('*').order('placed_at', { ascending: false })
+    if (ordersData) {
+      const byUser = {}
+      ordersData.forEach(o => {
+        const key = o.user_id || o.phone || o.name
+        if (!byUser[key]) byUser[key] = { user_id: o.user_id, name: o.name, phone: o.phone, address: o.address, orders: [], uploads: [] }
+        byUser[key].orders.push(o)
+        // Collect design uploads
+        if (o.design_file && o.design_file !== 'catalog-order') {
+          try {
+            const parsed = JSON.parse(o.design_file)
+            if (typeof parsed === 'object') Object.values(parsed).forEach(url => { if (url && !byUser[key].uploads.includes(url)) byUser[key].uploads.push(url) })
+            else if (typeof parsed === 'string' && parsed.startsWith('http')) byUser[key].uploads.push(parsed)
+          } catch { if (o.design_file.startsWith('http')) byUser[key].uploads.push(o.design_file) }
+        }
+      })
+      setAllUsers(Object.values(byUser))
+    }
+    setUsersLoading(false)
+  }
+
+  const loadMediaUrls = async () => {
+    const { data } = await supabase.from('drynn_settings').select('key,value').in('key',['video_intro','video_studio','video_home','audio_song'])
+    if (data) {
+      const m = { video_intro:'', video_studio:'', video_home:'', audio_song:'' }
+      data.forEach(r => { m[r.key] = r.value || '' })
+      setMediaUrls(m)
+    }
+  }
+
+  const saveMediaUrl = async (key, value) => {
+    setMediaSaving(true)
+    await supabase.from('drynn_settings').delete().eq('key', key)
+    if (value) await supabase.from('drynn_settings').insert({ key, value })
+    showToast('Saved!')
+    setMediaSaving(false)
+  }
+
+  const loadAdminColors = async () => {
+    const { data } = await supabase.from('drynn_settings').select('value').eq('key','swatches').single()
+    if (data?.value) { try { const p = JSON.parse(data.value); if (Array.isArray(p)) setAdminColors(p) } catch {} }
+    else setAdminColors([...DEFAULT_SWATCHES])
+  }
+
+  const saveAdminColors = async (colors) => {
+    setColorsSaving(true)
+    await supabase.from('drynn_settings').delete().eq('key','swatches')
+    await supabase.from('drynn_settings').insert({ key:'swatches', value: JSON.stringify(colors) })
+    setAdminColors(colors)
+    showToast('Colors saved!')
+    setColorsSaving(false)
   }
 
   const loadGroupMembers = async (group_code) => {
@@ -3811,6 +3985,9 @@ function AdminPanel({ onBack }) {
           <button onClick={()=>{setTab('uploads');loadOrders()}} style={{ flexShrink:0, padding:'6px 16px', borderRadius:4, border:'none', cursor:'pointer', background:tab==='uploads'?'#c8102e':'#222', color:'#fff', fontSize:12, fontWeight:700 }}>Uploads</button>
           <button onClick={()=>{setTab('analytics');loadOrders()}} style={{ flexShrink:0, padding:'6px 16px', borderRadius:4, border:'none', cursor:'pointer', background:tab==='analytics'?'#c8102e':'#222', color:'#fff', fontSize:12, fontWeight:700 }}>📊 Analytics</button>
           <button onClick={()=>{setTab('visitors');loadVisitors()}} style={{ flexShrink:0, padding:'6px 16px', borderRadius:4, border:'none', cursor:'pointer', background:tab==='visitors'?'#c8102e':'#222', color:'#fff', fontSize:12, fontWeight:700 }}>👤 Visitors</button>
+          <button onClick={()=>{setTab('users');loadAllUsers()}} style={{ flexShrink:0, padding:'6px 16px', borderRadius:4, border:'none', cursor:'pointer', background:tab==='users'?'#c8102e':'#222', color:'#fff', fontSize:12, fontWeight:700 }}>🧑 Users</button>
+          <button onClick={()=>{setTab('media');loadMediaUrls()}} style={{ flexShrink:0, padding:'6px 16px', borderRadius:4, border:'none', cursor:'pointer', background:tab==='media'?'#c8102e':'#222', color:'#fff', fontSize:12, fontWeight:700 }}>🎬 Media</button>
+          <button onClick={()=>{setTab('colors');loadAdminColors()}} style={{ flexShrink:0, padding:'6px 16px', borderRadius:4, border:'none', cursor:'pointer', background:tab==='colors'?'#c8102e':'#222', color:'#fff', fontSize:12, fontWeight:700 }}>🎨 Colors</button>
           <button onClick={()=>{setTab('grouporders');loadGroupOrders()}} style={{ flexShrink:0, padding:'6px 16px', borderRadius:4, border:'none', cursor:'pointer', background:tab==='grouporders'?'#c8102e':'#222', color:'#fff', fontSize:12, fontWeight:700 }}>👥 Group Orders</button>
         </div>
       </div>
@@ -3873,24 +4050,44 @@ function AdminPanel({ onBack }) {
                         <div style={{ padding:'14px 16px' }}>
                           {/* Studio Step 5 style preview — garment + design composited */}
                           {isCustom && <AdminOrderPreview order={o} />}
+                          {/* Show design images for custom orders even if AdminOrderPreview fails */}
+                          {isCustom && (() => {
+                            const pd = parsedDesigns(o.design_file)
+                            const sides = ['front','back','left','right'].filter(s => pd[s])
+                            if (!sides.length) return null
+                            return (
+                              <div style={{ display:'flex', gap:6, flexWrap:'wrap', marginTop:6 }}>
+                                {sides.map(s => (
+                                  <div key={s} style={{ textAlign:'center' }}>
+                                    <img src={pd[s]} alt={s}
+                                      style={{ width:56, height:56, objectFit:'contain', borderRadius:6, border:'1px solid #e0e0e0', background:'#f8f8f8' }}
+                                      onError={e=>e.target.style.display='none'} />
+                                    <div style={{ fontSize:8, color:'#888', marginTop:2, textTransform:'capitalize' }}>{s}</div>
+                                  </div>
+                                ))}
+                              </div>
+                            )
+                          })()}
 
                           <div style={{ display:'flex', gap:14, flexWrap:'wrap' }}>
 
                             {/* Product image for catalog orders */}
-                            {!isCustom && (
-                              o.product_image ? (
+                            {!isCustom && (() => {
+                              const matchProd = products.find(p => p.name === o.garment || String(p.id) === String(o.product_id))
+                              const imgSrc = o.product_image || matchProd?.img_front || matchProd?.image_url
+                              return imgSrc ? (
                                 <div style={{ flexShrink:0, textAlign:'center' }}>
-                                  <img src={o.product_image} alt={o.product_name}
+                                  <img src={imgSrc} alt={o.garment}
                                     style={{ width:72, height:72, objectFit:'contain', borderRadius:8, border:'1.5px solid #e0e0e0', background:'#f8f8f8', display:'block' }}
                                     onError={e=>e.target.style.display='none'} />
-                                  <div style={{ fontSize:9, color:'#888', marginTop:3, fontWeight:600 }}>{o.product_category||'Product'}</div>
+                                  <div style={{ fontSize:9, color:'#888', marginTop:3, fontWeight:600 }}>{o.product_category || matchProd?.category || 'Product'}</div>
                                 </div>
                               ) : (
                                 <div style={{ width:72, height:72, borderRadius:8, border:'1.5px dashed #e0e0e0', background:'#f8f8f8', display:'flex', alignItems:'center', justifyContent:'center', fontSize:10, color:'#bbb', flexShrink:0, textAlign:'center' }}>
-                                  Catalog
+                                  No Image
                                 </div>
                               )
-                            )}
+                            })()}
 
                             {/* Order details */}
                             <div style={{ flex:1, minWidth:160 }}>
@@ -4406,7 +4603,9 @@ function AdminPanel({ onBack }) {
             if (!window.confirm(`Delete all session history for ${email}?\nThis cannot be undone.`)) return
             const { error: delErr } = await supabase.from('drynn_user_sessions').delete().eq('user_email', email)
             if (delErr) { alert('Delete failed: ' + delErr.message); return }
-            loadVisitors()
+            // Also remove from local state immediately
+            setVisitors(prev => prev.filter(v => v.user_email !== email))
+            showToast('Visitor history deleted')
           }
 
           return (
@@ -4501,6 +4700,139 @@ function AdminPanel({ onBack }) {
             </div>
           )
         })()}
+
+
+        {/* ── USERS TAB ── */}
+        {tab==='users' && (
+          <div>
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16 }}>
+              <h2 style={{ fontSize:18, fontWeight:700 }}>🧑 All Users & Uploads</h2>
+              <button className="btn-secondary" style={{ padding:'7px 14px', fontSize:12 }} onClick={loadAllUsers}>↻ Refresh</button>
+            </div>
+            {usersLoading ? (
+              <div style={{ textAlign:'center', padding:40, color:'#888' }}>Loading users…</div>
+            ) : allUsers.length === 0 ? (
+              <div style={{ textAlign:'center', padding:40, color:'#aaa', fontSize:13 }}>No users found. Data is aggregated from orders.</div>
+            ) : (
+              <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
+                {allUsers.map((u, i) => (
+                  <div key={i} style={{ background:'#fff', border:'1px solid #e8e8e8', borderRadius:12, padding:'16px 20px' }}>
+                    <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', flexWrap:'wrap', gap:8, marginBottom:10 }}>
+                      <div>
+                        <div style={{ fontSize:14, fontWeight:700 }}>{u.name || '—'}</div>
+                        <div style={{ fontSize:11, color:'#888' }}>📞 {u.phone} {u.address ? `· ${u.address}` : ''}</div>
+                      </div>
+                      <span style={{ background:'#f0f3ff', color:'#0a1f5d', fontSize:11, fontWeight:700, padding:'4px 10px', borderRadius:20 }}>
+                        {u.orders.length} order{u.orders.length!==1?'s':''}
+                      </span>
+                    </div>
+                    {u.uploads.length > 0 && (
+                      <div>
+                        <div style={{ fontSize:10, fontWeight:700, letterSpacing:'.1em', textTransform:'uppercase', color:'#aaa', marginBottom:6 }}>Uploaded Designs</div>
+                        <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
+                          {u.uploads.map((url, j) => (
+                            <a key={j} href={url} target="_blank" rel="noreferrer">
+                              <img src={url} alt="upload" style={{ width:56, height:56, objectFit:'contain', borderRadius:6, border:'1px solid #e0e0e0', background:'#f8f8f8' }}
+                                onError={e=>e.target.style.display='none'} />
+                            </a>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    <div style={{ marginTop:10 }}>
+                      <div style={{ fontSize:10, fontWeight:700, letterSpacing:'.1em', textTransform:'uppercase', color:'#aaa', marginBottom:6 }}>Orders</div>
+                      <div style={{ display:'flex', flexDirection:'column', gap:4 }}>
+                        {u.orders.slice(0,3).map(o => (
+                          <div key={o.id} style={{ fontSize:11, color:'#555', display:'flex', gap:10 }}>
+                            <span style={{ fontWeight:600, color:'#0a0a0a' }}>{o.garment}</span>
+                            <span>·</span><span>₹{o.total}</span>
+                            <span>·</span><span style={{ color: o.status==='Delivered'?'#00a86b':'#f5a623' }}>{o.status}</span>
+                          </div>
+                        ))}
+                        {u.orders.length > 3 && <div style={{ fontSize:11, color:'#aaa' }}>+{u.orders.length-3} more</div>}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ── MEDIA TAB ── */}
+        {tab==='media' && (
+          <div>
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16 }}>
+              <h2 style={{ fontSize:18, fontWeight:700 }}>🎬 Media Manager</h2>
+              <button className="btn-secondary" style={{ padding:'7px 14px', fontSize:12 }} onClick={loadMediaUrls}>↻ Load Current</button>
+            </div>
+            <p style={{ fontSize:12, color:'#888', marginBottom:20 }}>Paste Cloudinary or any direct URL. Changes go live immediately for all users.</p>
+            {[
+              { key:'video_intro',  label:'🎬 Video 1 — Intro / Splash screen' },
+              { key:'video_studio', label:'🎬 Video 2 — Studio page header' },
+              { key:'video_home',   label:'🎬 Video 3 — Home page hero' },
+              { key:'audio_song',   label:'🎵 Background Song (MP3/AAC URL)' },
+            ].map(item => (
+              <div key={item.key} style={{ marginBottom:20, background:'#fff', border:'1px solid #e8e8e8', borderRadius:10, padding:'16px' }}>
+                <label style={{ fontSize:11, fontWeight:700, letterSpacing:'.1em', textTransform:'uppercase', color:'#555', display:'block', marginBottom:8 }}>{item.label}</label>
+                <div style={{ display:'flex', gap:8 }}>
+                  <input className="input-field" style={{ fontSize:12 }}
+                    value={mediaUrls[item.key] || ''}
+                    onChange={e => setMediaUrls(m => ({ ...m, [item.key]: e.target.value }))}
+                    placeholder="https://res.cloudinary.com/..." />
+                  <button className="btn-primary" style={{ padding:'10px 16px', fontSize:12, flexShrink:0 }}
+                    disabled={mediaSaving}
+                    onClick={() => saveMediaUrl(item.key, mediaUrls[item.key])}>
+                    Save
+                  </button>
+                </div>
+                {mediaUrls[item.key] && item.key.startsWith('video') && (
+                  <video src={mediaUrls[item.key]} style={{ width:'100%', maxHeight:120, marginTop:8, borderRadius:6, objectFit:'cover' }} controls muted />
+                )}
+                {mediaUrls[item.key] && item.key === 'audio_song' && (
+                  <audio src={mediaUrls[item.key]} style={{ width:'100%', marginTop:8 }} controls />
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* ── COLORS TAB ── */}
+        {tab==='colors' && (
+          <div>
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16 }}>
+              <h2 style={{ fontSize:18, fontWeight:700 }}>🎨 Color Manager</h2>
+              <button className="btn-secondary" style={{ padding:'7px 14px', fontSize:12 }} onClick={loadAdminColors}>↻ Load Current</button>
+            </div>
+            <p style={{ fontSize:12, color:'#888', marginBottom:16 }}>These colors appear in Studio, Shop, and Group Order pages.</p>
+            <div style={{ background:'#fff', border:'1px solid #e8e8e8', borderRadius:10, padding:'20px', marginBottom:16 }}>
+              <div style={{ fontSize:11, fontWeight:700, letterSpacing:'.1em', textTransform:'uppercase', color:'#aaa', marginBottom:12 }}>Current Colors</div>
+              <div style={{ display:'flex', gap:10, flexWrap:'wrap', marginBottom:16 }}>
+                {adminColors.map((c, i) => (
+                  <div key={i} style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:4 }}>
+                    <div style={{ width:36, height:36, borderRadius:'50%', background:c, border: c==='#ffffff'?'2px solid #ccc':'2px solid transparent', boxShadow:'0 2px 8px rgba(0,0,0,.12)' }} />
+                    <span style={{ fontSize:9, color:'#888' }}>{c}</span>
+                    <button onClick={() => { const nc = adminColors.filter((_,j)=>j!==i); saveAdminColors(nc) }}
+                      style={{ fontSize:9, color:'#c8102e', background:'none', border:'none', cursor:'pointer', padding:0 }}>✕</button>
+                  </div>
+                ))}
+              </div>
+              <div style={{ display:'flex', gap:8, alignItems:'center' }}>
+                <input type="color" value={newColor} onChange={e=>setNewColor(e.target.value)}
+                  style={{ width:40, height:36, padding:0, border:'1.5px solid #e0e0e0', borderRadius:4, cursor:'pointer' }} />
+                <input className="input-field" style={{ maxWidth:120, fontSize:12 }} value={newColor} onChange={e=>setNewColor(e.target.value)} placeholder="#000000" />
+                <button className="btn-primary" style={{ padding:'10px 16px', fontSize:12 }}
+                  onClick={() => { if (!adminColors.includes(newColor)) saveAdminColors([...adminColors, newColor]) }}>
+                  + Add Color
+                </button>
+              </div>
+            </div>
+            <button className="btn-secondary" style={{ fontSize:12 }}
+              onClick={() => saveAdminColors([...DEFAULT_SWATCHES])}>
+              Reset to Defaults
+            </button>
+          </div>
+        )}
 
       </div>
 
@@ -4880,14 +5212,21 @@ function GroupOrderPage({ user, onNav }) {
 }
 
 function CreateGroupOrder({ user, selectedProduct, onChangeProduct }) {
+  const sharedSwatches = useSwatches()
   const [form, setForm]         = useState({ title:'', color:'#ffffff', deadline:'', organizer: user?.user_metadata?.full_name||'', phone:'' })
   const [created, setCreated]   = useState(null)
   const [saving, setSaving]     = useState(false)
-  // Design upload state
-  const [designFile, setDesignFile] = useState(null)
-  const [designImg,  setDesignImg]  = useState(null)
-  const [uploadPct,  setUploadPct]  = useState(0)
-  const [uploadErr,  setUploadErr]  = useState('')
+  // Design upload state — per side (connects to Studio logic)
+  const SIDES = ['front','back','left','right']
+  const SIDE_LABELS_MAP = { front:'Front', back:'Back', left:'Left', right:'Right' }
+  const [activeSide,   setActiveSide]   = useState('front')
+  const [sideFiles,    setSideFiles]    = useState({ front:null, back:null, left:null, right:null })
+  const [sideImgs,     setSideImgs]     = useState({ front:null, back:null, left:null, right:null })
+  const [uploadPct,    setUploadPct]    = useState(0)
+  const [uploadErr,    setUploadErr]    = useState('')
+  // Keep backward compat aliases for preview
+  const designFile = sideFiles[activeSide]
+  const designImg  = sideImgs[activeSide]
 
   const GARMENT_DEFAULTS = {
     'T-Shirts': 'https://res.cloudinary.com/dfhdyp4oq/image/upload/drynn/products/tshirt_white.png',
@@ -4909,23 +5248,27 @@ function CreateGroupOrder({ user, selectedProduct, onChangeProduct }) {
     if (!allowed.includes(f.type)) { setUploadErr('Only PNG, JPG, SVG allowed.'); return }
     if (f.size > 20*1024*1024) { setUploadErr('Max 20MB.'); return }
     setUploadErr('')
-    setDesignFile(f)
-    setDesignImg(URL.createObjectURL(f))
+    setSideFiles(prev => ({ ...prev, [activeSide]: f }))
+    setSideImgs(prev => ({ ...prev, [activeSide]: URL.createObjectURL(f) }))
   }
 
   const create = async () => {
     if (!form.title||!form.organizer||!form.phone) { alert('Fill all required fields'); return }
     setSaving(true)
-    let designUrl = null
-    if (designFile) {
-      try {
-        designUrl = await uploadToCloudinary(designFile, pct => setUploadPct(pct))
-      } catch(e) {
-        setSaving(false)
-        alert('Design upload failed: ' + e.message)
-        return
+    // Upload all sides that have files
+    const designUrls = {}
+    for (const side of SIDES) {
+      if (sideFiles[side]) {
+        try {
+          designUrls[side] = await uploadToCloudinary(sideFiles[side], pct => setUploadPct(pct))
+        } catch(e) {
+          setSaving(false)
+          alert('Design upload failed for ' + side + ': ' + e.message)
+          return
+        }
       }
     }
+    const designUrl = designUrls.front || null
     const id   = crypto.randomUUID()
     const code = Math.random().toString(36).slice(2,8).toUpperCase()
     const groupData = {
@@ -4943,6 +5286,7 @@ function CreateGroupOrder({ user, selectedProduct, onChangeProduct }) {
       organizer_phone:     form.phone,
       organizer_user_id:   user?.id || null,
       design_url:          designUrl,
+      design_urls:         JSON.stringify(designUrls),
       created_at:          new Date().toISOString(),
       status:              'open',
     }
@@ -5035,7 +5379,7 @@ function CreateGroupOrder({ user, selectedProduct, onChangeProduct }) {
           <div>
             <label style={{ fontSize:11, fontWeight:700, letterSpacing:'.12em', textTransform:'uppercase', color:'#555', display:'block', marginBottom:7 }}>Colour</label>
             <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
-              {SWATCHES.slice(0,8).map(c=>(
+              {sharedSwatches.map(c=>(
                 <div key={c} onClick={()=>setForm({...form,color:c})}
                   style={{ width:28, height:28, borderRadius:'50%', background:c, cursor:'pointer',
                     border: c==='#ffffff' ? '2px solid #ccc' : '2px solid transparent',
@@ -5046,7 +5390,21 @@ function CreateGroupOrder({ user, selectedProduct, onChangeProduct }) {
 
           {/* Design upload + live preview */}
           <div>
-            <label style={{ fontSize:11, fontWeight:700, letterSpacing:'.12em', textTransform:'uppercase', color:'#555', display:'block', marginBottom:7 }}>Design / Logo (optional)</label>
+            <label style={{ fontSize:11, fontWeight:700, letterSpacing:'.12em', textTransform:'uppercase', color:'#555', display:'block', marginBottom:7 }}>Design / Logo (optional — per side)</label>
+            {/* Side selector tabs */}
+            <div style={{ display:'flex', gap:6, marginBottom:10, flexWrap:'wrap' }}>
+              {SIDES.map(s => (
+                <button key={s} onClick={()=>setActiveSide(s)}
+                  style={{ padding:'5px 12px', fontSize:11, fontWeight:700, borderRadius:4, border:'1.5px solid', cursor:'pointer',
+                    borderColor: activeSide===s ? '#c8102e' : '#e0e0e0',
+                    background: activeSide===s ? '#c8102e' : '#fff',
+                    color: activeSide===s ? '#fff' : '#555',
+                    position:'relative' }}>
+                  {SIDE_LABELS_MAP[s]}
+                  {sideImgs[s] && <span style={{ position:'absolute', top:-4, right:-4, width:8, height:8, borderRadius:'50%', background:'#00a86b', border:'1px solid #fff' }} />}
+                </button>
+              ))}
+            </div>
             <div style={{ display:'flex', gap:16, alignItems:'flex-start', flexWrap:'wrap' }}>
               {/* Upload zone */}
               <label style={{ flex:'1 1 140px', cursor:'pointer' }}>
@@ -5132,6 +5490,10 @@ function JoinGroupOrder({ user }) {
   const [joined, setJoined]     = useState(false)
   const [saving, setSaving]     = useState(false)
 
+  const [memberCount, setMemberCount] = useState(0)
+
+  const getDiscount = (count) => count >= 3 ? 30 : count === 2 ? 15 : 0
+
   const findGroup = async () => {
     if (!code.trim()) { setError('Enter a group code'); return }
     setLoading(true); setError(''); setGroup(null)
@@ -5144,6 +5506,9 @@ function JoinGroupOrder({ user }) {
       return
     }
     setGroup(data[0])
+    // Fetch current member count for discount display
+    const { data: mData } = await supabase.from('drynn_group_members').select('id', { count: 'exact' }).eq('group_code', data[0].group_code)
+    setMemberCount((mData || []).length)
   }
 
   const joinGroup = async () => {
@@ -5189,6 +5554,28 @@ function JoinGroupOrder({ user }) {
           <div style={{ background:'linear-gradient(90deg,rgba(0,168,107,.08),rgba(10,31,93,.06))', borderRadius:8, padding:'14px 18px', marginBottom:20 }}>
             <div style={{ fontSize:16, fontWeight:700 }}>{group.title}</div>
             <div style={{ fontSize:12, color:'#888', marginTop:4 }}>{group.garment} · Organizer: {group.organizer_name} {group.deadline&&`· Deadline: ${new Date(group.deadline).toLocaleDateString('en-IN')}`}</div>
+            {/* Multi-side design preview */}
+            {group.design_urls && (() => {
+              try {
+                const du = JSON.parse(group.design_urls)
+                const sides = ['front','back','left','right'].filter(s => du[s])
+                if (sides.length > 1) return (
+                  <div style={{ marginTop:12 }}>
+                    <div style={{ fontSize:10, fontWeight:700, letterSpacing:'.1em', textTransform:'uppercase', color:'#888', marginBottom:8 }}>Design Sides</div>
+                    <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
+                      {sides.map(s => (
+                        <div key={s} style={{ textAlign:'center' }}>
+                          <img src={du[s]} alt={s} style={{ width:64, height:64, objectFit:'contain', borderRadius:6, border:'1px solid #e0e0e0', background:'#f8f8f8' }}
+                            onError={e=>e.target.style.display='none'} />
+                          <div style={{ fontSize:9, color:'#888', marginTop:2, textTransform:'capitalize' }}>{s}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )
+              } catch {}
+              return null
+            })()}
             {/* Design / product preview for members */}
             {(group.design_url || group.product_image) && (
               <div style={{ marginTop:14, textAlign:'center' }}>
@@ -5210,7 +5597,22 @@ function JoinGroupOrder({ user }) {
                       style={{ position:'absolute', top:'44%', left:'50%', transform:'translate(-50%,-50%)', width:'38%', objectFit:'contain', pointerEvents:'none' }} />
                   )}
                 </div>
-                {group.product_price && <div style={{ fontSize:13, fontWeight:700, color:'#c8102e', marginTop:4 }}>₹{Number(group.product_price).toLocaleString()} per piece</div>}
+                {group.product_price && (
+                  <div style={{ marginTop:6 }}>
+                    {getDiscount(memberCount) > 0 ? (
+                      <>
+                        <span style={{ fontSize:12, color:'#888', textDecoration:'line-through', marginRight:6 }}>₹{Number(group.product_price).toLocaleString()}</span>
+                        <span style={{ fontSize:14, fontWeight:700, color:'#00a86b' }}>₹{Math.round(group.product_price * (1 - getDiscount(memberCount)/100)).toLocaleString()}</span>
+                        <span style={{ marginLeft:6, fontSize:11, background:'#00a86b', color:'#fff', padding:'2px 8px', borderRadius:10, fontWeight:700 }}>{getDiscount(memberCount)}% OFF</span>
+                      </>
+                    ) : (
+                      <span style={{ fontSize:13, fontWeight:700, color:'#c8102e' }}>₹{Number(group.product_price).toLocaleString()} per piece</span>
+                    )}
+                    <div style={{ fontSize:10, color:'#888', marginTop:4 }}>
+                      {memberCount} member{memberCount!==1?'s':''} · {getDiscount(memberCount+1) > getDiscount(memberCount) ? `+1 more = ${getDiscount(memberCount+1)}% off!` : getDiscount(memberCount) < 30 ? `3+ members = 30% off` : '🎉 Max 30% discount unlocked!'}
+                    </div>
+                  </div>
+                )}
                 <div style={{ fontSize:11, color:'#00a86b', marginTop:4, fontWeight:600 }}>
                   {group.design_url ? `This is what will be printed on your ${group.garment}` : group.garment}
                 </div>
@@ -5263,8 +5665,26 @@ function MainSite({ user }) {
   const fmtClockTime = (d) => d.toLocaleTimeString('en-IN', { hour:'2-digit', minute:'2-digit', second:'2-digit', hour12:true })
   const fmtClockDate = (d) => d.toLocaleDateString('en-IN', { weekday:'short', day:'numeric', month:'short' })
   const audioRef = useRef(null)
+  // Update audio src when mediaSettings loads
+  React.useEffect(() => {
+    if (audioRef.current && mediaSettings.audio_song) {
+      audioRef.current.src = mediaSettings.audio_song
+    }
+  }, [mediaSettings.audio_song])
 
-  
+  useEffect(() => {
+    const audio = audioRef.current
+    if (!audio) return
+    // Auto-play on mount — browsers require a user gesture, so we attempt and handle the rejection gracefully
+    const tryPlay = () => {
+      audio.play().then(() => setPlaying(true)).catch(() => setPlaying(false))
+    }
+    tryPlay()
+    // Fallback: also try on first user interaction anywhere on the page
+    const onInteract = () => { if (!playing) tryPlay(); document.removeEventListener('click', onInteract) }
+    document.addEventListener('click', onInteract)
+    return () => document.removeEventListener('click', onInteract)
+  }, [])
 
   const togglePlay = () => {
     const audio = audioRef.current

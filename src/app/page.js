@@ -315,6 +315,7 @@ function IntroPage({ onGoToLogin }) {
       {/* Hero — Cloudinary Background Video */}
       <div style={{ position:'relative', width:'100%', minHeight:480, overflow:'hidden', display:'flex', alignItems:'center' }}>
         <video
+          key={mediaSettings.video_intro}
           ref={videoRef}
           autoPlay muted loop playsInline
           style={{ position:'absolute', inset:0, width:'100%', height:'100%', objectFit:'cover', zIndex:0 }}
@@ -1891,7 +1892,7 @@ function HomePage({ user, onNav, cart, onAddToCart }) {
       {/* Hero Banner */}
       <div style={{ padding:'48px 20px 56px', position:'relative', overflow:'hidden', background:'#0a0a0a' }}>
         {/* Background video */}
-        <video autoPlay muted loop playsInline
+        <video key={mediaSettings.video_home} autoPlay muted loop playsInline
           style={{ position:'absolute', inset:0, width:'100%', height:'100%', objectFit:'cover', opacity:0.85, pointerEvents:'none' }}>
           <source src={mediaSettings.video_home} type="video/mp4" />
         </video>
@@ -3979,7 +3980,7 @@ function AdminPanel({ onBack }) {
     supabase.auth.getSession().then(({ data:{ session } }) => {
       setCurrentUser(session?.user || null)
       setChecking(false)
-      if (session?.user) loadOrders()
+      if (session?.user) { loadOrders(); loadMediaUrls() }
     })
   }, [])
 
@@ -4060,9 +4061,9 @@ function AdminPanel({ onBack }) {
   const loadMediaUrls = async () => {
     const { data, error } = await supabase.from('drynn_settings').select('key,value').in('key',['video_intro','video_studio','video_home','audio_song'])
     if (error) { showToast('Media load failed: ' + error.message); return }
-    if (data) {
+    if (data && data.length > 0) {
       const m = { video_intro:'', video_studio:'', video_home:'', audio_song:'' }
-      data.forEach(r => { m[r.key] = r.value || '' })
+      data.forEach(r => { if (r.value) m[r.key] = r.value })
       setMediaUrls(m)
     }
   }
@@ -4985,7 +4986,6 @@ function AdminPanel({ onBack }) {
             <p style={{ fontSize:12, color:'#888', marginBottom:20 }}>Upload a file directly. Changes go live immediately for all users.</p>
             {[
               { key:'video_intro',  label:'🎬 Intro / Splash video',       accept:'video/*' },
-              { key:'video_studio', label:'🎬 Studio page header video',   accept:'video/*' },
               { key:'video_home',   label:'🎬 Home page hero video',       accept:'video/*' },
               { key:'audio_song',   label:'🎵 Background song (MP3/AAC)', accept:'audio/*' },
             ].map(item => (

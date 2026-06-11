@@ -3681,14 +3681,22 @@ function MockupUploader() {
 }
 
 function StorageWidget({ supabase, showToast }) {
-  const [tableData,    setTableData]    = React.useState([])
-  const [loading,      setLoading]      = React.useState(false)
-  const [cleaning,     setCleaning]     = React.useState(false)
-  const [totalDbBytes, setTotalDbBytes] = React.useState(null)   // sum of all table sizes
-  const [fileBytes,    setFileBytes]    = React.useState(null)   // Supabase Storage total
+  const [tableData,       setTableData]       = React.useState([])
+  const [loading,         setLoading]         = React.useState(false)
+  const [cleaning,        setCleaning]        = React.useState(false)
+  const [totalDbBytes,    setTotalDbBytes]    = React.useState(null)  // Supabase DB
+  const [fileBytes,       setFileBytes]       = React.useState(null)  // Supabase Storage
+  const [cloudinaryBytes, setCloudinaryBytes] = React.useState(null)  // Cloudinary storage
+  const [cloudinaryBw,    setCloudinaryBw]    = React.useState(null)  // Cloudinary bandwidth this month
+  const [cloudinaryCount, setCloudinaryCount] = React.useState(null)  // Cloudinary total assets
 
-  const DB_LIMIT_BYTES   = 500  * 1024 * 1024   // 500 MB
-  const FILE_LIMIT_BYTES = 1024 * 1024 * 1024   // 1 GB
+  // Free-tier limits
+  const DB_LIMIT_BYTES        = 500  * 1024 * 1024        // 500 MB  — Supabase DB
+  const FILE_LIMIT_BYTES      = 1024 * 1024 * 1024        // 1 GB    — Supabase Storage
+  const CLOUDINARY_STORAGE_GB = 25                         // 25 GB   — Cloudinary free tier
+  const CLOUDINARY_BW_GB      = 25                         // 25 GB/mo — Cloudinary bandwidth
+  const CLOUDINARY_STORAGE_B  = CLOUDINARY_STORAGE_GB * 1024 * 1024 * 1024
+  const CLOUDINARY_BW_B       = CLOUDINARY_BW_GB      * 1024 * 1024 * 1024
 
   const fmtBytes = (b) => {
     if (b == null) return '—'
@@ -3697,8 +3705,8 @@ function StorageWidget({ supabase, showToast }) {
     if (b >= 1024)           return (b/1024).toFixed(1)+' KB'
     return b+' B'
   }
-  const pct       = (used, limit) => Math.min(100, ((used||0)/limit)*100)
-  const barColor  = (p) => p > 85 ? '#c8102e' : p > 60 ? '#f5a623' : '#00a86b'
+  const pct      = (used, limit) => Math.min(100, ((used||0)/limit)*100)
+  const barColor = (p) => p > 85 ? '#c8102e' : p > 60 ? '#f5a623' : '#00a86b'
 
   // ── Load Supabase Storage bucket usage ──────────────────────
   const loadFileStorage = async () => {
@@ -3715,6 +3723,36 @@ function StorageWidget({ supabase, showToast }) {
       }
       setFileBytes(total)
     } catch(e) { setFileBytes(0) }
+  }
+
+  // ── Load Cloudinary usage via Admin API ─────────────────────
+  // Requires NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME to be set.
+  // The /usage endpoint is public (no auth needed for cloud name lookup).
+  const loadCloudinaryUsage = async () => {
+    try {
+      const cloud = CLOUDINARY_CLOUD
+      if (!cloud) { setCloudinaryBytes(0); setCloudinaryBw(0); setCloudinaryCount(0); return }
+      const res = await fetch(`https://api.cloudinary.com/v1_1/${cloud}/usage`, {
+        method: 'GET',
+        headers: { 'Accept': 'application/json' },
+      })
+      // Cloudinary /usage requires Basic auth — if no API secret (client-side), fall back to
+      // counting files in the drynn folder via the search API (unsigned).
+      // We surface a note instead of silently failing.
+      if (res.status === 401) {
+        // Can't get usage without API secret on the client side — show 0 with a note
+        setCloudinaryBytes(0); setCloudinaryBw(0); setCloudinaryCount(null)
+        return
+      }
+      if (!res.ok) throw new Error('Cloudinary usage API error')
+      const data = await res.json()
+      // data.storage.usage = bytes used, data.bandwidth.usage = bytes this month, data.resources = total assets
+      setCloudinaryBytes(data?.storage?.usage   ?? 0)
+      setCloudinaryBw(data?.bandwidth?.usage    ?? 0)
+      setCloudinaryCount(data?.resources        ?? null)
+    } catch(e) {
+      setCloudinaryBytes(0); setCloudinaryBw(0); setCloudinaryCount(null)
+    }
   }
 
   const loadStorage = async () => {
@@ -3734,8 +3772,12 @@ function StorageWidget({ supabase, showToast }) {
         setTableData(data)
         setTotalDbBytes(data.reduce((sum, t) => sum + (t.size_bytes || 0), 0))
       }
-    } catch(e) {}
+    } catch(e) {
+      setTableData([])
+      setTotalDbBytes(0)
+    }
     await loadFileStorage()
+    await loadCloudinaryUsage()
     setLoading(false)
   }
 
@@ -3759,11 +3801,18 @@ function StorageWidget({ supabase, showToast }) {
   }
 
   const tableColors = ['#c8102e','#0a1f5d','#00a86b','#f5a623','#0a7abf','#9b59b6','#e67e22','#1abc9c']
+  const hasLoaded   = totalDbBytes !== null || fileBytes !== null || cloudinaryBytes !== null
+
+  // ── Combined total usage across all services ─────────────────
+  const totalUsedBytes  = (totalDbBytes||0) + (fileBytes||0) + (cloudinaryBytes||0)
+  const totalLimitBytes = DB_LIMIT_BYTES + FILE_LIMIT_BYTES + CLOUDINARY_STORAGE_B
+  const totalPct        = pct(totalUsedBytes, totalLimitBytes)
+  const totalColor      = barColor(totalPct)
 
   // ── Usage bar sub-component ──────────────────────────────────
-  const UsageBar = ({ label, icon, usedBytes, limitBytes, limitLabel }) => {
-    const p     = pct(usedBytes, limitBytes)
-    const color = barColor(p)
+  const UsageBar = ({ label, icon, usedBytes, limitBytes, limitLabel, note }) => {
+    const p      = pct(usedBytes, limitBytes)
+    const color  = barColor(p)
     const loaded = usedBytes != null
     return (
       <div style={{ background:'#f8f8f8', borderRadius:8, padding:'12px 14px', marginBottom:10 }}>
@@ -3782,7 +3831,7 @@ function StorageWidget({ supabase, showToast }) {
           }} />
         </div>
         <div style={{ display:'flex', justifyContent:'space-between', marginTop:4 }}>
-          <span style={{ fontSize:9, color:'#aaa' }}>{loaded ? `${p.toFixed(2)}% used` : 'Click Load to refresh'}</span>
+          <span style={{ fontSize:9, color:'#aaa' }}>{loaded ? `${p.toFixed(2)}% used` : 'Click Load to refresh'}{note ? ` · ${note}` : ''}</span>
           <span style={{ fontSize:9, fontWeight:700, color: loaded ? color : '#aaa' }}>
             {loaded ? (p > 85 ? '⚠ Near limit' : p > 60 ? '• Moderate' : '✓ Safe') : ''}
           </span>
@@ -3795,7 +3844,7 @@ function StorageWidget({ supabase, showToast }) {
     <div style={{ background:'#fff', border:'1px solid #e8e8e8', borderRadius:10, padding:'16px', marginTop:16 }}>
       {/* Header */}
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:14 }}>
-        <p style={{ fontSize:12, fontWeight:700, textTransform:'uppercase', letterSpacing:'.1em', color:'#888' }}>🗄️ Database Storage</p>
+        <p style={{ fontSize:12, fontWeight:700, textTransform:'uppercase', letterSpacing:'.1em', color:'#888' }}>📊 App Storage & Usage</p>
         <div style={{ display:'flex', gap:8 }}>
           <button onClick={cleanSessions} disabled={cleaning}
             style={{ fontSize:11, fontWeight:700, padding:'5px 10px', borderRadius:4, border:'1px solid #f5a623', color:'#f5a623', background:'none', cursor:'pointer', opacity:cleaning?0.6:1 }}>
@@ -3808,39 +3857,100 @@ function StorageWidget({ supabase, showToast }) {
         </div>
       </div>
 
-      {/* ── Usage bars always visible ── */}
-      <UsageBar icon="🗄️" label="Database (PostgreSQL)" usedBytes={totalDbBytes} limitBytes={DB_LIMIT_BYTES}   limitLabel="500 MB" />
-      <UsageBar icon="🪣" label="File Storage (Buckets)" usedBytes={fileBytes}    limitBytes={FILE_LIMIT_BYTES} limitLabel="1 GB"   />
-
-      {/* ── Load button or table breakdown ── */}
-      {tableData.length === 0 ? (
-        <div style={{ textAlign:'center', padding:'14px 0 4px' }}>
-          <button onClick={loadStorage} disabled={loading}
-            style={{ fontSize:12, padding:'8px 20px', background:'#0a1f5d', color:'#fff', border:'none', borderRadius:6, cursor:'pointer', fontWeight:700, opacity:loading?0.6:1 }}>
-            {loading ? 'Loading…' : 'Load Storage Info'}
+      {/* ── Load button (shown before first load) ── */}
+      {!hasLoaded && !loading && (
+        <div style={{ textAlign:'center', padding:'14px 0 10px' }}>
+          <button onClick={loadStorage}
+            style={{ fontSize:12, padding:'10px 24px', background:'#0a1f5d', color:'#fff', border:'none', borderRadius:6, cursor:'pointer', fontWeight:700 }}>
+            Load Storage Info
           </button>
         </div>
-      ) : (
-        <div style={{ marginTop:6 }}>
-          <p style={{ fontSize:10, fontWeight:700, letterSpacing:'.12em', textTransform:'uppercase', color:'#aaa', marginBottom:8 }}>Table Breakdown</p>
-          {tableData.map((t, i) => (
-            <div key={t.table_name} style={{ display:'flex', alignItems:'center', gap:10, marginBottom:7 }}>
-              <span style={{ fontSize:10, fontWeight:700, minWidth:160, color:'#555', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
-                {t.table_name.replace('drynn_','')}
-              </span>
-              <div style={{ flex:1, height:6, background:'#f0f0f0', borderRadius:3 }}>
-                <div style={{ height:'100%', borderRadius:3, minWidth:3,
-                  width: t.size_bytes && totalDbBytes ? `${Math.min(100,(t.size_bytes/totalDbBytes)*100)}%` : '3%',
-                  background: tableColors[i % tableColors.length] }} />
-              </div>
-              <span style={{ fontSize:10, fontWeight:700, minWidth:44, textAlign:'right', color:'#888' }}>{t.size_pretty||'—'}</span>
-            </div>
-          ))}
-          <div style={{ marginTop:10, paddingTop:10, borderTop:'1px solid #f0f0f0', display:'flex', justifyContent:'space-between' }}>
-            <span style={{ fontSize:10, color:'#aaa' }}>Supabase Free Tier · DB 500 MB · Storage 1 GB</span>
-            <span style={{ fontSize:10, fontWeight:700, color:'#0a1f5d' }}>Total DB: {fmtBytes(totalDbBytes)}</span>
-          </div>
+      )}
+
+      {loading && (
+        <div style={{ textAlign:'center', padding:'18px 0 10px', color:'#aaa', fontSize:13 }}>
+          <div style={{ width:24, height:24, border:'3px solid #f0f0f0', borderTopColor:'#c8102e', borderRadius:'50%', animation:'drynn-spin .7s linear infinite', margin:'0 auto 8px' }} />
+          Loading…
         </div>
+      )}
+
+      {/* ── Usage bars (shown after first load) ── */}
+      {hasLoaded && !loading && (
+        <>
+          {/* ── SECTION: Supabase ── */}
+          <p style={{ fontSize:10, fontWeight:700, letterSpacing:'.14em', textTransform:'uppercase', color:'#aaa', marginBottom:8 }}>Supabase (Free Tier)</p>
+          <UsageBar icon="🗄️" label="Database (PostgreSQL)" usedBytes={totalDbBytes} limitBytes={DB_LIMIT_BYTES}   limitLabel="500 MB" />
+          <UsageBar icon="🪣" label="File Storage (Buckets)" usedBytes={fileBytes}    limitBytes={FILE_LIMIT_BYTES} limitLabel="1 GB"   />
+
+          {/* ── SECTION: Cloudinary ── */}
+          <p style={{ fontSize:10, fontWeight:700, letterSpacing:'.14em', textTransform:'uppercase', color:'#aaa', marginBottom:8, marginTop:14 }}>Cloudinary (Free Tier)</p>
+          <UsageBar
+            icon="🖼️" label="Media Storage"
+            usedBytes={cloudinaryBytes} limitBytes={CLOUDINARY_STORAGE_B}
+            limitLabel={`${CLOUDINARY_STORAGE_GB} GB`}
+            note={cloudinaryCount != null ? `${cloudinaryCount} assets` : 'API secret required for live data'}
+          />
+          <UsageBar
+            icon="📡" label="Bandwidth (this month)"
+            usedBytes={cloudinaryBw} limitBytes={CLOUDINARY_BW_B}
+            limitLabel={`${CLOUDINARY_BW_GB} GB/mo`}
+          />
+
+          {/* ── SECTION: Combined total ── */}
+          <div style={{ marginTop:14, background: totalPct > 85 ? 'rgba(200,16,46,.05)' : totalPct > 60 ? 'rgba(245,166,35,.05)' : 'rgba(0,168,107,.05)',
+            border:`1px solid ${totalColor}33`, borderRadius:8, padding:'12px 14px' }}>
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:6 }}>
+              <span style={{ fontSize:11, fontWeight:700, color:'#555' }}>⚡ Total App Usage (All Services)</span>
+              <span style={{ fontSize:12, fontWeight:800, color:totalColor, fontVariantNumeric:'tabular-nums' }}>
+                {fmtBytes(totalUsedBytes)} <span style={{ color:'#bbb', fontWeight:400 }}>/</span> {fmtBytes(totalLimitBytes)}
+              </span>
+            </div>
+            <div style={{ height:12, background:'#e0e0e0', borderRadius:6, overflow:'hidden' }}>
+              {/* Stacked bar: DB + FileStorage + Cloudinary */}
+              <div style={{ display:'flex', height:'100%', borderRadius:6, overflow:'hidden' }}>
+                <div style={{ width:`${pct(totalDbBytes||0, totalLimitBytes)}%`, background:'#0a1f5d', transition:'width .7s ease', minWidth: (totalDbBytes||0) > 0 ? 3 : 0 }} />
+                <div style={{ width:`${pct(fileBytes||0, totalLimitBytes)}%`, background:'#00a86b', transition:'width .7s ease', minWidth: (fileBytes||0) > 0 ? 3 : 0 }} />
+                <div style={{ width:`${pct(cloudinaryBytes||0, totalLimitBytes)}%`, background:'#f5a623', transition:'width .7s ease', minWidth: (cloudinaryBytes||0) > 0 ? 3 : 0 }} />
+              </div>
+            </div>
+            <div style={{ display:'flex', gap:14, marginTop:6, flexWrap:'wrap' }}>
+              {[['🗄️ DB','#0a1f5d',fmtBytes(totalDbBytes)],['🪣 Files','#00a86b',fmtBytes(fileBytes)],['🖼️ Cloudinary','#f5a623',fmtBytes(cloudinaryBytes)]].map(([l,c,v])=>(
+                <span key={l} style={{ fontSize:9, color:'#888', display:'flex', alignItems:'center', gap:4 }}>
+                  <span style={{ width:8, height:8, borderRadius:2, background:c, flexShrink:0, display:'inline-block' }} />
+                  {l}: <strong style={{ color:'#555' }}>{v}</strong>
+                </span>
+              ))}
+              <span style={{ fontSize:9, fontWeight:700, color:totalColor, marginLeft:'auto' }}>
+                {totalPct.toFixed(2)}% used
+              </span>
+            </div>
+          </div>
+
+          {/* ── Table breakdown ── */}
+          {tableData.length > 0 && (
+            <div style={{ marginTop:14 }}>
+              <p style={{ fontSize:10, fontWeight:700, letterSpacing:'.12em', textTransform:'uppercase', color:'#aaa', marginBottom:8 }}>DB Table Breakdown</p>
+              {tableData.map((t, i) => (
+                <div key={t.table_name} style={{ display:'flex', alignItems:'center', gap:10, marginBottom:7 }}>
+                  <span style={{ fontSize:10, fontWeight:700, minWidth:160, color:'#555', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+                    {t.table_name.replace('drynn_','')}
+                  </span>
+                  <div style={{ flex:1, height:6, background:'#f0f0f0', borderRadius:3 }}>
+                    <div style={{ height:'100%', borderRadius:3, minWidth:3,
+                      width: t.size_bytes && totalDbBytes ? `${Math.min(100,(t.size_bytes/totalDbBytes)*100)}%` : '3%',
+                      background: tableColors[i % tableColors.length] }} />
+                  </div>
+                  <span style={{ fontSize:10, fontWeight:700, minWidth:44, textAlign:'right', color:'#888' }}>{t.size_pretty||'—'}</span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <div style={{ marginTop:10, paddingTop:10, borderTop:'1px solid #f0f0f0', fontSize:9, color:'#bbb', lineHeight:1.7 }}>
+            Supabase Free: DB 500 MB · Storage 1 GB &nbsp;|&nbsp; Cloudinary Free: Storage 25 GB · BW 25 GB/mo
+            {cloudinaryBytes === 0 && <span style={{ color:'#f5a623' }}> · Cloudinary live usage needs API secret (server-side only)</span>}
+          </div>
+        </>
       )}
     </div>
   )

@@ -4178,8 +4178,7 @@ function AdminPanel({ onBack }) {
             ['grouporders','👥 Groups'],
             ...((isSuperAdmin || currentUser?.email === SUPER_ADMIN_EMAIL) ? [
               ['analytics',  '📊 Analytics'],
-              ['visitors',   '👤 Visitors'],
-              ['users',      '🧑 Users'],
+              ['people',     '👥 People'],
               ['media',      '🎬 Media'],
               ['colors',     '🎨 Colors'],
               ['admins',     '🔑 Admins'],
@@ -4196,8 +4195,7 @@ function AdminPanel({ onBack }) {
               if(key==='uploads')     loadOrders()
               if(key==='grouporders') loadGroupOrders()
               if(key==='analytics')   loadOrders()
-              if(key==='visitors')    loadVisitors()
-              if(key==='users')       loadAllUsers()
+              if(key==='people')      { loadVisitors(); loadAllUsers() }
               if(key==='media')       loadMediaUrls()
               if(key==='colors')      loadAdminColors()
               if(key==='admins')      loadAdmins()
@@ -4660,140 +4658,170 @@ function AdminPanel({ onBack }) {
           )
         })()}
 
-        {/* ══ VISITORS TAB ══ */}
-        {tab==='visitors' && (isSuperAdmin || currentUser?.email === SUPER_ADMIN_EMAIL) && (() => {
-          const filtered = visitors.filter(v =>
-            !visitorSearch || (v.user_email||'').toLowerCase().includes(visitorSearch.toLowerCase()) || (v.user_name||'').toLowerCase().includes(visitorSearch.toLowerCase())
-          )
-          const deleteVisitor = async (email) => {
+        {/* ══ PEOPLE TAB (merged Visitors + Users) ══ */}
+        {tab==='people' && (isSuperAdmin || currentUser?.email === SUPER_ADMIN_EMAIL) && (() => {
+          const isLoading = visitorsLoading || usersLoading
+
+          // Delete all session history for a user by email
+          const deleteVisitorSessions = async (email) => {
             if (!window.confirm(`Delete all session history for ${email}?`)) return
             const { error, count } = await supabase.from('drynn_user_sessions').delete({ count:'exact' }).eq('user_email', email)
             if (error) { alert('Delete failed: ' + error.message + ' · ' + error.code); return }
             setVisitors(prev => prev.filter(v => v.user_email !== email))
+            // Also remove sessions from allUsers entries
+            setAllUsers(prev => prev.map(u => u.email === email ? { ...u, sessions: [] } : u))
             showToast(`Deleted ${count??''} session(s)`)
           }
+
+          // Merge allUsers with raw session counts from visitors list
+          // allUsers already includes session data; use it as the main list
+          // For users with no allUsers entry (pure anonymous sessions), pull from visitors
+          const knownEmails = new Set(allUsers.map(u => u.email).filter(Boolean))
+          const anonSessions = visitors.filter(v => v.user_email && !knownEmails.has(v.user_email))
+          // Group anon sessions by email to dedupe
+          const anonByEmail = {}
+          anonSessions.forEach(v => {
+            if (!anonByEmail[v.user_email]) anonByEmail[v.user_email] = { user_id:null, email:v.user_email, name:v.user_name||v.user_email||'Anonymous', phone:null, address:null, orders:[], uploads:[], sessions:[], source:'visitor' }
+            anonByEmail[v.user_email].sessions.push(v)
+          })
+          const combinedList = [
+            ...allUsers,
+            ...Object.values(anonByEmail),
+          ]
+
+          // Search filter
+          const q = (visitorSearch||'').toLowerCase()
+          const filtered = q
+            ? combinedList.filter(u =>
+                (u.name||'').toLowerCase().includes(q) ||
+                (u.email||'').toLowerCase().includes(q) ||
+                (u.phone||'').includes(q)
+              )
+            : combinedList
+
+          const totalSessions = visitors.length
+
           return (
             <div>
-              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:12 }}>
-                <h2 style={{ fontSize:18, fontWeight:700 }}>👤 Visitors ({visitors.length})</h2>
-                <button className="btn-secondary" style={{ padding:'7px 14px', fontSize:12 }} onClick={loadVisitors}>↻ Refresh</button>
+              {/* Header */}
+              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:12, flexWrap:'wrap', gap:8 }}>
+                <div>
+                  <h2 style={{ fontSize:18, fontWeight:700, marginBottom:2 }}>👥 People</h2>
+                  <p style={{ fontSize:12, color:'#888' }}>{combinedList.length} people · {totalSessions} sessions tracked</p>
+                </div>
+                <button className="btn-secondary" style={{ padding:'7px 14px', fontSize:12 }} onClick={()=>{ loadVisitors(); loadAllUsers() }}>↻ Refresh</button>
               </div>
-              <input className="input-field" style={{ marginBottom:14, fontSize:13 }} placeholder="Search by email or name…"
-                value={visitorSearch} onChange={e=>setVisitorSearch(e.target.value)} />
-              {visitorsLoading ? <div style={{ textAlign:'center', padding:40, color:'#888' }}>Loading…</div>
-              : filtered.length===0 ? <div style={{ textAlign:'center', padding:40, color:'#aaa' }}>No visitors found.</div>
-              : (
-                <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
-                  {filtered.map((v,i) => (
-                    <div key={i} style={{ background:'#fff', border:'1px solid #e8e8e8', borderRadius:8, padding:'12px 14px', display:'flex', justifyContent:'space-between', alignItems:'center', flexWrap:'wrap', gap:8 }}>
-                      <div>
-                        <div style={{ fontWeight:700, fontSize:13 }}>{v.user_name||v.user_email||'Anonymous'}</div>
-                        <div style={{ fontSize:11, color:'#888' }}>
-                          {v.user_email && <span>{v.user_email} · </span>}
-                          {v.started_at && <span>{new Date(v.started_at).toLocaleString('en-IN')}</span>}
-                        </div>
-                        {v.page_views && <div style={{ fontSize:10, color:'#bbb' }}>Pages: {v.page_views}</div>}
-                      </div>
-                      {v.user_email && (
-                        <button onClick={()=>deleteVisitor(v.user_email)}
-                          style={{ padding:'5px 12px', fontSize:11, borderRadius:4, border:'1px solid #fdd', color:'#c8102e', background:'none', cursor:'pointer', fontWeight:600, flexShrink:0 }}>
-                          Delete
-                        </button>
-                      )}
+
+              {/* Stats row */}
+              {!isLoading && combinedList.length > 0 && (
+                <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:10, marginBottom:14 }}>
+                  {[
+                    { label:'Total',     value:combinedList.length,                                     color:'#0a1f5d' },
+                    { label:'Customers', value:combinedList.filter(u=>u.orders.length>0).length,        color:'#00a86b' },
+                    { label:'Visitors',  value:combinedList.filter(u=>u.orders.length===0).length,      color:'#f5a623' },
+                    { label:'Sessions',  value:totalSessions,                                            color:'#c8102e' },
+                  ].map(s=>(
+                    <div key={s.label} style={{ background:'#fff', border:'1px solid #e8e8e8', borderRadius:10, padding:'10px 8px', textAlign:'center' }}>
+                      <div style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:26, color:s.color, lineHeight:1 }}>{s.value}</div>
+                      <div style={{ fontSize:10, color:'#aaa', fontWeight:700, textTransform:'uppercase', letterSpacing:'.08em', marginTop:2 }}>{s.label}</div>
                     </div>
                   ))}
+                </div>
+              )}
+
+              {/* Search */}
+              <input className="input-field" style={{ marginBottom:14, fontSize:13 }} placeholder="Search by name, email, or phone…"
+                value={visitorSearch} onChange={e=>setVisitorSearch(e.target.value)} />
+
+              {/* List */}
+              {isLoading ? <div style={{ textAlign:'center', padding:40, color:'#888' }}>Loading…</div>
+              : filtered.length===0 ? <div style={{ textAlign:'center', padding:40, color:'#aaa' }}>No people found.</div>
+              : (
+                <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
+                  {filtered.map((u,i) => {
+                    const hasOrders    = u.orders.length > 0
+                    const customOrders = u.orders.filter(o=>o.order_type==='custom'||(o.design_file&&o.design_file!=='catalog-order'&&o.design_file!=='{}'))
+                    return (
+                      <div key={i} style={{ background:'#fff', border:'1.5px solid', borderColor:hasOrders?'#e8e8e8':'#f5f5f5', borderRadius:12, padding:'14px 16px' }}>
+                        {/* Top row */}
+                        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', flexWrap:'wrap', gap:8, marginBottom:6 }}>
+                          <div>
+                            <div style={{ display:'flex', alignItems:'center', gap:6, flexWrap:'wrap', marginBottom:2 }}>
+                              <span style={{ fontSize:14, fontWeight:700 }}>{u.name||'—'}</span>
+                              {!hasOrders && <span style={{ fontSize:9, fontWeight:700, padding:'2px 6px', borderRadius:50, background:'#fff8e1', color:'#f5a623', border:'1px solid #ffe082' }}>VISITOR</span>}
+                              {customOrders.length>0 && <span style={{ fontSize:9, fontWeight:700, padding:'2px 6px', borderRadius:50, background:'rgba(155,89,182,.1)', color:'#9b59b6', border:'1px solid rgba(155,89,182,.25)' }}>🎨 STUDIO</span>}
+                            </div>
+                            <div style={{ fontSize:11, color:'#888', display:'flex', gap:10, flexWrap:'wrap' }}>
+                              {u.email && <span>✉ {u.email}</span>}
+                              {u.phone && <span>📞 {u.phone}</span>}
+                              {u.sessions.length>0 && <span>👁 {u.sessions.length} session{u.sessions.length!==1?'s':''}</span>}
+                            </div>
+                          </div>
+                          <div style={{ display:'flex', gap:6, alignItems:'center', flexWrap:'wrap' }}>
+                            <span style={{ background:'#f0f3ff', color:'#0a1f5d', fontSize:11, fontWeight:700, padding:'4px 10px', borderRadius:20 }}>{u.orders.length} order{u.orders.length!==1?'s':''}</span>
+                            {u.phone && <a href={`https://wa.me/91${u.phone.replace(/\D/g,'').replace(/^91/,'')}`} target="_blank" rel="noreferrer" style={{ fontSize:11, padding:'4px 10px', borderRadius:20, border:'1px solid #00a86b', color:'#00a86b', fontWeight:700, textDecoration:'none' }}>💬</a>}
+                            {u.email && u.sessions.length>0 && (
+                              <button onClick={()=>deleteVisitorSessions(u.email)}
+                                style={{ padding:'4px 10px', fontSize:10, borderRadius:20, border:'1px solid #fdd', color:'#c8102e', background:'none', cursor:'pointer', fontWeight:700 }}>
+                                🗑 Sessions
+                              </button>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Studio designs */}
+                        {customOrders.length>0 && (
+                          <div style={{ marginBottom:8 }}>
+                            <div style={{ fontSize:10, fontWeight:700, textTransform:'uppercase', color:'#9b59b6', marginBottom:5 }}>🎨 Studio Designs</div>
+                            <div style={{ display:'flex', gap:5, flexWrap:'wrap' }}>
+                              {customOrders.map(o => {
+                                let designs = []
+                                try { const p=JSON.parse(o.design_file); designs=Object.entries(p).filter(([,v])=>v&&v.startsWith('https://')) } catch {}
+                                return designs.map(([side,url]) => (
+                                  <a key={side+url} href={url} target="_blank" rel="noreferrer">
+                                    <img src={url} alt={side} style={{ width:48, height:48, objectFit:'contain', borderRadius:5, border:'1.5px solid rgba(155,89,182,.3)', background:'#f8f8f8' }} onError={e=>e.target.style.display='none'} />
+                                  </a>
+                                ))
+                              })}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Orders summary */}
+                        {hasOrders && (
+                          <div style={{ display:'flex', flexDirection:'column', gap:3, marginBottom: u.sessions.length>0?6:0 }}>
+                            {u.orders.slice(0,3).map(o=>(
+                              <div key={o.id} style={{ fontSize:11, color:'#555', display:'flex', gap:8, flexWrap:'wrap' }}>
+                                <span style={{ fontWeight:600, color:'#0a0a0a' }}>{o.garment||o.product_name}</span>
+                                <span>·</span><span>₹{Number(o.total||0).toLocaleString()}</span>
+                                <span>·</span><span style={{ color:STATUS_COLORS[o.status]||'#888', fontWeight:600 }}>{o.status}</span>
+                              </div>
+                            ))}
+                            {u.orders.length>3 && <div style={{ fontSize:11, color:'#aaa' }}>+{u.orders.length-3} more</div>}
+                          </div>
+                        )}
+
+                        {/* Session history (latest 3) */}
+                        {u.sessions.length>0 && (
+                          <div style={{ borderTop:'1px solid #f5f5f5', paddingTop:6, marginTop:4 }}>
+                            <div style={{ fontSize:10, fontWeight:700, textTransform:'uppercase', color:'#bbb', marginBottom:4 }}>Recent Sessions</div>
+                            {u.sessions.slice(0,3).map((s,si)=>(
+                              <div key={si} style={{ fontSize:11, color:'#aaa', display:'flex', gap:8, flexWrap:'wrap' }}>
+                                {s.started_at && <span>{new Date(s.started_at).toLocaleString('en-IN')}</span>}
+                                {s.page_views  && <span>· {s.page_views} pages</span>}
+                              </div>
+                            ))}
+                            {u.sessions.length>3 && <div style={{ fontSize:10, color:'#ccc' }}>+{u.sessions.length-3} more</div>}
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })}
                 </div>
               )}
             </div>
           )
         })()}
-
-        {/* ══ USERS TAB ══ */}
-        {tab==='users' && (isSuperAdmin || currentUser?.email === SUPER_ADMIN_EMAIL) && (
-          <div>
-            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:8 }}>
-              <div>
-                <h2 style={{ fontSize:18, fontWeight:700, marginBottom:2 }}>🧑 All Users</h2>
-                <p style={{ fontSize:12, color:'#888' }}>{allUsers.length} users · includes visitors + customers</p>
-              </div>
-              <button className="btn-secondary" style={{ padding:'7px 14px', fontSize:12 }} onClick={loadAllUsers}>↻ Refresh</button>
-            </div>
-            {!usersLoading && allUsers.length > 0 && (
-              <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:10, marginBottom:16 }}>
-                {[
-                  { label:'Total',     value:allUsers.length,                                color:'#0a1f5d' },
-                  { label:'Customers', value:allUsers.filter(u=>u.orders.length>0).length,   color:'#00a86b' },
-                  { label:'Visitors',  value:allUsers.filter(u=>u.orders.length===0).length, color:'#f5a623' },
-                ].map(s=>(
-                  <div key={s.label} style={{ background:'#fff', border:'1px solid #e8e8e8', borderRadius:10, padding:'12px', textAlign:'center' }}>
-                    <div style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:28, color:s.color, lineHeight:1 }}>{s.value}</div>
-                    <div style={{ fontSize:10, color:'#aaa', fontWeight:700, textTransform:'uppercase', letterSpacing:'.08em', marginTop:2 }}>{s.label}</div>
-                  </div>
-                ))}
-              </div>
-            )}
-            {usersLoading ? <div style={{ textAlign:'center', padding:40, color:'#888' }}>Loading…</div>
-            : allUsers.length===0 ? <div style={{ textAlign:'center', padding:40, color:'#aaa' }}>No users found.</div>
-            : (
-              <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
-                {allUsers.map((u,i) => {
-                  const hasOrders    = u.orders.length > 0
-                  const customOrders = u.orders.filter(o=>o.order_type==='custom'||(o.design_file&&o.design_file!=='catalog-order'&&o.design_file!=='{}'))
-                  return (
-                    <div key={i} style={{ background:'#fff', border:'1.5px solid', borderColor:hasOrders?'#e8e8e8':'#f5f5f5', borderRadius:12, padding:'14px 16px' }}>
-                      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', flexWrap:'wrap', gap:8, marginBottom:8 }}>
-                        <div>
-                          <div style={{ display:'flex', alignItems:'center', gap:6, flexWrap:'wrap', marginBottom:2 }}>
-                            <span style={{ fontSize:14, fontWeight:700 }}>{u.name||'—'}</span>
-                            {!hasOrders && <span style={{ fontSize:9, fontWeight:700, padding:'2px 6px', borderRadius:50, background:'#fff8e1', color:'#f5a623', border:'1px solid #ffe082' }}>VISITOR</span>}
-                            {customOrders.length>0 && <span style={{ fontSize:9, fontWeight:700, padding:'2px 6px', borderRadius:50, background:'rgba(155,89,182,.1)', color:'#9b59b6', border:'1px solid rgba(155,89,182,.25)' }}>🎨 STUDIO</span>}
-                          </div>
-                          <div style={{ fontSize:11, color:'#888', display:'flex', gap:10, flexWrap:'wrap' }}>
-                            {u.email && <span>✉ {u.email}</span>}
-                            {u.phone && <span>📞 {u.phone}</span>}
-                            {u.sessions.length>0 && <span>👁 {u.sessions.length} visit{u.sessions.length!==1?'s':''}</span>}
-                          </div>
-                        </div>
-                        <div style={{ display:'flex', gap:6 }}>
-                          <span style={{ background:'#f0f3ff', color:'#0a1f5d', fontSize:11, fontWeight:700, padding:'4px 10px', borderRadius:20 }}>{u.orders.length} order{u.orders.length!==1?'s':''}</span>
-                          {u.phone && <a href={`https://wa.me/91${u.phone.replace(/\D/g,'').replace(/^91/,'')}`} target="_blank" rel="noreferrer" style={{ fontSize:11, padding:'4px 10px', borderRadius:20, border:'1px solid #00a86b', color:'#00a86b', fontWeight:700, textDecoration:'none' }}>💬</a>}
-                        </div>
-                      </div>
-                      {customOrders.length>0 && (
-                        <div style={{ marginBottom:8 }}>
-                          <div style={{ fontSize:10, fontWeight:700, textTransform:'uppercase', color:'#9b59b6', marginBottom:5 }}>🎨 Studio Designs</div>
-                          <div style={{ display:'flex', gap:5, flexWrap:'wrap' }}>
-                            {customOrders.map(o => {
-                              let designs = []
-                              try { const p=JSON.parse(o.design_file); designs=Object.entries(p).filter(([,v])=>v&&v.startsWith('https://')) } catch {}
-                              return designs.map(([side,url]) => (
-                                <a key={side+url} href={url} target="_blank" rel="noreferrer">
-                                  <img src={url} alt={side} style={{ width:48, height:48, objectFit:'contain', borderRadius:5, border:'1.5px solid rgba(155,89,182,.3)', background:'#f8f8f8' }} onError={e=>e.target.style.display='none'} />
-                                </a>
-                              ))
-                            })}
-                          </div>
-                        </div>
-                      )}
-                      {hasOrders && (
-                        <div style={{ display:'flex', flexDirection:'column', gap:3 }}>
-                          {u.orders.slice(0,3).map(o=>(
-                            <div key={o.id} style={{ fontSize:11, color:'#555', display:'flex', gap:8, flexWrap:'wrap' }}>
-                              <span style={{ fontWeight:600, color:'#0a0a0a' }}>{o.garment||o.product_name}</span>
-                              <span>·</span><span>₹{Number(o.total||0).toLocaleString()}</span>
-                              <span>·</span><span style={{ color:STATUS_COLORS[o.status]||'#888', fontWeight:600 }}>{o.status}</span>
-                            </div>
-                          ))}
-                          {u.orders.length>3 && <div style={{ fontSize:11, color:'#aaa' }}>+{u.orders.length-3} more</div>}
-                        </div>
-                      )}
-                    </div>
-                  )
-                })}
-              </div>
-            )}
-          </div>
-        )}
 
         {/* ══ MEDIA TAB ══ */}
         {tab==='media' && (

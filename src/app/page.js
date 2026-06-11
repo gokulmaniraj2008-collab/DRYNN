@@ -102,6 +102,27 @@ function useMediaSettings() {
   }, [])
   return media
 }
+
+// Shared hook — loads admin-managed print charges from drynn_settings
+// Keys: print_charge_per_side (default 199), print_charge_shipping_threshold (default 1500), shipping_fee (default 99)
+function usePrintCharges() {
+  const [charges, setCharges] = React.useState({ per_side: 199, shipping_threshold: 1500, shipping_fee: 99 })
+  React.useEffect(() => {
+    supabase.from('drynn_settings').select('key,value')
+      .in('key', ['print_charge_per_side','print_charge_shipping_threshold','print_charge_shipping_fee'])
+      .then(({ data }) => {
+        if (!data || !data.length) return
+        const m = { per_side: 199, shipping_threshold: 1500, shipping_fee: 99 }
+        data.forEach(row => {
+          if (row.key === 'print_charge_per_side')             m.per_side            = Number(row.value) || 199
+          if (row.key === 'print_charge_shipping_threshold')   m.shipping_threshold  = Number(row.value) || 1500
+          if (row.key === 'print_charge_shipping_fee')         m.shipping_fee        = Number(row.value) || 99
+        })
+        setCharges(m)
+      })
+  }, [])
+  return charges
+}
 const SIZES = ['S','M','L','XL','XXL']
 const GARMENTS = ['T-Shirt','Hoodie','Polo','Joggers']
 const STEPS = [
@@ -1248,10 +1269,15 @@ function StudioPage({ user, onNav, onAddToCart }) {
       const sheetUrl = await generatePrintSheet(designUrls)
 
       // Build a cart item representing this custom order
+      const activeSidesCount = Object.values(designUrls).filter(Boolean).length
+      const printCharge  = activeSidesCount * printCharges.per_side
+      const basePrice    = selectedProduct?.price || 0
       const customItem = {
         id:        `custom_${Date.now()}`,
         name:      `Custom ${garmentLabel}`,
-        price:     selectedProduct?.price || 0,
+        price:     basePrice + printCharge,
+        print_charge: printCharge,
+        base_price:   basePrice,
         mrp:       selectedProduct?.mrp   || 0,
         qty:       Number(form.qty) || 1,
         size,
@@ -1278,7 +1304,8 @@ function StudioPage({ user, onNav, onAddToCart }) {
   }
 
   // ── Derived ───────────────────────────────────────────────
-  const SWATCHES = useSwatches()
+  const SWATCHES      = useSwatches()
+  const printCharges  = usePrintCharges()
   const SIZES    = ['XS','S','M','L','XL','XXL','3XL']
   const TEXT_FONTS = ['Bebas Neue','DM Sans','Georgia','Courier New','Impact','Arial Black']
   const FILTERS  = [
@@ -1852,6 +1879,37 @@ function StudioPage({ user, onNav, onAddToCart }) {
                     </div>
                   </div>
                 )}
+
+                {/* Price breakdown */}
+                {(() => {
+                  const activeSidesNow = SIDES.filter(s => sideImgs[s]).length
+                  const printChargeLive = activeSidesNow * printCharges.per_side
+                  const basePriceLive   = selectedProduct?.price || 0
+                  const totalLive       = basePriceLive + printChargeLive
+                  return (
+                    <div style={{ background:'rgba(255,255,255,.04)', border:'1px solid rgba(255,255,255,.08)', borderRadius:10, padding:'12px 14px' }}>
+                      <div style={{ fontSize:9, fontWeight:700, letterSpacing:'.12em', textTransform:'uppercase', color:'rgba(255,255,255,.3)', marginBottom:10 }}>Price Breakdown</div>
+                      <div style={{ display:'flex', justifyContent:'space-between', fontSize:12, color:'rgba(255,255,255,.6)', marginBottom:6 }}>
+                        <span>Garment base price</span>
+                        <span>₹{basePriceLive.toLocaleString()}</span>
+                      </div>
+                      {activeSidesNow > 0 && (
+                        <div style={{ display:'flex', justifyContent:'space-between', fontSize:12, color:'rgba(255,255,255,.6)', marginBottom:6 }}>
+                          <span>Print charge ({activeSidesNow} side{activeSidesNow>1?'s':''} × ₹{printCharges.per_side})</span>
+                          <span>₹{printChargeLive.toLocaleString()}</span>
+                        </div>
+                      )}
+                      {activeSidesNow === 0 && (
+                        <div style={{ fontSize:11, color:'rgba(255,255,255,.3)', marginBottom:6 }}>No designs added yet — print charge: ₹0</div>
+                      )}
+                      <div style={{ borderTop:'1px solid rgba(255,255,255,.08)', paddingTop:8, marginTop:4, display:'flex', justifyContent:'space-between', fontSize:14, fontWeight:700 }}>
+                        <span style={{ color:'rgba(255,255,255,.8)' }}>Total (per piece)</span>
+                        <span style={{ color:'#c8102e' }}>₹{totalLive.toLocaleString()}</span>
+                      </div>
+                      <div style={{ fontSize:10, color:'rgba(255,255,255,.25)', marginTop:4 }}>+ shipping ₹{printCharges.shipping_fee} (free above ₹{printCharges.shipping_threshold})</div>
+                    </div>
+                  )
+                })()}
 
                 <button className="btn-primary"
                   style={{ width:'100%', padding:'14px', fontSize:14, letterSpacing:'.04em', opacity:(status==='saving'||status==='uploading'||status==='sheet')?.6:1 }}
@@ -2490,8 +2548,9 @@ function ContactPage({ onNav }) {
 }
 
 function CartPage({ cart, onRemove, onClear, user, onNav }) {
+  const printCharges = usePrintCharges()
   const total      = cart.reduce((s,i) => s + i.price * i.qty, 0)
-  const shipping   = total >= 1500 ? 0 : 99
+  const shipping   = total >= printCharges.shipping_threshold ? 0 : printCharges.shipping_fee
   const grandTotal = total + shipping
 
   const [step,   setStep]   = React.useState('cart')
@@ -2535,6 +2594,7 @@ function CartPage({ cart, onRemove, onClear, user, onNav }) {
         custom_text:      item.isCustom && cd?.sideText
           ? Object.entries(cd.sideText).filter(([,t]) => t?.on && t?.val).map(([s,t]) => `${s}: ${t.val}`).join(' | ') || null
           : null,
+        print_charge:     item.isCustom ? (item.print_charge || 0) : 0,
         print_sheet_url:  item.isCustom ? (cd?.printSheetUrl || null) : null,
         side_pos:         item.isCustom ? (cd?.sidePos  ? JSON.stringify(cd.sidePos)  : null) : null,
         text_on:          item.isCustom ? (cd?.textOn   ? true : false)                        : false,
@@ -2757,6 +2817,11 @@ function CartPage({ cart, onRemove, onClear, user, onNav }) {
                   {item.isCustom && item.customDetails && (
                     <p style={{ fontSize:11, color:'#00a86b', marginBottom:2 }}>🎨 Custom · Sides: {item.customDetails.sides}</p>
                   )}
+                  {item.isCustom && item.print_charge > 0 && (
+                    <p style={{ fontSize:11, color:'rgba(155,89,182,1)', marginBottom:2 }}>
+                      Base ₹{item.base_price?.toLocaleString()} + Print ₹{item.print_charge?.toLocaleString()}
+                    </p>
+                  )}
                   <p style={{ fontSize:12, color:'#aaa', marginBottom:4 }}>Size: {item.size || '—'} · Qty: {item.qty}</p>
                   <p style={{ fontSize:16, fontWeight:700, color:'#c8102e' }}>₹{(item.price*item.qty).toLocaleString()}</p>
                 </div>
@@ -2771,7 +2836,7 @@ function CartPage({ cart, onRemove, onClear, user, onNav }) {
                 <span style={{ color:'#888' }}>Shipping</span>
                 <span style={{ color:shipping===0?'#00a86b':'#0a0a0a', fontWeight:600 }}>{shipping===0?'FREE':`₹${shipping}`}</span>
               </div>
-              {shipping>0 && <p style={{ fontSize:11, color:'#00a86b', marginBottom:12 }}>Add ₹{(1500-total).toLocaleString()} more for free shipping!</p>}
+              {shipping>0 && <p style={{ fontSize:11, color:'#00a86b', marginBottom:12 }}>Add ₹{(printCharges.shipping_threshold-total).toLocaleString()} more for free shipping!</p>}
               <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16 }}>
                 <span style={{ fontSize:16, fontWeight:700 }}>Total</span>
                 <span style={{ fontSize:22, fontWeight:700, color:'#c8102e' }}>₹{grandTotal.toLocaleString()}</span>
@@ -2918,6 +2983,7 @@ function OrdersPage({ user, onBack, onNav }) {
               ['Size',    selected.size    || '-'],
               ['Qty',     selected.qty     || '-'],
               ['Total',   selected.total   ? `₹${Number(selected.total).toLocaleString()}` : '-'],
+              ...(selected.print_charge > 0 ? [['Print Charge', `₹${Number(selected.print_charge).toLocaleString()} (${selected.design_sides || '?'} side${(selected.design_sides||'').split(',').length>1?'s':''})`]] : []),
               ['Payment', selected.payment_status || 'Pending'],
             ].map(([k,v]) => (
               <div key={k} style={{ display:'flex', justifyContent:'space-between', padding:'8px 0', borderBottom:'1px solid #f8f8f8', fontSize:13 }}>
@@ -4272,7 +4338,7 @@ function AdminPanel({ onBack }) {
 
                       <div style={{ display:'flex', flexDirection:'column', gap:6, alignItems:'flex-end', flexShrink:0 }}>
                         <div style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:22, color:'#0a1f5d', lineHeight:1 }}>
-                          ₹{Number(o.total||0).toLocaleString()}
+                          ₹{Number(o.total||0).toLocaleString()}{o.print_charge>0 && <span style={{fontSize:9,color:'#9b59b6',marginLeft:4}}>(+₹{Number(o.print_charge).toLocaleString()} print)</span>}
                         </div>
                         {/* Status dropdown inline */}
                         <select value={o.status||'Received'}
@@ -4456,6 +4522,74 @@ function AdminPanel({ onBack }) {
             {/* ── Colours section ── */}
             {catalogSection==='colors' && (
             <div>
+            {/* Print & Shipping Charges */}
+            {(() => {
+              const [charges, setCharges] = React.useState({ per_side:'', shipping_threshold:'', shipping_fee:'' })
+              const [chargesLoaded, setChargesLoaded] = React.useState(false)
+              const [chargesSaving, setChargesSaving] = React.useState(false)
+              React.useEffect(() => {
+                if (chargesLoaded) return
+                supabase.from('drynn_settings').select('key,value')
+                  .in('key',['print_charge_per_side','print_charge_shipping_threshold','print_charge_shipping_fee'])
+                  .then(({ data }) => {
+                    if (data) {
+                      const m = { per_side:'199', shipping_threshold:'1500', shipping_fee:'99' }
+                      data.forEach(r => {
+                        if (r.key==='print_charge_per_side')            m.per_side           = r.value
+                        if (r.key==='print_charge_shipping_threshold')  m.shipping_threshold = r.value
+                        if (r.key==='print_charge_shipping_fee')        m.shipping_fee       = r.value
+                      })
+                      setCharges(m)
+                    }
+                    setChargesLoaded(true)
+                  })
+              }, [])
+              const saveCharges = async () => {
+                setChargesSaving(true)
+                const rows = [
+                  { key:'print_charge_per_side',            value: String(charges.per_side || '199') },
+                  { key:'print_charge_shipping_threshold',  value: String(charges.shipping_threshold || '1500') },
+                  { key:'print_charge_shipping_fee',        value: String(charges.shipping_fee || '99') },
+                ]
+                for (const row of rows) {
+                  await supabase.from('drynn_settings').upsert(row, { onConflict:'key' })
+                }
+                setChargesSaving(false)
+                showToast('Charges saved ✓')
+              }
+              return (
+                <div style={{ background:'#fff', border:'1px solid #e8e8e8', borderRadius:10, padding:'20px', marginBottom:20 }}>
+                  <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:14 }}>
+                    <div>
+                      <div style={{ fontSize:14, fontWeight:700, marginBottom:2 }}>💰 Print & Shipping Charges</div>
+                      <div style={{ fontSize:11, color:'#888' }}>Applied to all Studio custom orders</div>
+                    </div>
+                    <button className="btn-primary" style={{ padding:'8px 16px', fontSize:12, opacity:chargesSaving?.6:1 }}
+                      onClick={saveCharges} disabled={chargesSaving}>
+                      {chargesSaving ? 'Saving…' : 'Save'}
+                    </button>
+                  </div>
+                  <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:12 }}>
+                    {[
+                      { label:'Print charge per side (₹)', key:'per_side',           hint:'Added per printed side (front/back/left/right)' },
+                      { label:'Free shipping above (₹)',   key:'shipping_threshold', hint:'Orders above this get free shipping' },
+                      { label:'Shipping fee (₹)',          key:'shipping_fee',       hint:'Charged when order is below threshold' },
+                    ].map(f => (
+                      <div key={f.key}>
+                        <label style={{ fontSize:10, fontWeight:700, textTransform:'uppercase', letterSpacing:'.08em', color:'#888', display:'block', marginBottom:5 }}>{f.label}</label>
+                        <input type="number" min="0" className="input-field" style={{ fontSize:15, fontWeight:700 }}
+                          value={charges[f.key]} onChange={e=>setCharges(c=>({...c,[f.key]:e.target.value}))} />
+                        <div style={{ fontSize:10, color:'#bbb', marginTop:3 }}>{f.hint}</div>
+                      </div>
+                    ))}
+                  </div>
+                  <div style={{ marginTop:14, background:'#f8f8f8', borderRadius:8, padding:'10px 14px', fontSize:12, color:'#555' }}>
+                    <strong>Example:</strong> A T-shirt (₹{charges.per_side ? Number(charges.per_side)*0+699 : 699} base) with front + back print = ₹699 + ₹{Number(charges.per_side||199)} + ₹{Number(charges.per_side||199)} = <strong>₹{699 + 2*Number(charges.per_side||199)}</strong> per piece
+                  </div>
+                </div>
+              )
+            })()}
+
             <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:8 }}>
               <h2 style={{ fontSize:18, fontWeight:700 }}>🎨 Colour Manager</h2>
               <button className="btn-secondary" style={{ padding:'7px 14px', fontSize:12 }} onClick={loadAdminColors}>↻ Load</button>

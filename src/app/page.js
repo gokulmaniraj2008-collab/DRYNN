@@ -102,27 +102,6 @@ function useMediaSettings() {
   }, [])
   return media
 }
-
-// Shared hook — loads admin-managed print charges from drynn_settings
-// Keys: print_charge_per_side (default 199), print_charge_shipping_threshold (default 1500), shipping_fee (default 99)
-function usePrintCharges() {
-  const [charges, setCharges] = React.useState({ per_side: 199, shipping_threshold: 1500, shipping_fee: 99 })
-  React.useEffect(() => {
-    supabase.from('drynn_settings').select('key,value')
-      .in('key', ['print_charge_per_side','print_charge_shipping_threshold','print_charge_shipping_fee'])
-      .then(({ data }) => {
-        if (!data || !data.length) return
-        const m = { per_side: 199, shipping_threshold: 1500, shipping_fee: 99 }
-        data.forEach(row => {
-          if (row.key === 'print_charge_per_side')             m.per_side            = Number(row.value) || 199
-          if (row.key === 'print_charge_shipping_threshold')   m.shipping_threshold  = Number(row.value) || 1500
-          if (row.key === 'print_charge_shipping_fee')         m.shipping_fee        = Number(row.value) || 99
-        })
-        setCharges(m)
-      })
-  }, [])
-  return charges
-}
 const SIZES = ['S','M','L','XL','XXL']
 const GARMENTS = ['T-Shirt','Hoodie','Polo','Joggers']
 const STEPS = [
@@ -1269,15 +1248,10 @@ function StudioPage({ user, onNav, onAddToCart }) {
       const sheetUrl = await generatePrintSheet(designUrls)
 
       // Build a cart item representing this custom order
-      const activeSidesCount = Object.values(designUrls).filter(Boolean).length
-      const printCharge  = activeSidesCount * printCharges.per_side
-      const basePrice    = selectedProduct?.price || 0
       const customItem = {
         id:        `custom_${Date.now()}`,
         name:      `Custom ${garmentLabel}`,
-        price:     basePrice + printCharge,
-        print_charge: printCharge,
-        base_price:   basePrice,
+        price:     selectedProduct?.price || 0,
         mrp:       selectedProduct?.mrp   || 0,
         qty:       Number(form.qty) || 1,
         size,
@@ -1304,8 +1278,7 @@ function StudioPage({ user, onNav, onAddToCart }) {
   }
 
   // ── Derived ───────────────────────────────────────────────
-  const SWATCHES      = useSwatches()
-  const printCharges  = usePrintCharges()
+  const SWATCHES = useSwatches()
   const SIZES    = ['XS','S','M','L','XL','XXL','3XL']
   const TEXT_FONTS = ['Bebas Neue','DM Sans','Georgia','Courier New','Impact','Arial Black']
   const FILTERS  = [
@@ -1880,37 +1853,6 @@ function StudioPage({ user, onNav, onAddToCart }) {
                   </div>
                 )}
 
-                {/* Price breakdown */}
-                {(() => {
-                  const activeSidesNow = SIDES.filter(s => sideImgs[s]).length
-                  const printChargeLive = activeSidesNow * printCharges.per_side
-                  const basePriceLive   = selectedProduct?.price || 0
-                  const totalLive       = basePriceLive + printChargeLive
-                  return (
-                    <div style={{ background:'rgba(255,255,255,.04)', border:'1px solid rgba(255,255,255,.08)', borderRadius:10, padding:'12px 14px' }}>
-                      <div style={{ fontSize:9, fontWeight:700, letterSpacing:'.12em', textTransform:'uppercase', color:'rgba(255,255,255,.3)', marginBottom:10 }}>Price Breakdown</div>
-                      <div style={{ display:'flex', justifyContent:'space-between', fontSize:12, color:'rgba(255,255,255,.6)', marginBottom:6 }}>
-                        <span>Garment base price</span>
-                        <span>₹{basePriceLive.toLocaleString()}</span>
-                      </div>
-                      {activeSidesNow > 0 && (
-                        <div style={{ display:'flex', justifyContent:'space-between', fontSize:12, color:'rgba(255,255,255,.6)', marginBottom:6 }}>
-                          <span>Print charge ({activeSidesNow} side{activeSidesNow>1?'s':''} × ₹{printCharges.per_side})</span>
-                          <span>₹{printChargeLive.toLocaleString()}</span>
-                        </div>
-                      )}
-                      {activeSidesNow === 0 && (
-                        <div style={{ fontSize:11, color:'rgba(255,255,255,.3)', marginBottom:6 }}>No designs added yet — print charge: ₹0</div>
-                      )}
-                      <div style={{ borderTop:'1px solid rgba(255,255,255,.08)', paddingTop:8, marginTop:4, display:'flex', justifyContent:'space-between', fontSize:14, fontWeight:700 }}>
-                        <span style={{ color:'rgba(255,255,255,.8)' }}>Total (per piece)</span>
-                        <span style={{ color:'#c8102e' }}>₹{totalLive.toLocaleString()}</span>
-                      </div>
-                      <div style={{ fontSize:10, color:'rgba(255,255,255,.25)', marginTop:4 }}>+ shipping ₹{printCharges.shipping_fee} (free above ₹{printCharges.shipping_threshold})</div>
-                    </div>
-                  )
-                })()}
-
                 <button className="btn-primary"
                   style={{ width:'100%', padding:'14px', fontSize:14, letterSpacing:'.04em', opacity:(status==='saving'||status==='uploading'||status==='sheet')?.6:1 }}
                   onClick={handleSubmit}
@@ -2063,7 +2005,6 @@ function HomePage({ user, onNav, cart, onAddToCart }) {
 
 // ── Product Detail Page ──────────────────────────────────────
 function ProductDetailPage({ product, onBack, onAddToCart }) {
-  const SWATCHES  = useSwatches()
   const [size,     setSize]     = useState('M')
   const [color,    setColor]    = useState('#ffffff')
   const [qty,      setQty]      = useState(1)
@@ -2246,6 +2187,7 @@ function ProductCard({ p, onSelect, onAddToCart }) {
 }
 
 function ProductsPage({ onAddToCart, onNav }) {
+  const sharedSwatches = useSwatches()
   const products  = usePublicProducts()
   const [activeTab,    setActiveTab]    = useState('All')
   const [sort,         setSort]         = useState('popular')
@@ -2548,9 +2490,8 @@ function ContactPage({ onNav }) {
 }
 
 function CartPage({ cart, onRemove, onClear, user, onNav }) {
-  const printCharges = usePrintCharges()
   const total      = cart.reduce((s,i) => s + i.price * i.qty, 0)
-  const shipping   = total >= printCharges.shipping_threshold ? 0 : printCharges.shipping_fee
+  const shipping   = total >= 1500 ? 0 : 99
   const grandTotal = total + shipping
 
   const [step,   setStep]   = React.useState('cart')
@@ -2594,7 +2535,6 @@ function CartPage({ cart, onRemove, onClear, user, onNav }) {
         custom_text:      item.isCustom && cd?.sideText
           ? Object.entries(cd.sideText).filter(([,t]) => t?.on && t?.val).map(([s,t]) => `${s}: ${t.val}`).join(' | ') || null
           : null,
-        print_charge:     item.isCustom ? (item.print_charge || 0) : 0,
         print_sheet_url:  item.isCustom ? (cd?.printSheetUrl || null) : null,
         side_pos:         item.isCustom ? (cd?.sidePos  ? JSON.stringify(cd.sidePos)  : null) : null,
         text_on:          item.isCustom ? (cd?.textOn   ? true : false)                        : false,
@@ -2817,11 +2757,6 @@ function CartPage({ cart, onRemove, onClear, user, onNav }) {
                   {item.isCustom && item.customDetails && (
                     <p style={{ fontSize:11, color:'#00a86b', marginBottom:2 }}>🎨 Custom · Sides: {item.customDetails.sides}</p>
                   )}
-                  {item.isCustom && item.print_charge > 0 && (
-                    <p style={{ fontSize:11, color:'rgba(155,89,182,1)', marginBottom:2 }}>
-                      Base ₹{item.base_price?.toLocaleString()} + Print ₹{item.print_charge?.toLocaleString()}
-                    </p>
-                  )}
                   <p style={{ fontSize:12, color:'#aaa', marginBottom:4 }}>Size: {item.size || '—'} · Qty: {item.qty}</p>
                   <p style={{ fontSize:16, fontWeight:700, color:'#c8102e' }}>₹{(item.price*item.qty).toLocaleString()}</p>
                 </div>
@@ -2836,7 +2771,7 @@ function CartPage({ cart, onRemove, onClear, user, onNav }) {
                 <span style={{ color:'#888' }}>Shipping</span>
                 <span style={{ color:shipping===0?'#00a86b':'#0a0a0a', fontWeight:600 }}>{shipping===0?'FREE':`₹${shipping}`}</span>
               </div>
-              {shipping>0 && <p style={{ fontSize:11, color:'#00a86b', marginBottom:12 }}>Add ₹{(printCharges.shipping_threshold-total).toLocaleString()} more for free shipping!</p>}
+              {shipping>0 && <p style={{ fontSize:11, color:'#00a86b', marginBottom:12 }}>Add ₹{(1500-total).toLocaleString()} more for free shipping!</p>}
               <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16 }}>
                 <span style={{ fontSize:16, fontWeight:700 }}>Total</span>
                 <span style={{ fontSize:22, fontWeight:700, color:'#c8102e' }}>₹{grandTotal.toLocaleString()}</span>
@@ -2983,7 +2918,6 @@ function OrdersPage({ user, onBack, onNav }) {
               ['Size',    selected.size    || '-'],
               ['Qty',     selected.qty     || '-'],
               ['Total',   selected.total   ? `₹${Number(selected.total).toLocaleString()}` : '-'],
-              ...(selected.print_charge > 0 ? [['Print Charge', `₹${Number(selected.print_charge).toLocaleString()} (${selected.design_sides || '?'} side${(selected.design_sides||'').split(',').length>1?'s':''})`]] : []),
               ['Payment', selected.payment_status || 'Pending'],
             ].map(([k,v]) => (
               <div key={k} style={{ display:'flex', justifyContent:'space-between', padding:'8px 0', borderBottom:'1px solid #f8f8f8', fontSize:13 }}>
@@ -4238,6 +4172,7 @@ function AdminPanel({ onBack }) {
         <div style={{ display:'flex', gap:4, overflowX:'auto', paddingBottom:8, WebkitOverflowScrolling:'touch', scrollbarWidth:'none' }}>
           {[
             ['orders',     'Orders'],
+            ['catalog',    '🛍 Catalog'],
             ['samples',    'Samples'],
             ['uploads',    'Uploads'],
             ['grouporders','👥 Groups'],
@@ -4253,6 +4188,7 @@ function AdminPanel({ onBack }) {
             <button key={key} onClick={()=>{
               setTab(key)
               if(key==='orders')      loadOrders()
+              if(key==='catalog')     { loadProducts(); loadAdminColors() }
               if(key==='samples')     loadSamples()
               if(key==='uploads')     loadOrders()
               if(key==='grouporders') loadGroupOrders()
@@ -4336,7 +4272,7 @@ function AdminPanel({ onBack }) {
 
                       <div style={{ display:'flex', flexDirection:'column', gap:6, alignItems:'flex-end', flexShrink:0 }}>
                         <div style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:22, color:'#0a1f5d', lineHeight:1 }}>
-                          ₹{Number(o.total||0).toLocaleString()}{o.print_charge>0 && <span style={{fontSize:9,color:'#9b59b6',marginLeft:4}}>(+₹{Number(o.print_charge).toLocaleString()} print)</span>}
+                          ₹{Number(o.total||0).toLocaleString()}
                         </div>
                         {/* Status dropdown inline */}
                         <select value={o.status||'Received'}
@@ -4364,6 +4300,274 @@ function AdminPanel({ onBack }) {
           </div>
         )}
 
+        {/* ══ PRODUCTS TAB ══ */}
+        {tab==='catalog' && (() => {
+          const [catalogSection, setCatalogSection] = React.useState('products')
+          return (
+          <div>
+            {/* Sub-tab bar */}
+            <div style={{ display:'flex', gap:0, marginBottom:20, borderBottom:'2px solid #f0f0f0' }}>
+              {[['products','📦 Products'],['colors','🎨 Colours']].map(([k,l])=>(
+                <button key={k} className={`tab-btn${catalogSection===k?' active':''}`}
+                  onClick={()=>setCatalogSection(k)}>{l}</button>
+              ))}
+            </div>
+
+            {/* ── Products section ── */}
+            {catalogSection==='products' && (
+            <div>
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16 }}>
+              <h2 style={{ fontSize:18, fontWeight:700 }}>Products ({products.length})</h2>
+              <button className="btn-primary" style={{ padding:'8px 16px', fontSize:12 }} onClick={()=>setShowAddProduct(v=>!v)}>
+                {showAddProduct ? '✕ Cancel' : '+ Add Product'}
+              </button>
+            </div>
+
+            {/* Add product form */}
+            {showAddProduct && (
+              <div style={{ background:'#fff', border:'1px solid #e8e8e8', borderRadius:12, padding:'20px', marginBottom:20 }}>
+                <p style={{ fontSize:12, fontWeight:700, textTransform:'uppercase', letterSpacing:'.1em', color:'#888', marginBottom:16 }}>New Product</p>
+                <div style={{ display:'grid', gridTemplateColumns:'repeat(2,1fr)', gap:10 }}>
+                  {[['Name','name','text'],['Price (₹)','price','number'],['MRP (₹)','mrp','number'],['Tag','tag','text']].map(([label,key,type])=>(
+                    <div key={key}>
+                      <label style={{ fontSize:11, color:'#888', fontWeight:700, display:'block', marginBottom:4 }}>{label}</label>
+                      <input type={type} value={newProduct[key]} onChange={e=>setNewProduct(p=>({...p,[key]:e.target.value}))}
+                        className="input-field" style={{ fontSize:13 }} />
+                    </div>
+                  ))}
+                  <div>
+                    <label style={{ fontSize:11, color:'#888', fontWeight:700, display:'block', marginBottom:4 }}>Category</label>
+                    <select value={newProduct.category} onChange={e=>setNewProduct(p=>({...p,category:e.target.value}))}
+                      className="input-field" style={{ fontSize:13 }}>
+                      {['T-Shirts','Hoodies','Polo','Joggers','Caps','Jackets','Others'].map(c=><option key={c}>{c}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label style={{ fontSize:11, color:'#888', fontWeight:700, display:'block', marginBottom:4 }}>Emoji</label>
+                    <input value={newProduct.emoji} onChange={e=>setNewProduct(p=>({...p,emoji:e.target.value}))}
+                      className="input-field" style={{ fontSize:13 }} />
+                  </div>
+                </div>
+                <div style={{ marginTop:10 }}>
+                  <label style={{ fontSize:11, color:'#888', fontWeight:700, display:'block', marginBottom:4 }}>Product Image</label>
+                  <div style={{ display:'flex', gap:8, alignItems:'center' }}>
+                    <input className="input-field" style={{ fontSize:12, flex:1 }} placeholder="Paste Cloudinary URL, or upload below"
+                      value={newProduct.image_url||''} onChange={e=>setNewProduct(p=>({...p,image_url:e.target.value}))} />
+                    <label style={{ padding:'9px 14px', background:'#0a1f5d', color:'#fff', borderRadius:6, fontSize:12, fontWeight:700, cursor:'pointer', flexShrink:0 }}>
+                      Upload
+                      <input type="file" accept="image/*" style={{ display:'none' }} onChange={e=>{ setProdImgFile(e.target.files[0]); if(e.target.files[0]) setNewProduct(p=>({...p,image_url:'Uploading…'})) }} />
+                    </label>
+                  </div>
+                  {prodImgFile && <div style={{ fontSize:11, color:'#00a86b', marginTop:4 }}>✓ {prodImgFile.name} — will upload on save</div>}
+                </div>
+                <div style={{ marginTop:10 }}>
+                  <label style={{ fontSize:11, color:'#888', fontWeight:700, display:'block', marginBottom:8 }}>Side Views (for Studio)</label>
+                  <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8 }}>
+                    {[['Front','img_front'],['Back','img_back'],['Left Side','img_left'],['Right Side','img_right']].map(([label,key])=>(
+                      <div key={key}>
+                        <label style={{ fontSize:10, color:'#888', fontWeight:700, display:'block', marginBottom:3 }}>{label}</label>
+                        <div style={{ display:'flex', gap:4 }}>
+                          <input className="input-field" style={{ fontSize:11, flex:1 }} placeholder="URL or upload"
+                            value={newProduct[key]||''} onChange={e=>setNewProduct(p=>({...p,[key]:e.target.value}))} />
+                          <label style={{ padding:'6px 10px', background:'#0a1f5d', color:'#fff', borderRadius:6, fontSize:11, fontWeight:700, cursor:'pointer', flexShrink:0 }}>
+                            ↑<input type="file" accept="image/*" style={{ display:'none' }} onChange={async e=>{ const f=e.target.files[0]; if(!f) return; try { const url=await uploadToCloudinary(f,()=>{}); setNewProduct(p=>({...p,[key]:url})); showToast(label+' uploaded ✓') } catch(err) { showToast('Upload failed') } }} />
+                          </label>
+                        </div>
+                        {newProduct[key] && newProduct[key]!=='Uploading…' && <img src={newProduct[key]} style={{ width:'100%', height:60, objectFit:'contain', marginTop:4, borderRadius:4, background:'#f8f8f8' }} alt={label} />}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <div style={{ display:'flex', alignItems:'center', gap:8, marginTop:10 }}>
+                  <input type="checkbox" id="studio_only_new" checked={newProduct.studio_only} onChange={e=>setNewProduct(p=>({...p,studio_only:e.target.checked}))} />
+                  <label htmlFor="studio_only_new" style={{ fontSize:12, color:'#555', cursor:'pointer' }}>Studio Only (not shown in public shop)</label>
+                </div>
+                <button className="btn-primary" style={{ marginTop:14, padding:'10px 24px', fontSize:13, opacity:addingProduct?.6:1 }}
+                  onClick={addProduct} disabled={addingProduct}>
+                  {addingProduct ? 'Saving…' : 'Add Product'}
+                </button>
+              </div>
+            )}
+
+            {/* Products grid */}
+            <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(220px,1fr))', gap:12 }}>
+              {products.map(p => (
+                <div key={p.id} style={{ background:'#fff', border:'1px solid #e8e8e8', borderRadius:12, overflow:'hidden' }}>
+                  <div style={{ height:140, background:'#f8f8f8', display:'flex', alignItems:'center', justifyContent:'center', position:'relative' }}>
+                    {p.image_url
+                      ? <img src={p.image_url} alt={p.name} style={{ width:'100%', height:'100%', objectFit:'contain' }} />
+                      : <span style={{ fontSize:64 }}>{p.emoji||'.'}</span>}
+                    {p.studio_only && <div style={{ position:'absolute', top:6, right:6, background:'#0a1f5d', color:'#fff', fontSize:8, fontWeight:700, padding:'2px 6px', borderRadius:3 }}>STUDIO</div>}
+                  </div>
+                  {editProd===p.id ? (
+                    <div style={{ padding:'12px' }}>
+                      <div style={{ fontSize:13, fontWeight:700, color:'#0a1f5d', marginBottom:10, paddingBottom:8, borderBottom:'1px solid #f0f0f0' }}>✏️ Edit: {p.name}</div>
+                      {['name','price','mrp','tag'].map(field=>(
+                        <input key={field} className="input-field" style={{ marginBottom:6, fontSize:12 }}
+                          placeholder={field} value={p[field]||''}
+                          onChange={e=>setProducts(ps=>ps.map(x=>x.id===p.id?{...x,[field]:e.target.value}:x))} />
+                      ))}
+                      <input className="input-field" style={{ marginBottom:6, fontSize:12 }}
+                        placeholder="Main Image URL" value={p.image_url||''}
+                        onChange={e=>setProducts(ps=>ps.map(x=>x.id===p.id?{...x,image_url:e.target.value}:x))} />
+                      <div style={{ fontSize:10, fontWeight:700, color:'#888', textTransform:'uppercase', letterSpacing:'.08em', margin:'8px 0 6px' }}>Side Views</div>
+                      {[['Front','img_front'],['Back','img_back'],['Left','img_left'],['Right','img_right']].map(([label,key])=>(
+                        <div key={key} style={{ marginBottom:6 }}>
+                          <div style={{ fontSize:10, color:'#aaa', marginBottom:2 }}>{label}</div>
+                          <div style={{ display:'flex', gap:4 }}>
+                            <input className="input-field" style={{ fontSize:11, flex:1 }} placeholder={label+' image URL'}
+                              value={p[key]||''} onChange={e=>setProducts(ps=>ps.map(x=>x.id===p.id?{...x,[key]:e.target.value}:x))} />
+                            <label style={{ padding:'6px 10px', background:'#0a1f5d', color:'#fff', borderRadius:6, fontSize:11, fontWeight:700, cursor:'pointer', flexShrink:0 }}>
+                              ↑<input type="file" accept="image/*" style={{ display:'none' }} onChange={async e=>{ const f=e.target.files[0]; if(!f) return; try { const url=await uploadToCloudinary(f,()=>{}); setProducts(ps=>ps.map(x=>x.id===p.id?{...x,[key]:url}:x)); showToast(label+' uploaded ✓') } catch(err) { showToast('Upload failed') } }} />
+                            </label>
+                          </div>
+                          {p[key] && <img src={p[key]} style={{ width:'100%', height:50, objectFit:'contain', marginTop:3, borderRadius:4, background:'#f8f8f8' }} alt={label} />}
+                        </div>
+                      ))}
+                      <div style={{ display:'flex', alignItems:'center', gap:6, marginBottom:8, marginTop:4 }}>
+                        <input type="checkbox" id={`so_${p.id}`} checked={!!p.studio_only}
+                          onChange={e=>setProducts(ps=>ps.map(x=>x.id===p.id?{...x,studio_only:e.target.checked}:x))} />
+                        <label htmlFor={`so_${p.id}`} style={{ fontSize:11, color:'#555', cursor:'pointer' }}>Studio Only</label>
+                      </div>
+                      <div style={{ display:'flex', gap:6 }}>
+                        <button className="btn-primary" style={{ flex:1, padding:'8px', fontSize:12 }} onClick={()=>saveProduct(p)}>Save</button>
+                        <button onClick={()=>setEditProd(null)} style={{ flex:1, padding:'8px', fontSize:12, background:'none', border:'1px solid #e0e0e0', borderRadius:4, cursor:'pointer' }}>Cancel</button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div style={{ padding:'10px 12px' }}>
+                      <div style={{ fontSize:13, fontWeight:700, marginBottom:1 }}>{p.name}</div>
+                      <div style={{ fontSize:11, color:'#888', marginBottom:6 }}>{p.category}</div>
+                      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+                        <span style={{ fontWeight:700, color:'#c8102e', fontSize:14 }}>₹{Number(p.price).toLocaleString()}</span>
+                        <div style={{ display:'flex', gap:6 }}>
+                          <button onClick={()=>setEditProd(p.id)} style={{ padding:'6px 12px', fontSize:11, borderRadius:4, border:'1px solid #e0e0e0', background:'none', cursor:'pointer', fontWeight:600 }}>Edit</button>
+                          <button onClick={()=>deleteProduct(p.id)} style={{ padding:'6px 12px', fontSize:11, borderRadius:4, border:'1px solid #fdd', color:'#c8102e', background:'none', cursor:'pointer', fontWeight:600 }}>✕</button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+            )}
+
+            {/* ── Colours section ── */}
+            {catalogSection==='colors' && (
+            <div>
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:8 }}>
+              <h2 style={{ fontSize:18, fontWeight:700 }}>🎨 Colour Manager</h2>
+              <button className="btn-secondary" style={{ padding:'7px 14px', fontSize:12 }} onClick={loadAdminColors}>↻ Load</button>
+            </div>
+            <p style={{ fontSize:12, color:'#888', marginBottom:16 }}>These colours appear in Studio, Shop and Group Order pages.</p>
+            <div style={{ background:'#fff', border:'1px solid #e8e8e8', borderRadius:10, padding:'20px', marginBottom:16 }}>
+              <div style={{ fontSize:11, fontWeight:700, textTransform:'uppercase', letterSpacing:'.1em', color:'#aaa', marginBottom:12 }}>Current Colours ({adminColors.length})</div>
+              <div style={{ display:'flex', gap:10, flexWrap:'wrap', marginBottom:16 }}>
+                {adminColors.map((c,i) => (
+                  <div key={i} style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:4 }}>
+                    <div style={{ width:36, height:36, borderRadius:'50%', background:c, border:c==='#ffffff'?'2px solid #ccc':'none', boxShadow:'0 2px 8px rgba(0,0,0,.12)' }} />
+                    <span style={{ fontSize:9, color:'#888', fontFamily:'monospace' }}>{c}</span>
+                    <button onClick={()=>{ if(window.confirm('Remove colour '+c+'?')){ const nc=adminColors.filter((_,j)=>j!==i); saveAdminColors(nc) } }}
+                      style={{ fontSize:9, color:'#c8102e', background:'none', border:'none', cursor:'pointer', padding:0, fontWeight:700 }}>✕</button>
+                  </div>
+                ))}
+              </div>
+              <div style={{ display:'flex', gap:8, alignItems:'center', flexWrap:'wrap' }}>
+                <input type="color" value={newColor} onChange={e=>setNewColor(e.target.value)}
+                  style={{ width:40, height:36, padding:0, border:'1.5px solid #e0e0e0', borderRadius:4, cursor:'pointer' }} />
+                <input className="input-field" style={{ maxWidth:120, fontSize:12, fontFamily:'monospace' }}
+                  value={newColor} onChange={e=>setNewColor(e.target.value)} placeholder="#000000" />
+                <button className="btn-primary" style={{ padding:'10px 16px', fontSize:12 }}
+                  onClick={()=>{ if(!adminColors.includes(newColor)) saveAdminColors([...adminColors, newColor]); else showToast('Colour already added') }}>
+                  + Add
+                </button>
+              </div>
+              {colorsSaving && <div style={{ fontSize:11, color:'#0a7abf', marginTop:8 }}>Saving…</div>}
+            </div>
+            <button className="btn-secondary" style={{ fontSize:12 }} onClick={()=>{ if(window.confirm('Reset to defaults?')) saveAdminColors([...DEFAULT_SWATCHES]) }}>
+              ↺ Reset to Defaults
+            </button>
+            </div>
+            )}
+
+          </div>
+          )
+        })()}
+
+        {/* ══ SAMPLES TAB ══ */}
+        {tab==='samples' && (
+          <div>
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16 }}>
+              <h2 style={{ fontSize:18, fontWeight:700 }}>Sample Designs ({samples.length})</h2>
+              <button className="btn-secondary" style={{ padding:'7px 14px', fontSize:12 }} onClick={loadSamples}>↻ Refresh</button>
+            </div>
+            {/* Add sample form */}
+            <div style={{ background:'#fff', border:'1px solid #e8e8e8', borderRadius:12, padding:'20px', marginBottom:20 }}>
+              <p style={{ fontSize:12, fontWeight:700, textTransform:'uppercase', letterSpacing:'.1em', color:'#888', marginBottom:12 }}>Add New Sample</p>
+              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10, marginBottom:10 }}>
+                <div>
+                  <label style={{ fontSize:11, color:'#888', fontWeight:700, display:'block', marginBottom:4 }}>Design Name *</label>
+                  <input className="input-field" style={{ fontSize:13 }} placeholder="e.g. Dragon Fire"
+                    value={sampleForm.name} onChange={e=>setSampleForm(f=>({...f,name:e.target.value}))} />
+                </div>
+                <div>
+                  <label style={{ fontSize:11, color:'#888', fontWeight:700, display:'block', marginBottom:4 }}>Category</label>
+                  <input className="input-field" style={{ fontSize:13 }} placeholder="e.g. Anime, Sports"
+                    value={sampleForm.category} onChange={e=>setSampleForm(f=>({...f,category:e.target.value}))} />
+                </div>
+              </div>
+              <div>
+                <label style={{ fontSize:11, color:'#888', fontWeight:700, display:'block', marginBottom:4 }}>Image</label>
+                <div style={{ display:'flex', gap:8, alignItems:'center', flexWrap:'wrap' }}>
+                  <input className="input-field" style={{ fontSize:12, flex:1, minWidth:180 }} placeholder="Paste URL or upload file"
+                    value={sampleForm.image_url} onChange={e=>setSampleForm(f=>({...f,image_url:e.target.value}))} />
+                  <label style={{ padding:'9px 14px', background:'#0a1f5d', color:'#fff', borderRadius:6, fontSize:12, fontWeight:700, cursor:'pointer', flexShrink:0 }}>
+                    📁 Upload
+                    <input type="file" accept="image/*" style={{ display:'none' }} onChange={e=>setSampleFile(e.target.files[0])} />
+                  </label>
+                </div>
+                {sampleFile && (
+                  <div style={{ marginTop:8, display:'flex', alignItems:'center', gap:8 }}>
+                    <img src={URL.createObjectURL(sampleFile)} alt="" style={{ maxHeight:60, borderRadius:4 }} />
+                    <div>
+                      <div style={{ fontSize:11, color:'#00a86b', fontWeight:700 }}>✓ {sampleFile.name}</div>
+                      {samplePct > 0 && samplePct < 100 && (
+                        <div style={{ height:3, width:100, background:'#e0e0e0', borderRadius:2, marginTop:4 }}>
+                          <div style={{ height:'100%', width:`${samplePct}%`, background:'#c8102e', borderRadius:2 }} />
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+              <button className="btn-primary" style={{ marginTop:14, padding:'10px 24px', fontSize:13, opacity:sampleSaving?.6:1 }}
+                onClick={saveSample} disabled={sampleSaving}>
+                {sampleSaving ? 'Saving…' : '+ Add Sample'}
+              </button>
+            </div>
+            {/* Samples grid */}
+            {samplesLoading ? <div style={{ textAlign:'center', padding:32, color:'#888' }}>Loading…</div>
+            : samples.length===0 ? <div style={{ textAlign:'center', padding:32, color:'#aaa' }}>No samples yet.</div>
+            : (
+              <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(160px,1fr))', gap:10 }}>
+                {samples.map(s => (
+                  <div key={s.id} style={{ background:'#fff', border:'1px solid #e8e8e8', borderRadius:10, overflow:'hidden' }}>
+                    <img src={s.image_url} alt={s.name} style={{ width:'100%', aspectRatio:'1', objectFit:'cover', display:'block' }} />
+                    <div style={{ padding:'8px 10px' }}>
+                      <div style={{ fontSize:12, fontWeight:700, marginBottom:2 }}>{s.name}</div>
+                      {s.category && <div style={{ fontSize:10, color:'#888', marginBottom:6 }}>{s.category}</div>}
+                      <button onClick={()=>deleteSample(s.id)}
+                        style={{ width:'100%', padding:'6px', fontSize:11, borderRadius:4, border:'1px solid #fdd', color:'#c8102e', background:'none', cursor:'pointer', fontWeight:600 }}>
+                        Delete
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* ══ UPLOADS TAB ══ */}
         {tab==='uploads' && (

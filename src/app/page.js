@@ -1022,23 +1022,9 @@ function StudioPage({ user, onNav, onAddToCart }) {
     if (!allowed.includes(f.type)) { setUploadErr('Only PNG, JPG, SVG allowed.'); return }
     if (f.size > 20*1024*1024) { setUploadErr('Max 20MB.'); return }
     setUploadErr('')
-    const blobUrl = URL.createObjectURL(f)
-    setSideImgs(prev => ({ ...prev, [activeSide]: blobUrl }))
     setSideFiles(prev => ({ ...prev, [activeSide]: f }))
     setSideSamples(prev => ({ ...prev, [activeSide]: null }))
-    setStatus('uploading'); setUploadPct(0)
-    uploadToCloudinary(f, pct => setUploadPct(pct))
-      .then(url => {
-        setSideImgs(prev => ({ ...prev, [activeSide]: url }))
-        setSideFiles(prev => ({ ...prev, [activeSide]: { _uploaded: true, _url: url, name: f.name } }))
-        setStatus(''); setUploadPct(0)
-      })
-      .catch(err => {
-        setUploadErr('Upload failed: ' + err.message)
-        setSideImgs(prev => ({ ...prev, [activeSide]: null }))
-        setSideFiles(prev => ({ ...prev, [activeSide]: null }))
-        setStatus('')
-      })
+    setSideImgs(prev => ({ ...prev, [activeSide]: URL.createObjectURL(f) }))
   }
 
   const pickSample = s => {
@@ -1228,15 +1214,11 @@ function StudioPage({ user, onNav, onAddToCart }) {
     try {
       const designUrls = {}
       for (const side of SIDES) {
-        if (sideFiles[side]?._uploaded) {
-          designUrls[side] = sideFiles[side]._url
-        } else if (sideFiles[side]) {
+        if (sideFiles[side]) {
           try { designUrls[side] = await uploadToCloudinary(sideFiles[side], pct=>setUploadPct(pct)) }
           catch(e) { setStatus(''); alert('Upload failed for '+side+': '+e.message); return }
         } else if (sideSamples[side]) {
           designUrls[side] = sideSamples[side].image_url
-        } else if (sideImgs[side]?.startsWith('https://')) {
-          designUrls[side] = sideImgs[side]
         }
       }
       setStatus('saving')
@@ -1389,490 +1371,519 @@ function StudioPage({ user, onNav, onAddToCart }) {
   )}
 
   // ── RENDER ────────────────────────────────────────────────
-  // CapCut-style: preview fixed top, tool bar, bottom drawer panel
-  const [activeTool, setActiveTool] = React.useState('garment')
-  const drawerRef = React.useRef(null)
-
-  const TOOLS = [
-    { key:'garment',  icon:'👕', label:'Garment' },
-    { key:'colour',   icon:'🎨', label:'Colour'  },
-    { key:'design',   icon:'⬆',  label:'Design'  },
-    { key:'position', icon:'↔',  label:'Position'},
-    { key:'text',     icon:'T',  label:'Text'    },
-    { key:'effects',  icon:'✦',  label:'Effects' },
-    { key:'order',    icon:'🛒', label:'Order'   },
-  ]
-
-  // keep activeSide and custSide in sync when switching design/position
-  const pickTool = (key) => {
-    setActiveTool(key)
-    if (key === 'design' || key === 'position' || key === 'text') {
-      setCustSide(activeSide)
-    }
-  }
-
-  const setActiveSideSync = (s) => { setActiveSide(s); setCustSide(s) }
-
   return (
-    <div style={{ background:'#111', minHeight:'100vh', display:'flex', flexDirection:'column', maxWidth:'100vw', overflow:'hidden' }}>
+    <div style={{ background:'#0d1b3e', minHeight:'100vh' }}>
 
-      {/* ── Top bar ── */}
-      <div style={{ background:'#0a0a0a', borderBottom:'1px solid rgba(255,255,255,.08)', padding:'0 12px', display:'flex', alignItems:'center', justifyContent:'space-between', height:46, flexShrink:0, position:'sticky', top:0, zIndex:60 }}>
-        <button onClick={()=>onNav('home')} style={{ display:'inline-flex', alignItems:'center', gap:5, background:'rgba(255,255,255,.07)', border:'1px solid rgba(255,255,255,.12)', color:'rgba(255,255,255,.7)', padding:'5px 11px', borderRadius:50, fontSize:11, cursor:'pointer', fontWeight:700 }}>
-          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg>Back
-        </button>
-        <span style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:20, letterSpacing:'.14em', color:'#fff' }}>DRYNN <span style={{ color:'#c8102e' }}>STUDIO</span></span>
-        {/* Progress dots */}
-        <div style={{ display:'flex', alignItems:'center', gap:5 }}>
-          {[
-            { done: !!selectedProduct },
-            { done: color !== '#ffffff' },
-            { done: SIDES.some(s=>sideImgs[s]) },
-            { done: false },
-          ].map((dot,i) => (
-            <React.Fragment key={i}>
-              <div style={{ width:6, height:6, borderRadius:'50%', background: dot.done?'#00a86b':'rgba(255,255,255,.18)', transition:'background .3s' }} />
-              {i < 3 && <div style={{ width:10, height:1, background:'rgba(255,255,255,.08)' }} />}
-            </React.Fragment>
-          ))}
+      {/* ── Header ── */}
+      <div style={{ padding:'32px 16px 24px', position:'relative', overflow:'hidden', background:'#0a0a0a' }}>
+        <video autoPlay muted loop playsInline
+          style={{ position:'absolute', inset:0, width:'100%', height:'100%', objectFit:'cover', opacity:0.85, pointerEvents:'none' }}>
+          <source src={mediaSettings.video_studio} type="video/mp4" />
+        </video>
+        <div style={{ position:'absolute', inset:0, background:'rgba(0,0,0,.35)', pointerEvents:'none' }} />
+        <div style={{ maxWidth:960, margin:'0 auto', position:'relative', zIndex:1 }}>
+          <button onClick={()=>onNav('home')} style={{ display:'inline-flex', alignItems:'center', gap:6, background:'rgba(255,255,255,.1)', border:'1px solid rgba(255,255,255,.2)', color:'rgba(255,255,255,.8)', padding:'6px 14px', borderRadius:50, fontSize:12, cursor:'pointer', fontWeight:600, marginBottom:16 }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg>Back
+          </button>
+          <div style={{ textAlign:'center' }}>
+            <span className="sec-label" style={{ color:'rgba(255,255,255,.6)' }}>Custom Design Studio</span>
+            <h1 className="sec-title" style={{ color:'#fff' }}>DRYNN STUDIO</h1>
+            <p style={{ fontSize:13, color:'rgba(255,255,255,.45)', marginTop:6 }}>Pick product · Colour · Design · Customise · Preview · Order</p>
+          </div>
         </div>
       </div>
 
-      {/* ── Live preview ── */}
-      <div style={{ background:'#111', padding:'10px 16px 6px', flexShrink:0 }}>
-        {/* Side tabs */}
-        <div style={{ display:'flex', gap:5, marginBottom:8, justifyContent:'center' }}>
-          {SIDES.map(s => (
-            <button key={s} onClick={()=>setActiveSideSync(s)}
-              style={{ flex:1, maxWidth:72, padding:'6px 4px', borderRadius:7,
-                border:`1.5px solid ${activeSide===s?'#c8102e':sideImgs[s]?'#00a86b':'rgba(255,255,255,.1)'}`,
-                background: activeSide===s?'rgba(200,16,46,.18)':sideImgs[s]?'rgba(0,168,107,.07)':'rgba(255,255,255,.03)',
-                cursor:'pointer', display:'flex', flexDirection:'column', alignItems:'center', gap:1 }}>
-              <span style={{ fontSize:11 }}>{s==='front'?'▲':s==='back'?'▼':s==='left'?'◀':'▶'}</span>
-              <span style={{ fontSize:7, fontWeight:700, letterSpacing:'.05em', textTransform:'uppercase',
-                color: activeSide===s?'#fff':sideImgs[s]?'#00a86b':'rgba(255,255,255,.3)' }}>
-                {SIDE_LABELS[s]}
-              </span>
-              {sideImgs[s] && <span style={{ width:4, height:4, borderRadius:'50%', background:'#00a86b', display:'block' }} />}
-            </button>
-          ))}
+      {/* ── Studio header ── */}
+      <div style={{ background:'#111827', borderBottom:'1px solid rgba(255,255,255,.07)', padding:'12px 16px' }}>
+        <div style={{ maxWidth:960, margin:'0 auto', display:'flex', alignItems:'center', gap:10 }}>
+          <span style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:18, color:'#c8102e', letterSpacing:'.1em' }}>DRYNN STUDIO</span>
+          <span style={{ fontSize:11, color:'rgba(255,255,255,.3)', fontWeight:600 }}>· Custom Design Builder</span>
         </div>
+      </div>
 
-        {/* Canvas */}
-        <div style={{ position:'relative', borderRadius:12, overflow:'hidden', background:bgColor,
-          boxShadow:'0 8px 40px rgba(0,0,0,.7)', maxWidth:300, margin:'0 auto', filter:canvasFilter }}>
-          {(() => {
-            const sideGarmentImg = selectedProduct
-              ? (selectedProduct[`img_${activeSide}`] || selectedProduct.image_url || GARMENT_DEFAULTS[garmentType])
-              : GARMENT_DEFAULTS[garmentType]
-            return <img src={sideGarmentImg} alt={garmentType}
-              style={{ width:'100%', display:'block', filter:colorToFilter(color), minHeight:200, objectFit:'contain' }}
-              onError={e=>{ e.target.style.opacity='0.05' }} />
-          })()}
-          {sideImgs[activeSide] && (() => {
-            const pp = sidePos[activeSide]
-            return <img src={sideImgs[activeSide]} alt="design"
-              style={{ position:'absolute', top:`${pp.posY}%`, left:`${pp.posX}%`,
-                transform:`translate(-50%,-50%) rotate(${pp.rotation}deg)`,
-                width:`${pp.scale}%`, objectFit:'contain', pointerEvents:'none' }} />
-          })()}
-          {sideText[activeSide]?.on && sideText[activeSide]?.val && (() => {
-            const st = sideText[activeSide]
-            return <div style={{ position:'absolute', top:`${st.posY}%`, left:`${st.posX}%`,
-              transform:`translate(-50%,-50%) rotate(${st.rot}deg)`,
-              fontFamily:st.font, fontSize:st.size, color:st.color, fontWeight:700,
-              textShadow:'0 1px 6px rgba(0,0,0,.6)', pointerEvents:'none', whiteSpace:'nowrap' }}>
-              {st.val}
+      {/* ── Step content ── */}
+      <div style={{ maxWidth:960, margin:'0 auto', padding:'24px 16px 80px' }}>
+
+        {/* ══ SECTION 1: PICK PRODUCT ══ */}
+        <div style={{ marginBottom:32 }}>
+          <div style={{ marginBottom:16 }}>
+            <h2 style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:22, color:'#fff', letterSpacing:'.06em', marginBottom:4 }}>
+              <span style={{ color:'#c8102e', marginRight:8 }}>01</span>CHOOSE YOUR GARMENT
+            </h2>
+            <p style={{ fontSize:13, color:'rgba(255,255,255,.45)', margin:0 }}>Pick a product from our collection. This becomes the base of your custom design.</p>
+          </div>
+
+          {/* Search */}
+          <div style={{ display:'flex', alignItems:'center', gap:10, background:'rgba(255,255,255,.07)', border:'1.5px solid rgba(255,255,255,.12)', borderRadius:10, padding:'10px 14px', marginBottom:16 }}>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.4)" strokeWidth="2" strokeLinecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input value={productSearch} onChange={e=>setProductSearch(e.target.value)} placeholder="Search garments…"
+              style={{ flex:1, background:'none', border:'none', outline:'none', fontSize:13, color:'#fff', fontFamily:'DM Sans,sans-serif' }} />
+          </div>
+
+          {allProducts.length === 0 ? (
+            <div style={{ textAlign:'center', padding:'48px 20px', background:'rgba(255,255,255,.04)', borderRadius:14 }}>
+              <div style={{ fontSize:52, marginBottom:12 }}>.</div>
+              <div style={{ fontSize:16, fontWeight:700, color:'rgba(255,255,255,.6)', marginBottom:6 }}>No products yet</div>
+              <p style={{ fontSize:13, color:'rgba(255,255,255,.35)', lineHeight:1.7 }}>Admin hasn't added any products.<br/>You can still continue with a standard garment.</p>
             </div>
-          })()}
-          {!sideImgs[activeSide] && (
-            <div style={{ position:'absolute', inset:0, display:'flex', alignItems:'center', justifyContent:'center', pointerEvents:'none' }}>
-              <div style={{ background:'rgba(0,0,0,.45)', borderRadius:6, padding:'5px 10px' }}>
-                <span style={{ fontSize:9, color:'rgba(255,255,255,.5)', fontWeight:700, letterSpacing:'.06em', textTransform:'uppercase' }}>No design</span>
-              </div>
+          ) : (
+            <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(160px,1fr))', gap:12 }}>
+              {filteredProducts.map(p => {
+                const isSelected = selectedProduct?.id === p.id
+                return (
+                  <div key={p.id} onClick={()=>setSelectedProduct(isSelected ? null : p)}
+                    style={{ background: isSelected?'rgba(200,16,46,.12)':'rgba(255,255,255,.05)', border:`2px solid ${isSelected?'#c8102e':'rgba(255,255,255,.1)'}`, borderRadius:12, overflow:'hidden', cursor:'pointer', transition:'all .15s', position:'relative' }}
+                    onMouseEnter={e=>{ if(!isSelected) e.currentTarget.style.borderColor='rgba(255,255,255,.3)' }}
+                    onMouseLeave={e=>{ if(!isSelected) e.currentTarget.style.borderColor='rgba(255,255,255,.1)' }}>
+                    <div style={{ height:160, background:'#f8f8f8', display:'flex', alignItems:'center', justifyContent:'center', position:'relative', overflow:'hidden' }}>
+                      {p.image_url
+                        ? <img src={p.image_url} alt={p.name} style={{ width:'100%', height:'100%', objectFit:'contain' }} />
+                        : <span style={{ fontSize:72 }}>{p.emoji||'.'}</span>}
+                      <div style={{ position:'absolute', top:8, left:8, background:p.tag_color||p.tagColor||'#c8102e', color:'#fff', fontSize:8, fontWeight:700, letterSpacing:'.1em', textTransform:'uppercase', padding:'2px 8px', borderRadius:3 }}>{p.tag||'New'}</div>
+                      {p.studio_only && <div style={{ position:'absolute', top:8, right:8, background:'#0a1f5d', color:'#fff', fontSize:8, fontWeight:700, padding:'2px 7px', borderRadius:3 }}>Studio</div>}
+                      {isSelected && (
+                        <div style={{ position:'absolute', inset:0, background:'rgba(200,16,46,.18)', display:'flex', alignItems:'center', justifyContent:'center' }}>
+                          <div style={{ width:44, height:44, borderRadius:'50%', background:'#c8102e', display:'flex', alignItems:'center', justifyContent:'center', fontSize:22, color:'#fff', fontWeight:700, boxShadow:'0 4px 16px rgba(200,16,46,.5)' }}>✓</div>
+                        </div>
+                      )}
+                    </div>
+                    <div style={{ padding:'10px 12px', background: isSelected?'rgba(200,16,46,.08)':'#1a2744' }}>
+                      <div style={{ fontSize:13, fontWeight:700, color:'#fff', marginBottom:2, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{p.name}</div>
+                      <div style={{ fontSize:11, color:'rgba(255,255,255,.4)' }}>{p.category}</div>
+                      <div style={{ fontSize:13, fontWeight:700, color:'#c8102e', marginTop:4 }}>₹{Number(p.price).toLocaleString()}</div>
+                    </div>
+                  </div>
+                )
+              })}
             </div>
           )}
-          {/* Colour chip */}
-          <div style={{ position:'absolute', top:6, right:6, display:'flex', alignItems:'center', gap:4,
-            background:'rgba(10,10,10,.75)', borderRadius:20, padding:'2px 8px 2px 4px', backdropFilter:'blur(6px)' }}>
-            <div style={{ width:8, height:8, borderRadius:'50%', background:color, border: color==='#ffffff'?'1px solid rgba(255,255,255,.3)':'none', flexShrink:0 }} />
-            <span style={{ fontSize:8, fontWeight:700, color:'rgba(255,255,255,.6)' }}>{color.toUpperCase()}</span>
-          </div>
+          {selectedProduct && (
+            <div style={{ marginTop:12, display:'flex', justifyContent:'flex-end' }}>
+              <button onClick={()=>setSelectedProduct(null)} style={{ padding:'8px 16px', borderRadius:8, border:'1px solid rgba(255,255,255,.15)', background:'transparent', color:'rgba(255,255,255,.5)', fontSize:12, fontWeight:600, cursor:'pointer' }}>
+                ✕ Deselect
+              </button>
+            </div>
+          )}
         </div>
-      </div>
 
-      {/* ── Tool bar ── */}
-      <div style={{ background:'#0d0d0d', borderTop:'1px solid rgba(255,255,255,.06)', borderBottom:'1px solid rgba(255,255,255,.06)', overflowX:'auto', flexShrink:0 }}>
-        <div style={{ display:'flex', padding:'0 8px', minWidth:'max-content' }}>
-          {TOOLS.map(t => (
-            <button key={t.key} onClick={()=>pickTool(t.key)}
-              style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:3, padding:'10px 14px', background:'none', border:'none', cursor:'pointer', borderBottom:`2px solid ${activeTool===t.key?'#c8102e':'transparent'}`, transition:'all .15s', flexShrink:0 }}>
-              <span style={{ fontSize:16, lineHeight:1 }}>{t.icon}</span>
-              <span style={{ fontSize:9, fontWeight:700, letterSpacing:'.06em', textTransform:'uppercase',
-                color: activeTool===t.key ? '#c8102e' : 'rgba(255,255,255,.35)' }}>
-                {t.label}
-              </span>
-            </button>
-          ))}
-        </div>
-      </div>
+        <div style={{ height:1, background:'rgba(255,255,255,.07)', marginBottom:32 }} />
 
-      {/* ── Bottom drawer panel ── */}
-      <div ref={drawerRef} style={{ flex:1, overflowY:'auto', background:'#161616', padding:'14px 14px 80px' }}>
-
-        {/* ══ GARMENT ══ */}
-        {activeTool==='garment' && (
-          <div>
-            <div style={{ display:'flex', alignItems:'center', gap:8, background:'rgba(255,255,255,.05)', border:'1.5px solid rgba(255,255,255,.1)', borderRadius:8, padding:'8px 12px', marginBottom:12 }}>
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.4)" strokeWidth="2" strokeLinecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-              <input value={productSearch} onChange={e=>setProductSearch(e.target.value)} placeholder="Search garments…"
-                style={{ flex:1, background:'none', border:'none', outline:'none', fontSize:13, color:'#fff', fontFamily:'DM Sans,sans-serif' }} />
-            </div>
-            {allProducts.length === 0 ? (
-              <div style={{ textAlign:'center', padding:'32px 16px', color:'rgba(255,255,255,.3)', fontSize:13 }}>No products yet — you can still continue.</div>
-            ) : (
-              <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:8 }}>
-                {filteredProducts.map(p => {
-                  const isSel = selectedProduct?.id === p.id
-                  return (
-                    <div key={p.id} onClick={()=>setSelectedProduct(isSel?null:p)}
-                      style={{ borderRadius:10, overflow:'hidden', cursor:'pointer', border:`1.5px solid ${isSel?'#c8102e':'rgba(255,255,255,.08)'}`,
-                        background: isSel?'rgba(200,16,46,.1)':'rgba(255,255,255,.03)', transition:'all .12s', position:'relative' }}>
-                      <div style={{ height:90, background:'#f5f5f5', display:'flex', alignItems:'center', justifyContent:'center', position:'relative', overflow:'hidden' }}>
-                        {p.image_url
-                          ? <img src={p.image_url} alt={p.name} style={{ width:'100%', height:'100%', objectFit:'contain' }} />
-                          : <span style={{ fontSize:44 }}>{p.emoji||'.'}</span>}
-                        {isSel && (
-                          <div style={{ position:'absolute', inset:0, background:'rgba(200,16,46,.2)', display:'flex', alignItems:'center', justifyContent:'center' }}>
-                            <div style={{ width:26, height:26, borderRadius:'50%', background:'#c8102e', display:'flex', alignItems:'center', justifyContent:'center', fontSize:13, color:'#fff', fontWeight:700 }}>✓</div>
-                          </div>
-                        )}
-                      </div>
-                      <div style={{ padding:'6px 8px', background: isSel?'rgba(200,16,46,.08)':'#1e1e1e' }}>
-                        <div style={{ fontSize:10, fontWeight:700, color:'#fff', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{p.name}</div>
-                        <div style={{ fontSize:10, color:'#c8102e', fontWeight:700 }}>₹{Number(p.price).toLocaleString()}</div>
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-            )}
+        {/* ══ SECTION 2: COLOUR ══ */}
+        <div style={{ marginBottom:32 }}>
+          <div style={{ marginBottom:16 }}>
+            <h2 style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:22, color:'#fff', letterSpacing:'.06em', marginBottom:4 }}>
+              <span style={{ color:'#c8102e', marginRight:8 }}>02</span>CHOOSE COLOUR
+            </h2>
+            <p style={{ fontSize:13, color:'rgba(255,255,255,.45)', margin:0 }}>Select the garment colour. The live preview updates instantly.</p>
           </div>
-        )}
 
-        {/* ══ COLOUR ══ */}
-        {activeTool==='colour' && (
-          <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
-            {/* Garment colour */}
-            <div>
-              <p style={{ fontSize:9, fontWeight:700, letterSpacing:'.14em', textTransform:'uppercase', color:'rgba(255,255,255,.35)', marginBottom:8 }}>Garment Colour</p>
-              <div style={{ display:'flex', flexWrap:'wrap', gap:8, marginBottom:10 }}>
-                {SWATCHES.map(c => (
-                  <div key={c} onClick={()=>setColor(c)}
-                    style={{ width:30, height:30, borderRadius:'50%', background:c, cursor:'pointer', flexShrink:0,
-                      border: c==='#ffffff'?'2px solid rgba(255,255,255,.35)':'2px solid transparent',
-                      boxShadow: color===c?`0 0 0 2px #161616, 0 0 0 3.5px #c8102e`:'0 1px 4px rgba(0,0,0,.5)', transition:'box-shadow .12s' }} />
-                ))}
-              </div>
-              <div style={{ display:'flex', alignItems:'center', gap:10, background:'rgba(255,255,255,.06)', borderRadius:8, padding:'8px 12px' }}>
-                <input type="color" value={color} onChange={e=>setColor(e.target.value)}
-                  style={{ width:28, height:28, border:'none', borderRadius:4, cursor:'pointer', background:'none', padding:0 }} />
-                <span style={{ fontSize:12, color:'rgba(255,255,255,.5)', fontFamily:'monospace', fontWeight:700 }}>{color.toUpperCase()}</span>
-                <span style={{ fontSize:11, color:'rgba(255,255,255,.25)', marginLeft:'auto' }}>Custom</span>
-              </div>
-            </div>
-            {/* Preview background */}
-            <div>
-              <p style={{ fontSize:9, fontWeight:700, letterSpacing:'.14em', textTransform:'uppercase', color:'rgba(255,255,255,.35)', marginBottom:8 }}>Preview Background</p>
-              <div style={{ display:'flex', gap:6, flexWrap:'wrap', marginBottom:8 }}>
-                {['#000000','#111111','#1a1a2e','#0a1f5d','#ffffff','#f5f5f0'].map(c => (
-                  <div key={c} onClick={()=>setBgColor(c)}
-                    style={{ width:28, height:28, borderRadius:5, background:c, cursor:'pointer',
-                      border: c==='#ffffff'||c==='#f5f5f0'?'1.5px solid rgba(255,255,255,.3)':'1.5px solid transparent',
-                      boxShadow: bgColor===c?`0 0 0 2px #161616, 0 0 0 3.5px #c8102e`:'0 1px 3px rgba(0,0,0,.5)', transition:'box-shadow .12s' }} />
-                ))}
-              </div>
-              <div style={{ display:'flex', alignItems:'center', gap:10, background:'rgba(255,255,255,.06)', borderRadius:8, padding:'8px 12px' }}>
-                <input type="color" value={bgColor} onChange={e=>setBgColor(e.target.value)}
-                  style={{ width:28, height:28, border:'none', borderRadius:4, cursor:'pointer', background:'none', padding:0 }} />
-                <span style={{ fontSize:12, color:'rgba(255,255,255,.5)', fontFamily:'monospace', fontWeight:700 }}>{bgColor.toUpperCase()}</span>
-              </div>
-            </div>
-          </div>
-        )}
+          <LivePreview />
 
-        {/* ══ DESIGN ══ */}
-        {activeTool==='design' && (
-          <div>
-            <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:10 }}>
-              <span style={{ fontSize:11, fontWeight:700, color:'rgba(255,255,255,.5)' }}>
-                Side: <span style={{ color:'#c8102e' }}>{SIDE_LABELS[activeSide]}</span>
-              </span>
-              {sideImgs[activeSide] && (
-                <button onClick={()=>{ setSideImgs(p=>({...p,[activeSide]:null})); setSideFiles(p=>({...p,[activeSide]:null})); setSideSamples(p=>({...p,[activeSide]:null})) }}
-                  style={{ fontSize:10, color:'rgba(255,255,255,.4)', background:'none', border:'1px solid rgba(255,255,255,.12)', borderRadius:4, padding:'3px 8px', cursor:'pointer' }}>✕ Clear</button>
-              )}
-            </div>
-            {/* Upload / Samples toggle */}
-            <div style={{ display:'flex', gap:0, background:'rgba(255,255,255,.05)', borderRadius:7, padding:3, marginBottom:12 }}>
-              {[['upload','⬆ Upload'],['samples','▶ Samples']].map(([k,l])=>(
-                <button key={k} onClick={()=>{ setDesignTab(k); if(k==='samples') loadSamples() }}
-                  style={{ flex:1, padding:'8px', borderRadius:5, border:'none', cursor:'pointer', fontSize:12, fontWeight:700,
-                    background:designTab===k?'#c8102e':'transparent', color:designTab===k?'#fff':'rgba(255,255,255,.4)', transition:'all .12s' }}>
-                  {l}
-                </button>
+          <div style={{ background:'rgba(255,255,255,.05)', borderRadius:12, padding:'16px 20px', marginTop:16 }}>
+            <span style={lblStyle}>Preset Colours</span>
+            <div style={{ display:'flex', flexWrap:'wrap', gap:10, marginTop:8 }}>
+              {SWATCHES.map(c => (
+                <div key={c} onClick={()=>setColor(c)}
+                  style={{ width:32, height:32, borderRadius:'50%', background:c, cursor:'pointer',
+                    border: c==='#ffffff' ? '2px solid rgba(255,255,255,.4)' : '2px solid transparent',
+                    boxShadow: color===c ? `0 0 0 2px #0d1b3e, 0 0 0 4px #c8102e` : '0 1px 4px rgba(0,0,0,.4)',
+                    transition:'box-shadow .15s', flexShrink:0 }} />
               ))}
             </div>
-            {designTab==='upload' && (
+          </div>
+
+          <div style={{ background:'rgba(255,255,255,.05)', borderRadius:12, padding:'16px 20px', marginTop:12 }}>
+            <span style={lblStyle}>Custom Colour</span>
+            <div style={{ display:'flex', alignItems:'center', gap:12, marginTop:8 }}>
+              <input type="color" value={color} onChange={e=>setColor(e.target.value)}
+                style={{ width:44, height:36, border:'none', borderRadius:6, cursor:'pointer', background:'none' }} />
+              <span style={{ fontSize:13, color:'rgba(255,255,255,.6)', fontFamily:'monospace', fontWeight:600 }}>{color.toUpperCase()}</span>
+            </div>
+          </div>
+
+          <div style={{ background:'rgba(255,255,255,.05)', borderRadius:12, padding:'16px 20px', marginTop:12 }}>
+            <span style={lblStyle}>Preview Background</span>
+            <div style={{ display:'flex', flexWrap:'wrap', gap:10, marginTop:8, marginBottom:10 }}>
+              {['#000000','#111111','#1a1a2e','#0a1f5d','#1a0a2e','#ffffff','#f5f5f0','#e8e8e8'].map(c => (
+                <div key={c} onClick={()=>setBgColor(c)}
+                  style={{ width:32, height:32, borderRadius:6, background:c, cursor:'pointer',
+                    border: c==='#ffffff'||c==='#f5f5f0'||c==='#e8e8e8' ? '2px solid rgba(255,255,255,.3)' : '2px solid transparent',
+                    boxShadow: bgColor===c ? `0 0 0 2px #0d1b3e, 0 0 0 4px #c8102e` : '0 1px 4px rgba(0,0,0,.5)',
+                    transition:'box-shadow .15s', flexShrink:0 }} />
+              ))}
+            </div>
+            <div style={{ display:'flex', alignItems:'center', gap:12 }}>
+              <input type="color" value={bgColor} onChange={e=>setBgColor(e.target.value)}
+                style={{ width:44, height:36, border:'none', borderRadius:6, cursor:'pointer', background:'none' }} />
+              <span style={{ fontSize:13, color:'rgba(255,255,255,.6)', fontFamily:'monospace', fontWeight:600 }}>{bgColor.toUpperCase()}</span>
+            </div>
+          </div>
+        </div>
+
+        <div style={{ height:1, background:'rgba(255,255,255,.07)', marginBottom:32 }} />
+
+        {/* ══ SECTION 3: DESIGN ══ */}
+        <div style={{ marginBottom:32 }}>
+          <div style={{ marginBottom:16 }}>
+            <h2 style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:22, color:'#fff', letterSpacing:'.06em', marginBottom:4 }}>
+              <span style={{ color:'#c8102e', marginRight:8 }}>03</span>ADD YOUR DESIGN
+            </h2>
+            <p style={{ fontSize:13, color:'rgba(255,255,255,.45)', margin:0 }}>Upload for Front (main) or add designs for other sides too — optional.</p>
+          </div>
+
+          {/* Side tabs */}
+          <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:6, marginBottom:16 }}>
+            {SIDES.map(s=>(
+              <button key={s} onClick={()=>setActiveSide(s)}
+                style={{ padding:'10px 4px', borderRadius:10, border:`2px solid ${activeSide===s?'#c8102e':sideImgs[s]?'#00a86b':'rgba(255,255,255,.12)'}`,
+                  background:activeSide===s?'rgba(200,16,46,.15)':sideImgs[s]?'rgba(0,168,107,.08)':'rgba(255,255,255,.04)',
+                  cursor:'pointer', display:'flex', flexDirection:'column', alignItems:'center', gap:3, transition:'all .15s' }}>
+                <span style={{ fontSize:20 }}>{s==='front'?'▲':s==='back'?'▼':s==='left'?'◀':'▶'}</span>
+                <span style={{ fontSize:9, fontWeight:700, letterSpacing:'.06em', textTransform:'uppercase',
+                  color:activeSide===s?'#fff':sideImgs[s]?'#00a86b':'rgba(255,255,255,.4)' }}>
+                  {SIDE_LABELS[s]}
+                </span>
+                {sideImgs[s] && <span style={{ fontSize:8, color:'#00a86b', fontWeight:700 }}>✓</span>}
+              </button>
+            ))}
+          </div>
+
+          <LivePreview previewSide={activeSide} />
+
+          {/* Design source tabs */}
+          <div style={{ display:'flex', gap:0, background:'rgba(255,255,255,.05)', borderRadius:10, padding:4, marginTop:16 }}>
+            {[['upload','⬆ Upload'],['samples','▶ Samples']].map(([k,l])=>(
+              <button key={k} onClick={()=>{ setDesignTab(k); if(k==='samples') loadSamples() }}
+                style={{ flex:1, padding:'11px', borderRadius:8, border:'none', cursor:'pointer', fontSize:13, fontWeight:700,
+                  background:designTab===k?'#c8102e':'transparent', color:designTab===k?'#fff':'rgba(255,255,255,.5)', transition:'all .15s' }}>
+                {l}
+              </button>
+            ))}
+          </div>
+
+          {sideImgs[activeSide] && (
+            <div style={{ display:'flex', justifyContent:'flex-end', marginTop:8 }}>
+              <button onClick={()=>{ setSideImgs(p=>({...p,[activeSide]:null})); setSideFiles(p=>({...p,[activeSide]:null})); setSideSamples(p=>({...p,[activeSide]:null})) }}
+                style={{ fontSize:11, color:'rgba(255,255,255,.4)', background:'none', border:'1px solid rgba(255,255,255,.15)', borderRadius:4, padding:'5px 12px', cursor:'pointer' }}>✕ Clear design</button>
+            </div>
+          )}
+
+          {designTab==='upload' && (
+            <div style={{ marginTop:12 }}>
               <div onClick={()=>document.getElementById(`studioFile_${activeSide}`).click()}
-                style={{ border:`2px dashed ${sideFiles[activeSide]?'rgba(0,168,107,.5)':'rgba(255,255,255,.15)'}`, borderRadius:10, padding:'20px 12px', textAlign:'center', cursor:'pointer', background:'rgba(255,255,255,.02)' }}>
+                style={{ border:`2px dashed ${uploadedFile?'rgba(0,168,107,.5)':'rgba(255,255,255,.18)'}`, borderRadius:12, padding:'32px 16px', textAlign:'center', cursor:'pointer', background:'rgba(255,255,255,.03)', transition:'all .2s' }}>
                 <input id={`studioFile_${activeSide}`} type="file" accept=".png,.jpg,.jpeg,.svg" style={{ display:'none' }} onChange={handleFile} />
-                {sideFiles[activeSide] ? (
+                {uploadedFile ? (
                   <div>
-                    <img src={sideImgs[activeSide]} alt="" style={{ maxHeight:80, maxWidth:'100%', borderRadius:6, marginBottom:6, objectFit:'contain' }} />
-                    <div style={{ fontSize:11, color:'#00a86b', fontWeight:700 }}>✓ {sideFiles[activeSide].name.slice(0,26)}</div>
-                    <div style={{ fontSize:9, color:'rgba(255,255,255,.3)', marginTop:2 }}>Tap to change</div>
+                    <img src={designImgSrc} alt="" style={{ maxHeight:110, maxWidth:'100%', borderRadius:8, marginBottom:8, objectFit:'contain' }} />
+                    <div style={{ fontSize:13, color:'#00a86b', fontWeight:700, marginBottom:3 }}>✓ {uploadedFile.name}</div>
+                    <div style={{ fontSize:11, color:'rgba(255,255,255,.4)' }}>{(uploadedFile.size/1024/1024).toFixed(1)} MB · Tap to change</div>
                   </div>
-                ) : sideImgs[activeSide] ? (
+                ) : designImgSrc ? (
                   <div>
-                    <img src={sideImgs[activeSide]} alt="" style={{ maxHeight:80, maxWidth:'100%', borderRadius:6, marginBottom:6, objectFit:'contain' }} />
-                    <div style={{ fontSize:10, color:'#00a86b', fontWeight:700 }}>✓ Sample · Tap to replace</div>
+                    <img src={designImgSrc} alt="" style={{ maxHeight:110, maxWidth:'100%', borderRadius:8, marginBottom:8, objectFit:'contain' }} />
+                    <div style={{ fontSize:12, color:'#00a86b', fontWeight:700, marginBottom:3 }}>✓ Sample selected · Tap to upload instead</div>
                   </div>
                 ) : (
                   <div>
-                    <div style={{ fontSize:36, marginBottom:8 }}>📁</div>
-                    <div style={{ fontSize:13, color:'rgba(255,255,255,.7)', fontWeight:700, marginBottom:4 }}>Tap to upload</div>
-                    <div style={{ fontSize:10, color:'rgba(255,255,255,.3)' }}>PNG · JPG · SVG · Max 20MB</div>
+                    <div style={{ fontSize:52, marginBottom:10 }}>📁</div>
+                    <div style={{ fontSize:14, color:'rgba(255,255,255,.8)', fontWeight:700, marginBottom:6 }}>Tap to upload {SIDE_LABELS[activeSide]} design</div>
+                    <div style={{ fontSize:11, color:'rgba(255,255,255,.4)' }}>PNG · JPG · SVG · Max 20MB · Min 300 DPI</div>
                   </div>
                 )}
               </div>
-            )}
-            {designTab==='samples' && (
-              <div>
-                {samples.length > 0 && (
-                  <div style={{ display:'flex', gap:4, flexWrap:'wrap', marginBottom:8 }}>
-                    {['All',...new Set(samples.map(s=>s.category).filter(Boolean))].map(cat=>(
-                      <button key={cat} onClick={()=>setSampleCat(cat)}
-                        style={{ padding:'3px 9px', borderRadius:100, fontSize:9, fontWeight:700, cursor:'pointer',
-                          background:sampleCat===cat?'#c8102e':'transparent',
-                          color:sampleCat===cat?'#fff':'rgba(255,255,255,.4)',
-                          border:`1px solid ${sampleCat===cat?'#c8102e':'rgba(255,255,255,.12)'}` }}>
-                        {cat}
-                      </button>
-                    ))}
-                  </div>
-                )}
-                {samplesLoading
-                  ? <div style={{ textAlign:'center', padding:20, color:'rgba(255,255,255,.4)', fontSize:12 }}>Loading…</div>
-                  : samples.length===0
-                    ? <div style={{ textAlign:'center', padding:20, color:'rgba(255,255,255,.3)', fontSize:12 }}>No samples yet.</div>
-                    : <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:6 }}>
-                        {samples.filter(s=>sampleCat==='All'||s.category===sampleCat).map(s=>(
-                          <div key={s.id} onClick={()=>pickSample(s)}
-                            style={{ borderRadius:7, overflow:'hidden', cursor:'pointer', position:'relative',
-                              border:`1.5px solid ${sideSamples[activeSide]?.id===s.id?'#c8102e':'rgba(255,255,255,.08)'}` }}>
-                            <img src={s.image_url} alt={s.name} style={{ width:'100%', aspectRatio:'1', objectFit:'cover', display:'block' }} />
-                            {sideSamples[activeSide]?.id===s.id && (
-                              <div style={{ position:'absolute', top:2, right:2, width:14, height:14, borderRadius:'50%', background:'#c8102e', display:'flex', alignItems:'center', justifyContent:'center', fontSize:8, color:'#fff', fontWeight:700 }}>✓</div>
-                            )}
-                          </div>
-                        ))}
-                      </div>}
-              </div>
-            )}
-            {uploadErr && <div style={{ fontSize:11, color:'#c8102e', padding:'6px 10px', background:'rgba(200,16,46,.07)', borderRadius:5, marginTop:8 }}>⚠ {uploadErr}</div>}
-          </div>
-        )}
-
-        {/* ══ POSITION ══ */}
-        {activeTool==='position' && (
-          <div>
-            <p style={{ fontSize:9, fontWeight:700, letterSpacing:'.14em', textTransform:'uppercase', color:'rgba(255,255,255,.35)', marginBottom:14 }}>
-              Design Position — <span style={{ color:'#c8102e' }}>{SIDE_LABELS[activeSide]}</span>
-            </p>
-            {[
-              ['Up / Down',    posY,     setPosY,     15, 75],
-              ['Left / Right', posX,     setPosX,     15, 85],
-              ['Size',         scale,    setScale,    10, 70],
-              ['Rotation',     rotation, setRotation,-45, 45],
-            ].map(([label,val,setter,min,max])=>(
-              <div key={label} style={{ marginBottom:18 }}>
-                <div style={{ display:'flex', justifyContent:'space-between', marginBottom:5 }}>
-                  <span style={{ fontSize:10, fontWeight:700, letterSpacing:'.08em', textTransform:'uppercase', color:'rgba(255,255,255,.4)' }}>{label}</span>
-                  <span style={{ fontSize:12, color:'#fff', fontWeight:700 }}>{val}{label==='Rotation'?'°':'%'}</span>
-                </div>
-                <input type="range" min={min} max={max} value={val} onChange={e=>setter(Number(e.target.value))} style={{ width:'100%', accentColor:'#c8102e', height:4 }} />
-              </div>
-            ))}
-            <button onClick={()=>{setPosY(38);setPosX(50);setScale(38);setRotation(0)}}
-              style={{ width:'100%', padding:'9px', background:'rgba(255,255,255,.05)', border:'1px solid rgba(255,255,255,.1)', borderRadius:6, color:'rgba(255,255,255,.35)', fontSize:11, fontWeight:700, cursor:'pointer' }}>
-              ↺ Reset
-            </button>
-          </div>
-        )}
-
-        {/* ══ TEXT ══ */}
-        {activeTool==='text' && (
-          <div>
-            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:12 }}>
-              <span style={{ fontSize:11, fontWeight:700, color:'rgba(255,255,255,.5)' }}>
-                Text — <span style={{ color:'#c8102e' }}>{SIDE_LABELS[activeSide]}</span>
-              </span>
-              <button onClick={()=>setTextOn(v=>!v)}
-                style={{ padding:'5px 16px', borderRadius:50, fontSize:11, fontWeight:700, cursor:'pointer', border:'none',
-                  background:textOn?'#c8102e':'rgba(255,255,255,.1)', color:'#fff', transition:'all .15s' }}>
-                {textOn?'ON ✓':'OFF'}
-              </button>
+              {uploadErr && <div style={{ fontSize:12, color:'#c8102e', padding:'8px 12px', background:'rgba(200,16,46,.08)', borderRadius:6, marginTop:10 }}>⚠ {uploadErr}</div>}
             </div>
-            {textOn ? (
-              <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
-                <input value={textVal} onChange={e=>setTextVal(e.target.value)} placeholder="Your text here"
-                  style={{ width:'100%', background:'rgba(255,255,255,.08)', border:'1px solid rgba(255,255,255,.15)', color:'#fff', borderRadius:7, padding:'10px 12px', fontSize:14, fontWeight:700, outline:'none', fontFamily:'DM Sans,sans-serif' }} />
-                <select value={textFont} onChange={e=>setTextFont(e.target.value)}
-                  style={{ width:'100%', background:'rgba(255,255,255,.08)', border:'1px solid rgba(255,255,255,.15)', color:'#fff', borderRadius:7, padding:'9px 12px', fontSize:12, outline:'none' }}>
-                  {TEXT_FONTS.map(f=><option key={f} value={f}>{f}</option>)}
-                </select>
+          )}
+
+          {designTab==='samples' && (
+            <div style={{ marginTop:12 }}>
+              {samples.length > 0 && (
+                <div style={{ display:'flex', gap:6, flexWrap:'wrap', marginBottom:12 }}>
+                  {['All',...new Set(samples.map(s=>s.category).filter(Boolean))].map(cat=>(
+                    <button key={cat} onClick={()=>setSampleCat(cat)}
+                      style={{ padding:'5px 12px', borderRadius:100, fontSize:10, fontWeight:700, cursor:'pointer',
+                        background:sampleCat===cat?'#c8102e':'transparent',
+                        color:sampleCat===cat?'#fff':'rgba(255,255,255,.5)',
+                        border:`1.5px solid ${sampleCat===cat?'#c8102e':'rgba(255,255,255,.15)'}` }}>
+                      {cat}
+                    </button>
+                  ))}
+                </div>
+              )}
+              {samplesLoading
+                ? <div style={{ textAlign:'center', padding:32, color:'rgba(255,255,255,.4)', fontSize:13 }}>Loading samples…</div>
+                : samples.length===0
+                  ? <div style={{ textAlign:'center', padding:32, background:'rgba(255,255,255,.04)', borderRadius:10, color:'rgba(255,255,255,.35)', fontSize:13 }}>No samples added yet.</div>
+                  : <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:8 }}>
+                      {samples.filter(s=>sampleCat==='All'||s.category===sampleCat).map(s=>(
+                        <div key={s.id} onClick={()=>pickSample(s)}
+                          style={{ borderRadius:8, overflow:'hidden', cursor:'pointer', position:'relative',
+                            border:`2px solid ${selectedSample?.id===s.id?'#c8102e':'rgba(255,255,255,.1)'}`, transition:'all .15s' }}>
+                          <img src={s.image_url} alt={s.name} style={{ width:'100%', aspectRatio:'1', objectFit:'cover', display:'block' }} />
+                          {selectedSample?.id===s.id && (
+                            <div style={{ position:'absolute', top:4, right:4, width:18, height:18, borderRadius:'50%', background:'#c8102e', display:'flex', alignItems:'center', justifyContent:'center', fontSize:10, color:'#fff', fontWeight:700 }}>✓</div>
+                          )}
+                          <div style={{ padding:'4px 6px', background:'rgba(0,0,0,.65)' }}>
+                            <div style={{ fontSize:9, fontWeight:700, color:'rgba(255,255,255,.8)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{s.name}</div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>}
+            </div>
+          )}
+        </div>
+
+        <div style={{ height:1, background:'rgba(255,255,255,.07)', marginBottom:32 }} />
+
+        {/* ══ SECTION 4: CUSTOMISE ══ */}
+        <div style={{ marginBottom:32 }}>
+          <div style={{ marginBottom:16 }}>
+            <h2 style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:22, color:'#fff', letterSpacing:'.06em', marginBottom:4 }}>
+              <span style={{ color:'#c8102e', marginRight:8 }}>04</span>CUSTOMISE
+            </h2>
+            <p style={{ fontSize:13, color:'rgba(255,255,255,.45)', margin:0 }}>Adjust position, add text and effects for each side.</p>
+          </div>
+
+          {/* Side selector */}
+          {SIDES.filter(s=>sideImgs[s]).length > 1 && (
+            <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:4, marginBottom:16 }}>
+              {SIDES.filter(s=>sideImgs[s]).map(s=>(
+                <button key={s} onClick={()=>setCustSide(s)}
+                  style={{ padding:'8px 4px', borderRadius:8, border:`2px solid ${custSide===s?'#c8102e':'rgba(255,255,255,.15)'}`,
+                    background:custSide===s?'rgba(200,16,46,.18)':'rgba(255,255,255,.04)',
+                    cursor:'pointer', display:'flex', flexDirection:'column', alignItems:'center', gap:3, transition:'all .15s' }}>
+                  <img src={sideImgs[s]} alt={s} style={{ width:32, height:32, objectFit:'contain', borderRadius:4, background:'rgba(255,255,255,.1)' }} />
+                  <span style={{ fontSize:9, fontWeight:700, textTransform:'uppercase', color:custSide===s?'#fff':'rgba(255,255,255,.4)' }}>{SIDE_LABELS[s]}</span>
+                </button>
+              ))}
+            </div>
+          )}
+
+          <LivePreview previewSide={custSide} />
+
+          {/* Sub-tabs */}
+          <div style={{ display:'flex', gap:0, background:'rgba(255,255,255,.05)', borderRadius:8, padding:3, marginTop:16 }}>
+            {[['position','↔ Position'],['text','T Text'],['effects','✦ Effects']].map(([k,l])=>(
+              <button key={k} onClick={()=>setCustTab(k)}
+                style={{ flex:'1 1 0', padding:'9px 16px', borderRadius:6, border:'none', cursor:'pointer', fontSize:12, fontWeight:700, whiteSpace:'nowrap',
+                  background:custTab===k?'#0a1f5d':'transparent', color:custTab===k?'#fff':'rgba(255,255,255,.45)', transition:'all .15s' }}>
+                {l}
+              </button>
+            ))}
+          </div>
+
+          <div style={{ background:'rgba(255,255,255,.04)', border:'1px solid rgba(255,255,255,.09)', borderRadius:12, padding:'18px 16px', marginTop:12 }}>
+            {custTab==='position' && (
+              <div>
                 {[
-                  ['Up/Down',   textPosY,setTextPosY, 5, 95],
-                  ['Left/Right',textPosX,setTextPosX, 5, 95],
-                  ['Size',      textSize,setTextSize, 12,60],
-                  ['Rotation',  textRot, setTextRot, -45,45],
-                ].map(([label,val,setter,min,max])=>(
-                  <div key={label}>
-                    <div style={{ display:'flex', justifyContent:'space-between', marginBottom:4 }}>
-                      <span style={{ fontSize:10, fontWeight:700, textTransform:'uppercase', letterSpacing:'.07em', color:'rgba(255,255,255,.35)' }}>{label}</span>
-                      <span style={{ fontSize:11, color:'#fff', fontWeight:700 }}>{val}{label==='Rotation'?'°':label==='Size'?'px':'%'}</span>
+                  ['Up / Down',    posY,      setPosY,      15, 75],
+                  ['Left / Right', posX,      setPosX,      15, 85],
+                  ['Size',         scale,     setScale,     10, 70],
+                  ['Rotation',     rotation,  setRotation, -45, 45],
+                ].map(([label, val, setter, min, max])=>(
+                  <div key={label} style={{ marginBottom:18 }}>
+                    <div style={{ display:'flex', justifyContent:'space-between', marginBottom:6 }}>
+                      <span style={{ fontSize:11, fontWeight:700, letterSpacing:'.1em', textTransform:'uppercase', color:'rgba(255,255,255,.45)' }}>{label}</span>
+                      <span style={{ fontSize:12, color:'#fff', fontWeight:700 }}>{val}{label==='Rotation'?'°':'%'}</span>
                     </div>
                     <input type="range" min={min} max={max} value={val} onChange={e=>setter(Number(e.target.value))} style={{ width:'100%', accentColor:'#c8102e' }} />
                   </div>
                 ))}
-                {/* Text colour */}
-                <div>
-                  <p style={{ fontSize:9, fontWeight:700, letterSpacing:'.12em', textTransform:'uppercase', color:'rgba(255,255,255,.35)', marginBottom:7 }}>Text Colour</p>
-                  <div style={{ display:'flex', gap:7, flexWrap:'wrap', alignItems:'center' }}>
-                    {['#ffffff','#0a0a0a','#c8102e','#0a1f5d','#00a86b','#f5a623','#9b59b6'].map(c=>(
-                      <div key={c} onClick={()=>setTextColor(c)}
-                        style={{ width:24, height:24, borderRadius:'50%', background:c, cursor:'pointer', flexShrink:0,
-                          border: c==='#ffffff'?'1.5px solid rgba(255,255,255,.4)':'1.5px solid transparent',
-                          boxShadow: textColor===c?`0 0 0 2px #161616, 0 0 0 3.5px #c8102e`:'none', transition:'box-shadow .12s' }} />
-                    ))}
-                    <input type="color" value={textColor} onChange={e=>setTextColor(e.target.value)}
-                      style={{ width:24, height:24, border:'none', borderRadius:4, cursor:'pointer', background:'none', padding:0 }} />
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <div style={{ textAlign:'center', padding:'24px 16px', color:'rgba(255,255,255,.25)', fontSize:12 }}>
-                Toggle ON to add text overlay to this side.
+                <button onClick={()=>{setPosY(38);setPosX(50);setScale(38);setRotation(0)}}
+                  style={{ width:'100%', padding:10, background:'rgba(255,255,255,.06)', border:'1px solid rgba(255,255,255,.12)', borderRadius:6, color:'rgba(255,255,255,.5)', fontSize:12, fontWeight:700, cursor:'pointer' }}>
+                  ↺ Reset Position
+                </button>
               </div>
             )}
-          </div>
-        )}
 
-        {/* ══ EFFECTS ══ */}
-        {activeTool==='effects' && (
-          <div>
-            <p style={{ fontSize:9, fontWeight:700, letterSpacing:'.14em', textTransform:'uppercase', color:'rgba(255,255,255,.35)', marginBottom:10 }}>Filter Presets</p>
-            <div style={{ display:'flex', flexWrap:'wrap', gap:6, marginBottom:16 }}>
-              {FILTERS.map(f=>(
-                <button key={f.label} onClick={()=>setFilterFx(f.value)}
-                  style={{ padding:'6px 12px', borderRadius:50, fontSize:10, fontWeight:700, cursor:'pointer',
-                    background:filterFx===f.value?'#c8102e':'rgba(255,255,255,.07)',
-                    color:filterFx===f.value?'#fff':'rgba(255,255,255,.5)',
-                    border:`1px solid ${filterFx===f.value?'#c8102e':'rgba(255,255,255,.1)'}` }}>
-                  {f.label}
-                </button>
-              ))}
-            </div>
-            {[['Brightness',brightness,setBrightness,50,160],['Contrast',contrast,setContrast,50,200],['Saturation',saturation,setSaturation,0,250]].map(([label,val,setter,min,max])=>(
-              <div key={label} style={{ marginBottom:16 }}>
-                <div style={{ display:'flex', justifyContent:'space-between', marginBottom:5 }}>
-                  <span style={{ fontSize:10, fontWeight:700, textTransform:'uppercase', letterSpacing:'.08em', color:'rgba(255,255,255,.35)' }}>{label}</span>
-                  <span style={{ fontSize:11, color:'#fff' }}>{val}%</span>
+            {custTab==='text' && (
+              <div>
+                <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16 }}>
+                  <span style={{ fontSize:11, fontWeight:700, letterSpacing:'.1em', textTransform:'uppercase', color:'rgba(255,255,255,.45)' }}>Text — {SIDE_LABELS[custSide]}</span>
+                  <button onClick={()=>setTextOn(v=>!v)}
+                    style={{ padding:'6px 16px', borderRadius:50, fontSize:11, fontWeight:700, cursor:'pointer', border:'none',
+                      background:textOn?'#c8102e':'rgba(255,255,255,.1)', color:'#fff' }}>
+                    {textOn?'ON ✓':'OFF'}
+                  </button>
                 </div>
-                <input type="range" min={min} max={max} value={val} onChange={e=>setter(parseInt(e.target.value))} style={{ width:'100%', accentColor:'#c8102e' }} />
-              </div>
-            ))}
-            <button onClick={()=>{setBrightness(100);setContrast(100);setSaturation(100);setFilterFx('')}}
-              style={{ width:'100%', padding:'9px', background:'rgba(255,255,255,.05)', border:'1px solid rgba(255,255,255,.1)', borderRadius:6, color:'rgba(255,255,255,.35)', fontSize:11, fontWeight:700, cursor:'pointer' }}>
-              ↺ Reset Effects
-            </button>
-          </div>
-        )}
-
-        {/* ══ ORDER ══ */}
-        {activeTool==='order' && (
-          <div>
-            {status==='done' ? (
-              <div style={{ textAlign:'center', padding:'32px 16px' }}>
-                <div style={{ fontSize:48, marginBottom:12 }}>🛒</div>
-                <div style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:26, color:'#fff', letterSpacing:'.06em', marginBottom:6 }}>ADDED TO CART!</div>
-                <p style={{ fontSize:12, color:'rgba(255,255,255,.4)' }}>Taking you to cart…</p>
-              </div>
-            ) : (
-              <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
-                {/* Summary */}
-                <div style={{ background:'rgba(255,255,255,.04)', border:'1px solid rgba(255,255,255,.08)', borderRadius:10, padding:'12px 14px', display:'grid', gridTemplateColumns:'1fr 1fr', gap:8 }}>
-                  {[
-                    ['Garment', selectedProduct?.name || garmentType],
-                    ['Colour',  color],
-                    ['Designs', SIDES.filter(s=>sideImgs[s]).map(s=>SIDE_LABELS[s]).join(', ') || '—'],
-                    ['Size',    size],
-                  ].map(([k,v])=>(
-                    <div key={k}>
-                      <div style={{ fontSize:8, fontWeight:700, letterSpacing:'.1em', textTransform:'uppercase', color:'rgba(255,255,255,.25)', marginBottom:1 }}>{k}</div>
-                      <div style={{ fontSize:11, fontWeight:700, color:'#fff', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{v}</div>
+                {textOn ? (
+                  <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
+                    <input value={textVal} onChange={e=>setTextVal(e.target.value)} placeholder="Your text here"
+                      style={{ ...inputStyle, fontSize:15, fontWeight:700 }} />
+                    <div>
+                      <span style={lblStyle}>Font</span>
+                      <select value={textFont} onChange={e=>setTextFont(e.target.value)} style={{ ...inputStyle }}>
+                        {TEXT_FONTS.map(f=><option key={f} value={f}>{f}</option>)}
+                      </select>
                     </div>
+                    {[
+                      ['Up / Down',    textPosY,  setTextPosY,  5,  95],
+                      ['Left / Right', textPosX,  setTextPosX,  5,  95],
+                      ['Size',         textSize,  setTextSize,  12, 60],
+                      ['Rotation',     textRot,   setTextRot,  -45, 45],
+                    ].map(([label, val, setter, min, max])=>(
+                      <div key={label}>
+                        <div style={{ display:'flex', justifyContent:'space-between', marginBottom:6 }}>
+                          <span style={{ fontSize:11, fontWeight:700, letterSpacing:'.1em', textTransform:'uppercase', color:'rgba(255,255,255,.45)' }}>{label}</span>
+                          <span style={{ fontSize:12, color:'#fff', fontWeight:700 }}>{val}{label==='Rotation'?'°':label==='Size'?'px':'%'}</span>
+                        </div>
+                        <input type="range" min={min} max={max} value={val} onChange={e=>setter(Number(e.target.value))} style={{ width:'100%', accentColor:'#c8102e' }} />
+                      </div>
+                    ))}
+                    <div>
+                      <span style={lblStyle}>Text Colour</span>
+                      <div style={{ display:'flex', flexWrap:'wrap', gap:8, marginBottom:8 }}>
+                        {['#ffffff','#0a0a0a','#c8102e','#0a1f5d','#00a86b','#f5a623','#9b59b6','#f0e68c'].map(c => (
+                          <div key={c} onClick={()=>setTextColor(c)}
+                            style={{ width:28, height:28, borderRadius:'50%', background:c, cursor:'pointer',
+                              border: c==='#ffffff' ? '2px solid rgba(255,255,255,.4)' : '2px solid transparent',
+                              boxShadow: textColor===c ? `0 0 0 2px #0d1b3e, 0 0 0 4px #c8102e` : '0 1px 4px rgba(0,0,0,.4)',
+                              transition:'box-shadow .15s', flexShrink:0 }} />
+                        ))}
+                      </div>
+                      <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+                        <input type="color" value={textColor} onChange={e=>setTextColor(e.target.value)} style={{ width:40, height:32, border:'none', borderRadius:6, cursor:'pointer', background:'none' }} />
+                        <span style={{ fontSize:12, color:'rgba(255,255,255,.5)', fontFamily:'monospace' }}>{textColor.toUpperCase()}</span>
+                      </div>
+                    </div>
+                    <button onClick={()=>{setTextPosY(75);setTextPosX(50);setTextSize(24);setTextRot(0)}}
+                      style={{ width:'100%', padding:10, background:'rgba(255,255,255,.06)', border:'1px solid rgba(255,255,255,.12)', borderRadius:6, color:'rgba(255,255,255,.5)', fontSize:12, fontWeight:700, cursor:'pointer' }}>
+                      ↺ Reset Text Position
+                    </button>
+                  </div>
+                ) : (
+                  <p style={{ fontSize:12, color:'rgba(255,255,255,.3)', lineHeight:1.7 }}>Toggle ON to add your custom text — brand name, slogan, or anything you want.</p>
+                )}
+              </div>
+            )}
+
+            {custTab==='effects' && (
+              <div>
+                <span style={lblStyle}>Filter Presets</span>
+                <div style={{ display:'flex', flexWrap:'wrap', gap:6, marginBottom:18 }}>
+                  {FILTERS.map(f=>(
+                    <button key={f.label} onClick={()=>setFilterFx(f.value)}
+                      style={{ padding:'6px 12px', borderRadius:50, fontSize:11, fontWeight:700, cursor:'pointer',
+                        background:filterFx===f.value?'#c8102e':'rgba(255,255,255,.07)',
+                        color:filterFx===f.value?'#fff':'rgba(255,255,255,.55)',
+                        border:`1px solid ${filterFx===f.value?'#c8102e':'rgba(255,255,255,.1)'}` }}>
+                      {f.label}
+                    </button>
                   ))}
                 </div>
-
-                {/* Size */}
-                <div>
-                  <p style={{ fontSize:9, fontWeight:700, letterSpacing:'.14em', textTransform:'uppercase', color:'rgba(255,255,255,.35)', marginBottom:8 }}>Size</p>
-                  <div style={{ display:'flex', gap:7, flexWrap:'wrap' }}>
-                    {SIZES.map(s=>(
-                      <button key={s} onClick={()=>setSize(s)}
-                        style={{ padding:'8px 14px', borderRadius:6, fontSize:12, fontWeight:700, cursor:'pointer', border:'1.5px solid',
-                          borderColor:size===s?'#c8102e':'rgba(255,255,255,.15)',
-                          background:size===s?'#c8102e':'rgba(255,255,255,.04)', color:'#fff', transition:'all .12s' }}>
-                        {s}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Upload progress */}
-                {status==='uploading' && (
-                  <div>
-                    <div style={{ display:'flex', justifyContent:'space-between', fontSize:10, color:'rgba(255,255,255,.5)', marginBottom:5 }}>
-                      <span>Uploading design…</span><span>{uploadPct}%</span>
+                {[['Brightness',brightness,setBrightness,50,160],['Contrast',contrast,setContrast,50,200],['Saturation',saturation,setSaturation,0,250]].map(([label,val,setter,min,max])=>(
+                  <div key={label} style={{ marginBottom:14 }}>
+                    <div style={{ display:'flex', justifyContent:'space-between', marginBottom:6 }}>
+                      <span style={{ fontSize:11, fontWeight:700, letterSpacing:'.1em', textTransform:'uppercase', color:'rgba(255,255,255,.45)' }}>{label}</span>
+                      <span style={{ fontSize:12, color:'#fff' }}>{val}%</span>
                     </div>
-                    <div style={{ height:4, background:'rgba(255,255,255,.1)', borderRadius:2 }}>
-                      <div style={{ height:'100%', width:`${uploadPct}%`, background:'#c8102e', borderRadius:2, transition:'width .3s' }} />
-                    </div>
+                    <input type="range" min={min} max={max} value={val} onChange={e=>setter(parseInt(e.target.value))} style={{ width:'100%', accentColor:'#c8102e' }} />
                   </div>
-                )}
-
-                <button className="btn-primary"
-                  style={{ width:'100%', padding:'14px', fontSize:14, letterSpacing:'.04em', opacity:(status==='saving'||status==='uploading'||status==='sheet')?.6:1 }}
-                  onClick={handleSubmit}
-                  disabled={status==='saving'||status==='uploading'||status==='sheet'}>
-                  {status==='uploading'?`Uploading… ${uploadPct}%`
-                    :status==='saving'?'Placing Order…'
-                    :status==='sheet'?'Generating sheet…'
-                    :'🛒 Place Custom Order'}
+                ))}
+                <button onClick={()=>{setBrightness(100);setContrast(100);setSaturation(100);setFilterFx('')}}
+                  style={{ width:'100%', padding:10, background:'rgba(255,255,255,.06)', border:'1px solid rgba(255,255,255,.12)', borderRadius:6, color:'rgba(255,255,255,.5)', fontSize:12, fontWeight:700, cursor:'pointer' }}>
+                  ↺ Reset Effects
                 </button>
-                <p style={{ fontSize:10, color:'rgba(255,255,255,.2)', textAlign:'center', margin:0 }}>WhatsApp confirmation within 2 hours · Pay via UPI</p>
               </div>
             )}
           </div>
-        )}
+        </div>
+
+        <div style={{ height:1, background:'rgba(255,255,255,.07)', marginBottom:32 }} />
+
+        {/* ══ SECTION 5: PREVIEW & ORDER ══ */}
+        <div style={{ marginBottom:32 }}>
+          <div style={{ marginBottom:16 }}>
+            <h2 style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:22, color:'#fff', letterSpacing:'.06em', marginBottom:4 }}>
+              <span style={{ color:'#c8102e', marginRight:8 }}>05</span>PREVIEW & ORDER
+            </h2>
+            <p style={{ fontSize:13, color:'rgba(255,255,255,.45)', margin:0 }}>Review your design and place your order below.</p>
+          </div>
+
+          {/* 360° viewer */}
+          <ProductImageViewer
+            product={selectedProduct}
+            fallbackSrc={garmentImgSrc}
+            sideImgs={sideImgs}
+            sidePos={sidePos}
+            posX={posX} posY={posY} scale={scale} rotation={rotation}
+            textOn={textOn} textVal={textVal} textFont={textFont}
+            textSize={textSize} textColor={textColor}
+            textPosX={textPosX} textPosY={textPosY} textRot={textRot}
+            sideText={sideText}
+            colorToFilter={colorToFilter}
+            color={color}
+            canvasFilter={canvasFilter}
+            garmentEmoji={GARMENT_EMOJI[garmentType]}
+            bgColor={bgColor}
+          />
+
+          {/* Summary strip */}
+          <div style={{ maxWidth:420, margin:'16px auto 0', background:'rgba(255,255,255,.06)', border:'1px solid rgba(255,255,255,.1)', borderRadius:12, padding:'14px 18px', display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
+            {[
+              ['Garment', selectedProduct?.name || garmentType],
+              ['Colour',  color],
+              ['Designs', SIDES.filter(s=>sideImgs[s]).map(s=>SIDE_LABELS[s]).join(', ') || '—'],
+              ['Text', Object.values(sideText).filter(t=>t.on&&t.val).length > 0 ? Object.entries(sideText).filter(([,t])=>t.on&&t.val).map(([s])=>SIDE_LABELS[s]).join(', ') : 'None'],
+            ].map(([k,v])=>(
+              <div key={k}>
+                <div style={{ fontSize:9, fontWeight:700, letterSpacing:'.1em', textTransform:'uppercase', color:'rgba(255,255,255,.3)', marginBottom:2 }}>{k}</div>
+                <div style={{ fontSize:12, fontWeight:700, color:'#fff', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{v}</div>
+              </div>
+            ))}
+          </div>
+
+          {/* Order */}
+          {status==='done' ? (
+            <div style={{ textAlign:'center', padding:'48px 16px', background:'rgba(0,168,107,.07)', border:'1px solid rgba(0,168,107,.2)', borderRadius:12, marginTop:20 }}>
+              <div style={{ fontSize:64, marginBottom:16 }}>🛒</div>
+              <div style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:28, color:'#fff', letterSpacing:'.06em', marginBottom:8 }}>ADDED TO CART!</div>
+              <p style={{ fontSize:13, color:'rgba(255,255,255,.55)', lineHeight:1.8 }}>Taking you to cart to review your bill…</p>
+            </div>
+          ) : (
+            <div style={{ background:'rgba(255,255,255,.04)', border:'1px solid rgba(255,255,255,.09)', borderRadius:12, padding:'18px 16px', display:'flex', flexDirection:'column', gap:18, marginTop:20 }}>
+
+              {/* Size */}
+              <div>
+                <span style={lblStyle}>Size</span>
+                <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
+                  {SIZES.map(s=>(
+                    <button key={s} onClick={()=>setSize(s)}
+                      style={{ padding:'9px 16px', borderRadius:6, fontSize:13, fontWeight:700, cursor:'pointer', border:'1.5px solid',
+                        borderColor:size===s?'#c8102e':'rgba(255,255,255,.15)',
+                        background:size===s?'#c8102e':'rgba(255,255,255,.04)', color:'#fff', transition:'all .15s' }}>
+                      {s}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Upload progress */}
+              {status==='uploading' && (
+                <div>
+                  <div style={{ display:'flex', justifyContent:'space-between', fontSize:11, color:'rgba(255,255,255,.6)', marginBottom:6 }}>
+                    <span>Uploading design…</span><span>{uploadPct}%</span>
+                  </div>
+                  <div style={{ height:5, background:'rgba(255,255,255,.1)', borderRadius:3 }}>
+                    <div style={{ height:'100%', width:`${uploadPct}%`, background:'#c8102e', borderRadius:3, transition:'width .3s' }} />
+                  </div>
+                </div>
+              )}
+
+              <button className="btn-primary" style={{ width:'100%', padding:'14px', fontSize:14, letterSpacing:'.04em', opacity:(status==='saving'||status==='uploading'||status==='sheet')?.6:1 }}
+                onClick={handleSubmit} disabled={status==='saving'||status==='uploading'||status==='sheet'}>
+                {status==='uploading'?`Uploading… ${uploadPct}%`:status==='saving'?'Placing Order…':status==='sheet'?'Generating print sheet…':'🛒 Place Custom Order'}
+              </button>
+              <p style={{ fontSize:11, color:'rgba(255,255,255,.3)', textAlign:'center', margin:0 }}>Our team will WhatsApp you within 2 hours · Pay via UPI link</p>
+            </div>
+          )}
+        </div>
 
       </div>
     </div>
   )
 }
-
 
 function HomePage({ user, onNav, cart, onAddToCart }) {
   const mediaSettings = useMediaSettings()
@@ -3216,61 +3227,129 @@ function OrdersPage({ user, onBack, onNav }) {
 }
 
 function AccountPage({ user, onLogout, onNav }) {
-  const { isAdmin } = useIsAdmin(user)
+  const { isAdmin, isSuperAdmin } = useIsAdmin(user)
+
+  const MenuIcon = ({ d, color='#555' }) => (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d={d}/>
+    </svg>
+  )
+
+  const menuItems = [
+    {
+      icon: <MenuIcon d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />,
+      label:'My Orders', sub:'Track and manage your orders', page:'orders', bg:'#eef2ff', color:'#0a1f5d'
+    },
+    {
+      icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0a7abf" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>,
+      label:'Track Order', sub:'Check live delivery status', page:'track', bg:'#e8f4fd', color:'#0a7abf'
+    },
+    {
+      icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#00a86b" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>,
+      label:'Group Order', sub:'Bulk orders for teams & events', page:'group', bg:'#e8faf2', color:'#00a86b'
+    },
+    {
+      icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#f5a623" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>,
+      label:'Payments', sub:'UPI, Razorpay — managed at checkout', page:null, soon:true, bg:'#fff8e8', color:'#f5a623'
+    },
+    {
+      icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#9b59b6" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>,
+      label:'Addresses', sub:'Manage delivery addresses', page:null, soon:true, bg:'#f5eeff', color:'#9b59b6'
+    },
+    {
+      icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#00a86b" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>,
+      label:'Notifications', sub:'Order updates on WhatsApp', page:null, soon:true, bg:'#e8faf2', color:'#00a86b'
+    },
+    {
+      icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0a1f5d" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>,
+      label:'About DRYNN', sub:'Our story & how it works', page:'about', bg:'#eef2ff', color:'#0a1f5d'
+    },
+    {
+      icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#c8102e" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>,
+      label:'Contact Us', sub:'WhatsApp, email & support', page:'contact', bg:'#fff0f0', color:'#c8102e'
+    },
+    {
+      icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#555" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>,
+      label:'Privacy', sub:'Data & privacy settings', page:'privacy', bg:'#f5f5f5', color:'#555'
+    },
+  ]
+
   return (
-    <div>
-      <div style={{ background:'linear-gradient(135deg,#0a1f5d,#1a0a2e)', padding:'40px 20px', textAlign:'center' }}>
-        <div style={{ width:80, height:80, borderRadius:'50%', overflow:'hidden', margin:'0 auto 16px', border:'3px solid rgba(255,255,255,.2)', background:'rgba(255,255,255,.1)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:36 }}>
-          {user?.user_metadata?.avatar_url ? <img src={user.user_metadata.avatar_url} style={{ width:'100%', height:'100%', objectFit:'cover' }} alt="" /> : <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.6)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>}
+    <div style={{ background:'#f8f9fb', minHeight:'100vh' }}>
+      {/* Header */}
+      <div style={{ background:'linear-gradient(135deg,#0a1f5d 0%,#1a0a2e 100%)', padding:'40px 20px 32px', textAlign:'center', position:'relative', overflow:'hidden' }}>
+        <div style={{ position:'absolute', top:-40, right:-40, width:160, height:160, borderRadius:'50%', background:'rgba(200,16,46,.12)' }} />
+        <div style={{ position:'absolute', bottom:-30, left:-30, width:120, height:120, borderRadius:'50%', background:'rgba(255,255,255,.04)' }} />
+        {/* Avatar */}
+        <div style={{ width:86, height:86, borderRadius:'50%', overflow:'hidden', margin:'0 auto 14px', border:'3px solid rgba(255,255,255,.25)', background:'rgba(255,255,255,.1)', display:'flex', alignItems:'center', justifyContent:'center', position:'relative', zIndex:1 }}>
+          {user?.user_metadata?.avatar_url
+            ? <img src={user.user_metadata.avatar_url} style={{ width:'100%', height:'100%', objectFit:'cover' }} alt="" />
+            : <svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.7)" strokeWidth="1.5" strokeLinecap="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>}
         </div>
-        <h1 style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:32, color:'#fff', letterSpacing:'.1em', marginBottom:4 }}>{user?.user_metadata?.full_name||'My Account'}</h1>
-        <p style={{ fontSize:13, color:'rgba(255,255,255,.6)' }}>{user?.email}</p>
-        {isAdmin && (
-          <div style={{ display:'inline-flex', alignItems:'center', gap:6, marginTop:10, background:'rgba(200,16,46,.25)', border:'1px solid rgba(200,16,46,.5)', borderRadius:50, padding:'4px 14px' }}>
-            <div style={{ width:6, height:6, borderRadius:'50%', background:'#c8102e' }} />
-            <span style={{ fontSize:10, fontWeight:700, letterSpacing:'.14em', color:'#c8102e', textTransform:'uppercase' }}>Admin Account</span>
-          </div>
-        )}
+        <h1 style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:30, color:'#fff', letterSpacing:'.1em', marginBottom:4, position:'relative', zIndex:1 }}>
+          {user?.user_metadata?.full_name || 'My Account'}
+        </h1>
+        <p style={{ fontSize:13, color:'rgba(255,255,255,.55)', position:'relative', zIndex:1 }}>{user?.email}</p>
+        {/* Badges */}
+        <div style={{ display:'flex', gap:8, justifyContent:'center', marginTop:12, flexWrap:'wrap', position:'relative', zIndex:1 }}>
+          {isAdmin && (
+            <div style={{ display:'inline-flex', alignItems:'center', gap:5, background:'rgba(200,16,46,.3)', border:'1px solid rgba(200,16,46,.5)', borderRadius:50, padding:'4px 12px' }}>
+              <div style={{ width:6, height:6, borderRadius:'50%', background:'#c8102e', boxShadow:'0 0 4px #c8102e' }} />
+              <span style={{ fontSize:10, fontWeight:700, letterSpacing:'.12em', color:'#ff6b6b', textTransform:'uppercase' }}>
+                {isSuperAdmin ? '👑 Super Admin' : '🔑 Admin'}
+              </span>
+            </div>
+          )}
+        </div>
       </div>
-      <div style={{ maxWidth:500, margin:'0 auto', padding:'28px 20px' }}>
-        {[
-          { icon:'•', label:'My Orders',     sub:'Track and manage your orders',      page:'orders'  },
-          { icon:'•', label:'Track Order',   sub:'Check live delivery status',         page:'track'   },
-          { icon:'•', label:'Group Order',   sub:'Bulk orders for teams & events',     page:'group'   },
-          { icon:'•', label:'Payments',      sub:'UPI, Razorpay — managed at checkout', page:null, soon:true },
-          { icon:'•', label:'Addresses',     sub:'Manage delivery addresses',           page:null, soon:true },
-          { icon:'•', label:'Notifications', sub:'Order updates on WhatsApp',           page:null, soon:true },
-          { icon:'•',  label:'About DRYNN',  sub:'Our story & how it works',           page:'about'   },
-          { icon:'•', label:'Contact Us',    sub:'WhatsApp, email & support',          page:'contact' },
-          { icon:'•', label:'Privacy',       sub:'Data & privacy settings',            page:'privacy'  },
-        ].map((item,i)=>(
-          <div key={i} onClick={()=>{ if(item.page) onNav(item.page) }}
-            style={{ display:'flex', alignItems:'center', gap:16, padding:'16px 0', borderBottom:'1px solid #f5f5f5', cursor: item.page ? 'pointer' : 'default', transition:'padding .15s', opacity: item.soon ? 0.6 : 1 }}
-            onMouseEnter={e=>{ if(item.page) e.currentTarget.style.paddingLeft='8px' }} onMouseLeave={e=>e.currentTarget.style.paddingLeft='0'}>
-            <div style={{ width:44, height:44, background:'#f8f8f8', borderRadius:12, display:'flex', alignItems:'center', justifyContent:'center', fontSize:22, flexShrink:0 }}>{item.icon}</div>
-            <div style={{ flex:1 }}>
-              <div style={{ fontWeight:600, fontSize:14 }}>{item.label}</div>
-              <div style={{ fontSize:12, color:'#aaa', marginTop:2 }}>{item.sub}</div>
-            </div>
-            {item.soon
-              ? <span style={{ fontSize:9, fontWeight:700, letterSpacing:'.08em', color:'#aaa', background:'#f0f0f0', padding:'3px 8px', borderRadius:20, textTransform:'uppercase' }}>Soon</span>
-              : <span style={{ color:'#ccc', fontSize:18 }}>›</span>}
-          </div>
-        ))}
+
+      {/* Menu */}
+      <div style={{ maxWidth:500, margin:'0 auto', padding:'20px 16px 100px' }}>
+
+        {/* Admin panel card — shown at top if admin */}
         {isAdmin && (
-          <div onClick={()=>onNav('admin')}
-            style={{ display:'flex', alignItems:'center', gap:16, padding:'16px 0', borderBottom:'1px solid #f5f5f5', cursor:'pointer', transition:'padding .15s' }}
-            onMouseEnter={e=>e.currentTarget.style.paddingLeft='8px'} onMouseLeave={e=>e.currentTarget.style.paddingLeft='0'}>
-            <div style={{ width:44, height:44, background:'rgba(200,16,46,.08)', borderRadius:12, display:'flex', alignItems:'center', justifyContent:'center', fontSize:22, flexShrink:0 }}>•</div>
+          <div onClick={()=>onNav('admin')} style={{ display:'flex', alignItems:'center', gap:14, padding:'16px', marginBottom:12, background:'linear-gradient(135deg,#c8102e,#8b0000)', borderRadius:16, cursor:'pointer', boxShadow:'0 4px 20px rgba(200,16,46,.3)' }}>
+            <div style={{ width:46, height:46, borderRadius:12, background:'rgba(255,255,255,.15)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, fontSize:22 }}>⚙️</div>
             <div style={{ flex:1 }}>
-              <div style={{ fontWeight:700, fontSize:14, color:'#c8102e' }}>Admin Panel</div>
-              <div style={{ fontSize:12, color:'#aaa', marginTop:2 }}>Manage orders, products & users</div>
+              <div style={{ fontWeight:700, fontSize:15, color:'#fff' }}>Admin Panel</div>
+              <div style={{ fontSize:12, color:'rgba(255,255,255,.65)', marginTop:1 }}>Manage orders, products & users</div>
             </div>
-            <span style={{ color:'#c8102e', fontSize:18 }}>›</span>
+            <span style={{ color:'rgba(255,255,255,.7)', fontSize:20 }}>›</span>
           </div>
         )}
-        <button className="btn-secondary" style={{ width:'100%', padding:13, fontSize:13, marginTop:28 }} onClick={onLogout}>Sign Out</button>
-        <p style={{ textAlign:'center', fontSize:11, color:'#ccc', marginTop:12 }}>DRYNN · Tamil Nadu, India</p>
+
+        {/* Menu items */}
+        <div style={{ background:'#fff', borderRadius:16, overflow:'hidden', boxShadow:'0 1px 12px rgba(0,0,0,.06)' }}>
+          {menuItems.map((item, i) => (
+            <div key={i} onClick={()=>{ if(item.page && !item.soon) onNav(item.page) }}
+              style={{ display:'flex', alignItems:'center', gap:14, padding:'14px 16px',
+                borderBottom: i < menuItems.length-1 ? '1px solid #f5f5f5' : 'none',
+                cursor: item.page && !item.soon ? 'pointer' : 'default',
+                opacity: item.soon ? 0.55 : 1,
+                background: 'transparent',
+                transition:'background .12s' }}
+              onMouseEnter={e=>{ if(!item.soon && item.page) e.currentTarget.style.background='#fafafa' }}
+              onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
+              <div style={{ width:42, height:42, background:item.bg||'#f5f5f5', borderRadius:11, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+                {item.icon}
+              </div>
+              <div style={{ flex:1 }}>
+                <div style={{ fontWeight:600, fontSize:14, color: item.soon ? '#aaa' : '#111' }}>{item.label}</div>
+                <div style={{ fontSize:12, color:'#bbb', marginTop:1 }}>{item.sub}</div>
+              </div>
+              {item.soon
+                ? <span style={{ fontSize:9, fontWeight:700, letterSpacing:'.08em', color:'#bbb', background:'#f2f2f2', padding:'3px 8px', borderRadius:20, textTransform:'uppercase', flexShrink:0 }}>Soon</span>
+                : <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ccc" strokeWidth="2.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>}
+            </div>
+          ))}
+        </div>
+
+        {/* Sign out */}
+        <button onClick={onLogout}
+          style={{ width:'100%', padding:'14px', fontSize:14, fontWeight:700, marginTop:20, borderRadius:12, border:'2px solid #e8e8e8', background:'#fff', color:'#333', cursor:'pointer', letterSpacing:'.02em' }}>
+          Sign Out
+        </button>
+        <p style={{ textAlign:'center', fontSize:11, color:'#ccc', marginTop:14 }}>DRYNN · Tamil Nadu, India</p>
       </div>
     </div>
   )
@@ -3556,21 +3635,6 @@ function AdminOrderPreview({ order }) {
 // ADMIN PANEL  -  restricted to ADMIN_EMAIL only
 // ══════════════════════════════════════════════════════════════
 const ADMIN_EMAIL = process.env.NEXT_PUBLIC_ADMIN_EMAIL || 'praneshsrinivasan2007@gmail.com'
-const SUPER_ADMIN_EMAIL = 'gokulmaniraj2008@gmail.com'
-
-function useIsAdmin(user) {
-  const [isAdmin,      setIsAdmin]      = React.useState(false)
-  const [isSuperAdmin, setIsSuperAdmin] = React.useState(false)
-  React.useEffect(() => {
-    if (!user?.email) { setIsAdmin(false); setIsSuperAdmin(false); return }
-    supabase.from('drynn_admins').select('role').eq('email', user.email).single()
-      .then(({ data }) => {
-        setIsAdmin(!!data)
-        setIsSuperAdmin(data?.role === 'superadmin')
-      })
-  }, [user?.email])
-  return { isAdmin, isSuperAdmin }
-}
 
 // ══════════════════════════════════════════════════════════════
 // MOCKUP UPLOADER — admin uploads garment views directly to Cloudinary
@@ -3605,7 +3669,8 @@ function MockupUploader() {
     setUploading(u => ({ ...u, [key]: true }))
     try {
       const url = await uploadToCloudinary(file, () => {})
-      const { error: insertErr } = await supabase.from('drynn_settings').upsert({ key, value: url }, { onConflict: 'key' })
+      await supabase.from('drynn_settings').delete().eq('key', key)
+      const { error: insertErr } = await supabase.from('drynn_settings').insert({ key, value: url })
       if (insertErr) { alert('Save failed: ' + insertErr.message); return }
       setUrls(u => ({ ...u, [key]: url }))
       setSaved(s => ({ ...s, [key]: true }))
@@ -3671,150 +3736,123 @@ function MockupUploader() {
 
 function AdminPanel({ onBack }) {
   const [currentUser, setCurrentUser] = useState(null)
-  const [checking,    setChecking]    = useState(true)
-  const [tab, setTab]                 = useState('orders')
-
-  // Orders
-  const [orders,    setOrders]    = useState([])
-  const [loading,   setLoading]   = useState(false)
+  const [checking, setChecking]       = useState(true)
+  const [tab, setTab]           = useState('orders')
+  const [orders, setOrders]     = useState([])
+  const [products, setProducts] = useState(PRODUCTS.map(p=>({...p})))
+  const [loading, setLoading]   = useState(false)
   const [editOrder, setEditOrder] = useState(null)
-
-  // Products
-  const [products,       setProducts]       = useState(PRODUCTS.map(p=>({...p})))
-  const [editProd,       setEditProd]       = useState(null)
+  const [editProd, setEditProd]   = useState(null)
+  const [toast, setToast]         = useState('')
+  // New product form state
   const [showAddProduct, setShowAddProduct] = useState(false)
-  const [newProduct,     setNewProduct]     = useState({ name:'', price:'', mrp:'', tag:'', category:'T-Shirts', emoji:'.', rating:'4.5', reviews:'0', studio_only:false })
-  const [addingProduct,  setAddingProduct]  = useState(false)
-  const [prodImgFile,    setProdImgFile]    = useState(null)
-  const [prodImgUploading, setProdImgUploading] = useState(false)
-
-  // Samples
-  const [samples,        setSamples]        = useState([])
+  const [newProduct, setNewProduct] = useState({ name:'', price:'', mrp:'', tag:'', category:'T-Shirts', emoji:'.', rating:'4.5', reviews:'0', studio_only: false })
+  const [addingProduct, setAddingProduct] = useState(false)
+  // Samples state
+  const [samples, setSamples]         = useState([])
   const [samplesLoading, setSamplesLoading] = useState(false)
-  const [sampleForm,     setSampleForm]     = useState({ name:'', category:'', image_url:'' })
-  const [sampleFile,     setSampleFile]     = useState(null)
-  const [samplePct,      setSamplePct]      = useState(0)
-  const [sampleSaving,   setSampleSaving]   = useState(false)
-
-  // Group orders
-  const [groupOrders,        setGroupOrders]        = useState([])
+  const [sampleForm, setSampleForm]   = useState({ name:'', category:'', image_url:'' })
+  const [sampleFile, setSampleFile]   = useState(null)
+  const [sampleUploadPct, setSamplePct] = useState(0)
+  const [sampleSaving, setSampleSaving] = useState(false)
+  // Group orders state
+  const [groupOrders, setGroupOrders]         = useState([])
   const [groupOrdersLoading, setGroupOrdersLoading] = useState(false)
-  const [expandedGroup,      setExpandedGroup]      = useState(null)
-  const [groupMembers,       setGroupMembers]       = useState({})
+  const [expandedGroup, setExpandedGroup]     = useState(null)
+  const [groupMembers, setGroupMembers]       = useState({}) // { group_code: [...members] }
 
-  // Visitors
-  const [visitors,        setVisitors]        = useState([])
+  // Visitors state
+  const [visitors, setVisitors]               = useState([])
   const [visitorsLoading, setVisitorsLoading] = useState(false)
-  const [visitorSearch,   setVisitorSearch]   = useState('')
+  const [visitorSearch, setVisitorSearch]     = useState('')
+  // Users state
+  const [allUsers, setAllUsers]               = useState([])
+  const [usersLoading, setUsersLoading]       = useState(false)
+  // Media state
+  const [mediaUrls, setMediaUrls]             = useState({ video_intro:'', video_studio:'', video_home:'', audio_song:'' })
+  const [mediaSaving, setMediaSaving]         = useState(false)
+  // Colors state
+  const [adminColors, setAdminColors]         = useState([...DEFAULT_SWATCHES])
+  const [newColor, setNewColor]               = useState('#000000')
+  const [colorsSaving, setColorsSaving]       = useState(false)
 
-  // Users
-  const [allUsers,     setAllUsers]     = useState([])
-  const [usersLoading, setUsersLoading] = useState(false)
+  const showToast = (m) => { setToast(m); setTimeout(()=>setToast(''),2500) }
 
-  // Media
-  const [mediaUrls,   setMediaUrls]   = useState({ video_intro:'', video_studio:'', video_home:'', audio_song:'' })
-  const [mediaSaving, setMediaSaving] = useState(false)
-
-  // Colors
-  const [adminColors,  setAdminColors]  = useState([...DEFAULT_SWATCHES])
-  const [newColor,     setNewColor]     = useState('#000000')
-  const [colorsSaving, setColorsSaving] = useState(false)
-
-  // Admins
-  const [adminsList,    setAdminsList]    = useState([])
-  const [adminsLoading, setAdminsLoading] = useState(false)
-  const [newAdminEmail, setNewAdminEmail] = useState('')
-  const [adminSaving,   setAdminSaving]   = useState(false)
-
-  const [toast, setToast] = useState('')
-  const showToast = (m) => { setToast(m); setTimeout(()=>setToast(''), 2800) }
-
-  // ── Auth check ──────────────────────────────────────────
   useEffect(() => {
     supabase.auth.getSession().then(({ data:{ session } }) => {
       setCurrentUser(session?.user || null)
       setChecking(false)
-      if (session?.user) loadOrders()
+      if (session?.user?.email === ADMIN_EMAIL) loadOrders()
     })
   }, [])
 
-  const { isAdmin, isSuperAdmin } = useIsAdmin(currentUser)
+  const isAdmin = currentUser?.email === ADMIN_EMAIL
 
-  // ── Data loaders ────────────────────────────────────────
   const loadOrders = async () => {
     setLoading(true)
-    const { data, error } = await supabase.from('drynn_orders').select('*').order('placed_at', { ascending:false }).limit(200)
-    if (error) showToast('Orders load failed: ' + error.message)
-    else setOrders(data || [])
+    const { data, error } = await supabase.from('drynn_orders').select('*').order('placed_at', { ascending: false }).limit(100)
+    if (!error && data) setOrders(data)
     setLoading(false)
-  }
-
-  const loadProducts = async () => {
-    const { data, error } = await supabase.from('drynn_products').select('*').order('id')
-    if (!error && data && data.length > 0) setProducts(data)
-    else if (error) showToast('Products load failed: ' + error.message)
   }
 
   const loadSamples = async () => {
     setSamplesLoading(true)
-    const { data, error } = await supabase.from('drynn_samples').select('*').order('created_at', { ascending:false })
-    if (error) showToast('Samples load failed: ' + error.message)
-    else setSamples(data || [])
+    const { data, error } = await supabase.from('drynn_samples').select('*').order('created_at', { ascending: false })
+    if (!error) setSamples(data || [])
     setSamplesLoading(false)
   }
 
   const loadGroupOrders = async () => {
     setGroupOrdersLoading(true)
-    const { data, error } = await supabase.from('drynn_group_orders').select('*').order('created_at', { ascending:false })
-    if (error) showToast('Group orders load failed: ' + error.message)
-    else setGroupOrders(data || [])
+    const { data, error } = await supabase.from('drynn_group_orders').select('*').order('created_at', { ascending: false })
+    if (!error && data) setGroupOrders(data)
+    else if (error) console.error('[Admin] Group orders load error:', error.message)
     setGroupOrdersLoading(false)
   }
 
   const loadVisitors = async () => {
     setVisitorsLoading(true)
-    const { data, error } = await supabase.from('drynn_user_sessions').select('*').order('started_at', { ascending:false }).limit(300)
-    if (error) showToast('Visitors load failed: ' + error.message)
-    else setVisitors(data || [])
+    const { data, error } = await supabase
+      .from('drynn_user_sessions')
+      .select('*')
+      .order('started_at', { ascending: false })
+      .limit(200)
+    console.log('[Visitors] data:', data, 'error:', error)
+    if (error) {
+      console.error('[Admin] Visitors load error:', error.message, error.code)
+      showToast('Visitors load error: ' + error.message)
+    } else {
+      setVisitors(data || [])
+    }
     setVisitorsLoading(false)
   }
 
   const loadAllUsers = async () => {
     setUsersLoading(true)
-    const byUser = {}
-    const { data: ordersData } = await supabase.from('drynn_orders').select('*').order('placed_at', { ascending:false })
+    // Load all users from orders (unique by user_id/email) + their uploads
+    const { data: ordersData } = await supabase.from('drynn_orders').select('*').order('placed_at', { ascending: false })
     if (ordersData) {
+      const byUser = {}
       ordersData.forEach(o => {
-        const key = o.user_id || o.phone || o.name || 'unknown'
-        if (!byUser[key]) byUser[key] = { user_id:o.user_id, email:null, name:o.name, phone:o.phone, address:o.address, orders:[], uploads:[], sessions:[], source:'order' }
+        const key = o.user_id || o.phone || o.name
+        if (!byUser[key]) byUser[key] = { user_id: o.user_id, name: o.name, phone: o.phone, address: o.address, orders: [], uploads: [] }
         byUser[key].orders.push(o)
-        if (o.design_file && o.design_file !== 'catalog-order' && o.design_file !== '{}') {
+        // Collect design uploads
+        if (o.design_file && o.design_file !== 'catalog-order') {
           try {
             const parsed = JSON.parse(o.design_file)
-            if (typeof parsed === 'object') Object.values(parsed).forEach(url => { if (url && url.startsWith('https://') && !byUser[key].uploads.includes(url)) byUser[key].uploads.push(url) })
-            else if (typeof parsed === 'string' && parsed.startsWith('https://')) byUser[key].uploads.push(parsed)
-          } catch { if (o.design_file.startsWith('https://')) byUser[key].uploads.push(o.design_file) }
+            if (typeof parsed === 'object') Object.values(parsed).forEach(url => { if (url && !byUser[key].uploads.includes(url)) byUser[key].uploads.push(url) })
+            else if (typeof parsed === 'string' && parsed.startsWith('http')) byUser[key].uploads.push(parsed)
+          } catch { if (o.design_file.startsWith('http')) byUser[key].uploads.push(o.design_file) }
         }
       })
+      setAllUsers(Object.values(byUser))
     }
-    const { data: sessData } = await supabase.from('drynn_user_sessions').select('*').order('started_at', { ascending:false }).limit(300)
-    if (sessData) {
-      sessData.forEach(s => {
-        const key = s.user_id || s.user_email || s.session_id
-        if (!key) return
-        if (!byUser[key]) byUser[key] = { user_id:s.user_id, email:s.user_email, name:s.user_name||s.user_email||'Visitor', phone:null, address:null, orders:[], uploads:[], sessions:[], source:'visitor' }
-        if (s.user_email && !byUser[key].email) byUser[key].email = s.user_email
-        if (s.user_name  && !byUser[key].name)  byUser[key].name  = s.user_name
-        byUser[key].sessions.push(s)
-      })
-    }
-    setAllUsers(Object.values(byUser).sort((a,b) => b.orders.length - a.orders.length || b.sessions.length - a.sessions.length))
     setUsersLoading(false)
   }
 
   const loadMediaUrls = async () => {
-    const { data, error } = await supabase.from('drynn_settings').select('key,value').in('key',['video_intro','video_studio','video_home','audio_song'])
-    if (error) { showToast('Media load failed: ' + error.message); return }
+    const { data } = await supabase.from('drynn_settings').select('key,value').in('key',['video_intro','video_studio','video_home','audio_song'])
     if (data) {
       const m = { video_intro:'', video_studio:'', video_home:'', audio_song:'' }
       data.forEach(r => { m[r.key] = r.value || '' })
@@ -3822,90 +3860,153 @@ function AdminPanel({ onBack }) {
     }
   }
 
+  const saveMediaUrl = async (key, value) => {
+    setMediaSaving(true)
+    await supabase.from('drynn_settings').delete().eq('key', key)
+    if (value) await supabase.from('drynn_settings').insert({ key, value })
+    showToast('Saved!')
+    setMediaSaving(false)
+  }
+
   const loadAdminColors = async () => {
-    const { data, error } = await supabase.from('drynn_settings').select('value').eq('key','swatches').single()
-    if (error && error.code !== 'PGRST116') showToast('Colors load failed: ' + error.message)
+    const { data } = await supabase.from('drynn_settings').select('value').eq('key','swatches').single()
     if (data?.value) { try { const p = JSON.parse(data.value); if (Array.isArray(p)) setAdminColors(p) } catch {} }
     else setAdminColors([...DEFAULT_SWATCHES])
   }
 
-  const loadAdmins = async () => {
-    setAdminsLoading(true)
-    const { data, error } = await supabase.from('drynn_admins').select('*').order('created_at', { ascending:true })
-    if (error) showToast('Admins load failed: ' + error.message)
-    else setAdminsList(data || [])
-    setAdminsLoading(false)
+  const saveAdminColors = async (colors) => {
+    setColorsSaving(true)
+    await supabase.from('drynn_settings').delete().eq('key','swatches')
+    await supabase.from('drynn_settings').insert({ key:'swatches', value: JSON.stringify(colors) })
+    setAdminColors(colors)
+    showToast('Colors saved!')
+    setColorsSaving(false)
   }
 
   const loadGroupMembers = async (group_code) => {
     if (groupMembers[group_code]) { setExpandedGroup(expandedGroup===group_code?null:group_code); return }
-    const { data, error } = await supabase.from('drynn_group_members').select('*').eq('group_code', group_code).order('joined_at', { ascending:true })
+    const { data, error } = await supabase.from('drynn_group_members').select('*').eq('group_code', group_code).order('joined_at', { ascending: true })
     if (!error && data) setGroupMembers(m => ({ ...m, [group_code]: data }))
     setExpandedGroup(expandedGroup===group_code ? null : group_code)
   }
 
-  // ── Orders actions ───────────────────────────────────────
+  const deleteGroupOrder = async (id, group_code) => {
+    if (!confirm('Delete this group order and all its members?')) return
+    await supabase.from('drynn_group_members').delete().eq('group_code', group_code)
+    const { error } = await supabase.from('drynn_group_orders').delete().eq('id', id)
+    if (!error) { setGroupOrders(g => g.filter(x => x.id !== id)); showToast('Group order deleted') }
+    else alert('Delete failed: ' + error.message)
+  }
+
+  const handleSampleFile = e => {
+    const f = e.target.files[0]
+    if (f) setSampleFile(f)
+  }
+
+  const saveSample = async () => {
+    if (!sampleFile && !sampleForm.image_url) { alert('Please upload an image or enter an image URL.'); return }
+    if (!sampleForm.name) { alert('Please enter a design name.'); return }
+    setSampleSaving(true)
+    try {
+      let imageUrl = sampleForm.image_url
+
+      // Step 1: Upload to Cloudinary
+      if (sampleFile) {
+        setSamplePct(0)
+        try {
+          imageUrl = await uploadToCloudinary(sampleFile, pct => setSamplePct(pct))
+        } catch(uploadErr) {
+          alert('Image upload to Cloudinary failed: ' + uploadErr.message)
+          return
+        }
+      }
+
+      // Step 2: Save to Supabase
+      const { data, error } = await supabase.from('drynn_samples').insert({
+        name: sampleForm.name, category: sampleForm.category || null, image_url: imageUrl
+      }).select()
+
+      if (error) {
+        alert('Supabase error: ' + error.message + ' | Code: ' + error.code)
+        return
+      }
+
+      showToast('Sample design added!')
+      setSampleForm({ name:'', category:'', image_url:'' }); setSampleFile(null); setSamplePct(0)
+      loadSamples()
+    } catch(e) {
+      console.error(e)
+      alert('Unexpected error: ' + (e.message || JSON.stringify(e)))
+    }
+    finally { setSampleSaving(false) }
+  }
+
+  const deleteSample = async (id) => {
+    if (!confirm('Delete this sample design?')) return
+    const { error } = await supabase.from('drynn_samples').delete().eq('id', id)
+    if (!error) { setSamples(s => s.filter(x => x.id !== id)); showToast('Sample deleted') }
+  }
+
   const updateOrderStatus = async (id, status) => {
-    const { error } = await supabase.from('drynn_orders').update({ status, updated_at: new Date().toISOString() }).eq('id', id)
-    if (error) { showToast('Update failed: ' + error.message); return }
-    setOrders(o => o.map(x => x.id===id ? {...x, status} : x))
-    showToast('Status → ' + status)
-    setEditOrder(null)
+    const { error } = await supabase.from('drynn_orders').update({ status }).eq('id', id)
+    if (!error) { setOrders(o => o.map(x => x.id===id ? {...x, status} : x)); showToast('Status updated') }
   }
 
   const togglePaymentStatus = async (id, current) => {
     const next = current === 'Paid' ? 'Unpaid' : 'Paid'
-    const { error } = await supabase.from('drynn_orders').update({ payment_status:next, updated_at:new Date().toISOString() }).eq('id', id)
-    if (error) { showToast('Update failed: ' + error.message); return }
-    setOrders(o => o.map(x => x.id===id ? {...x, payment_status:next} : x))
-    showToast('Marked as ' + next)
+    const { error } = await supabase.from('drynn_orders').update({ payment_status: next }).eq('id', id)
+    if (!error) { setOrders(o => o.map(x => x.id===id ? {...x, payment_status: next} : x)); showToast(`Marked as ${next}`) }
+    else alert('Update failed: ' + error.message)
   }
 
   const deleteOrder = async (id) => {
-    if (!confirm('Delete this order permanently?')) return
+    if (!confirm('Delete this order?')) return
     const { error } = await supabase.from('drynn_orders').delete().eq('id', id)
-    if (error) { showToast('Delete failed: ' + error.message); return }
-    setOrders(o => o.filter(x => x.id !== id))
-    showToast('Order deleted')
+    if (!error) { setOrders(o => o.filter(x => x.id !== id)); showToast('Order deleted') }
   }
 
-  // ── Products actions ─────────────────────────────────────
+  const loadProducts = async () => {
+    const { data, error } = await supabase.from('drynn_products').select('*').order('id')
+    if (!error && data && data.length > 0) setProducts(data)
+  }
+
   const saveProduct = async (p) => {
     const { error } = await supabase.from('drynn_products').upsert({
-      id:p.id, name:p.name, price:Number(p.price), mrp:Number(p.mrp),
-      tag:p.tag, tag_color:p.tagColor||p.tag_color, category:p.category,
-      emoji:p.emoji, rating:Number(p.rating), reviews:Number(p.reviews),
-      image_url:p.image_url||null, studio_only:p.studio_only||false,
-      img_front:p.img_front||null, img_back:p.img_back||null,
-      img_left:p.img_left||null, img_right:p.img_right||null,
-    }, { onConflict:'id' })
-    if (error) { showToast('Save failed: ' + error.message); return }
+      id: p.id, name: p.name, price: Number(p.price), mrp: Number(p.mrp),
+      tag: p.tag, tag_color: p.tagColor || p.tag_color,
+      category: p.category, emoji: p.emoji,
+      rating: Number(p.rating), reviews: Number(p.reviews),
+      image_url: p.image_url || null,
+    }, { onConflict: 'id' })
+    if (error) {
+      alert('Save failed: ' + error.message)
+      return
+    }
     setProducts(ps => ps.map(x => x.id===p.id ? p : x))
     setEditProd(null)
-    showToast('Product saved ✓')
+    showToast('Product updated ✓')
   }
 
   const addProduct = async () => {
-    if (!newProduct.name || !newProduct.price || !newProduct.mrp) { showToast('Name, Price and MRP required'); return }
+    if (!newProduct.name || !newProduct.price || !newProduct.mrp) { alert('Name, Price and MRP are required.'); return }
     setAddingProduct(true)
-    let imageUrl = newProduct.image_url || null
-    if (prodImgFile) {
-      try { imageUrl = await uploadToCloudinary(prodImgFile, ()=>{}) }
-      catch(e) { showToast('Image upload failed: ' + e.message); setAddingProduct(false); return }
-    }
-    const newId = products.length > 0 ? Math.max(...products.map(p=>Number(p.id)||0)) + 1 : 1
+    const newId = products.length > 0 ? Math.max(...products.map(p=>Number(p.id))) + 1 : 1
     const product = {
-      id:newId, name:newProduct.name, price:Number(newProduct.price), mrp:Number(newProduct.mrp),
-      tag:newProduct.tag||'New', tag_color:'#0a1f5d', category:newProduct.category,
-      emoji:newProduct.emoji, rating:Number(newProduct.rating)||4.5,
-      reviews:Number(newProduct.reviews)||0, image_url:imageUrl,
-      studio_only:newProduct.studio_only||false,
+      id: newId,
+      name: newProduct.name,
+      price: Number(newProduct.price),
+      mrp: Number(newProduct.mrp),
+      tag: newProduct.tag || 'New',
+      tag_color: '#0a1f5d',
+      category: newProduct.category,
+      emoji: newProduct.emoji,
+      rating: Number(newProduct.rating) || 4.5,
+      reviews: Number(newProduct.reviews) || 0,
     }
     const { error } = await supabase.from('drynn_products').insert(product)
-    if (error) { showToast('Add failed: ' + error.message); setAddingProduct(false); return }
+    if (error) { alert('Failed to add product: ' + error.message); setAddingProduct(false); return }
     setProducts(ps => [...ps, product])
-    setNewProduct({ name:'', price:'', mrp:'', tag:'', category:'T-Shirts', emoji:'.', rating:'4.5', reviews:'0', studio_only:false })
-    setProdImgFile(null)
+    setNewProduct({ name:'', price:'', mrp:'', tag:'', category:'T-Shirts', emoji:'.', rating:'4.5', reviews:'0', studio_only: false })
     setShowAddProduct(false)
     setAddingProduct(false)
     showToast('Product added ✓')
@@ -3914,449 +4015,462 @@ function AdminPanel({ onBack }) {
   const deleteProduct = async (id) => {
     if (!confirm('Delete this product?')) return
     const { error } = await supabase.from('drynn_products').delete().eq('id', id)
-    if (error) { showToast('Delete failed: ' + error.message); return }
-    setProducts(ps => ps.filter(p => p.id !== id))
-    showToast('Product deleted')
+    if (!error) { setProducts(ps => ps.filter(p => p.id !== id)); showToast('Product deleted') }
+    else alert('Delete failed: ' + error.message)
   }
 
-  // ── Samples actions ──────────────────────────────────────
-  const saveSample = async () => {
-    if (!sampleFile && !sampleForm.image_url) { showToast('Upload an image or enter URL'); return }
-    if (!sampleForm.name) { showToast('Enter a design name'); return }
-    setSampleSaving(true)
-    let imageUrl = sampleForm.image_url
-    if (sampleFile) {
-      try { imageUrl = await uploadToCloudinary(sampleFile, pct=>setSamplePct(pct)) }
-      catch(e) { showToast('Upload failed: ' + e.message); setSampleSaving(false); return }
-    }
-    const { error } = await supabase.from('drynn_samples').insert({ name:sampleForm.name, category:sampleForm.category||null, image_url:imageUrl })
-    if (error) { showToast('Save failed: ' + error.message); setSampleSaving(false); return }
-    showToast('Sample added ✓')
-    setSampleForm({ name:'', category:'', image_url:'' }); setSampleFile(null); setSamplePct(0)
-    loadSamples()
-    setSampleSaving(false)
-  }
+  const ORDER_STATUSES = ['Received','Approved','Printing','Packed','Shipped','Delivered']
+  const STATUS_COLORS  = { Received:'#f5a623', Approved:'#0a1f5d', Printing:'#9b59b6', Packed:'#00a86b', Shipped:'#0a7abf', Delivered:'#00a86b' }
 
-  const deleteSample = async (id) => {
-    if (!confirm('Delete this sample?')) return
-    const { error } = await supabase.from('drynn_samples').delete().eq('id', id)
-    if (error) { showToast('Delete failed: ' + error.message); return }
-    setSamples(s => s.filter(x => x.id !== id))
-    showToast('Sample deleted')
-  }
-
-  // ── Media actions ────────────────────────────────────────
-  const saveMediaUrl = async (key, value) => {
-    setMediaSaving(true)
-    let url = value?.trim() || ''
-    const { error } = url
-      ? await supabase.from('drynn_settings').upsert({ key, value:url }, { onConflict:'key' })
-      : await supabase.from('drynn_settings').delete().eq('key', key)
-    setMediaSaving(false)
-    if (error) { showToast('Save failed: ' + error.message); return }
-    showToast(key + ' saved!')
-  }
-
-  const handleMediaFileUpload = async (key, file) => {
-    if (!file) return
-    setMediaSaving(true)
-    try {
-      const url = await uploadToCloudinary(file, ()=>{})
-      setMediaUrls(m => ({ ...m, [key]: url }))
-      const { error } = await supabase.from('drynn_settings').upsert({ key, value:url }, { onConflict:'key' })
-      if (error) { showToast('Save failed: ' + error.message) }
-      else showToast(key + ' uploaded & saved!')
-    } catch(e) { showToast('Upload failed: ' + e.message) }
-    setMediaSaving(false)
-  }
-
-  // ── Colors actions ───────────────────────────────────────
-  const saveAdminColors = async (colors) => {
-    setColorsSaving(true)
-    const { error } = await supabase.from('drynn_settings').upsert({ key:'swatches', value:JSON.stringify(colors) }, { onConflict:'key' })
-    setColorsSaving(false)
-    if (error) { showToast('Save failed: ' + error.message); return }
-    setAdminColors(colors)
-    showToast('Colors saved ✓')
-  }
-
-  // ── Admins actions ───────────────────────────────────────
-  const addAdmin = async () => {
-    const email = newAdminEmail.trim().toLowerCase()
-    if (!email || !email.includes('@')) { showToast('Enter a valid email'); return }
-    if (!isSuperAdmin) { showToast('Only super admin can add admins'); return }
-    setAdminSaving(true)
-    const { error } = await supabase.from('drynn_admins').insert({ email, role:'admin', added_by:currentUser.email })
-    if (error) showToast(error.message.includes('unique') ? 'Already an admin' : 'Failed: ' + error.message)
-    else { showToast('Admin added ✓'); setNewAdminEmail(''); loadAdmins() }
-    setAdminSaving(false)
-  }
-
-  const removeAdmin = async (email) => {
-    if (email === SUPER_ADMIN_EMAIL) { showToast('Cannot remove super admin'); return }
-    if (!isSuperAdmin) { showToast('Only super admin can remove admins'); return }
-    if (!confirm('Remove ' + email + ' as admin?')) return
-    const { error } = await supabase.from('drynn_admins').delete().eq('email', email)
-    if (error) showToast('Failed: ' + error.message)
-    else { showToast('Admin removed'); loadAdmins() }
-  }
-
-  // ── Group orders actions ─────────────────────────────────
-  const deleteGroupOrder = async (id, group_code) => {
-    if (!confirm('Delete this group order and all members?')) return
-    await supabase.from('drynn_group_members').delete().eq('group_code', group_code)
-    const { error } = await supabase.from('drynn_group_orders').delete().eq('id', id)
-    if (error) { showToast('Delete failed: ' + error.message); return }
-    setGroupOrders(g => g.filter(x => x.id !== id))
-    showToast('Group order deleted')
-  }
-
-  const ORDER_STATUSES = ['Received','Approved','Printing','Packed','Shipped','Delivered','Cancelled']
-  const STATUS_COLORS  = { Received:'#f5a623', Approved:'#0a1f5d', Printing:'#9b59b6', Packed:'#00a86b', Shipped:'#0a7abf', Delivered:'#00a86b', Cancelled:'#c8102e' }
-
-  // ── Guard ────────────────────────────────────────────────
   if (checking) return (
     <div style={{ minHeight:'100vh', background:'#0a0a0a', display:'flex', alignItems:'center', justifyContent:'center' }}>
-      <div style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:28, letterSpacing:'.18em', color:'#444' }}>DRYNN</div>
+      <div style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:28, letterSpacing:'.18em', color:'#444', animation:'drynn-pulse 1.5s ease-in-out infinite' }}>DRYNN</div>
     </div>
   )
 
   if (!isAdmin) return (
     <div style={{ minHeight:'100vh', background:'#0a0a0a', display:'flex', alignItems:'center', justifyContent:'center', padding:16 }}>
       <div style={{ background:'#111', border:'1px solid #1e1e1e', borderRadius:12, padding:'40px 32px', width:'100%', maxWidth:380, textAlign:'center' }}>
-        <div style={{ marginBottom:16, color:'#555' }}>
-          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
-        </div>
+        <div style={{ marginBottom:16, color:'#555' }}><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg></div>
         <div style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:28, letterSpacing:'.18em', color:'#fff', marginBottom:8 }}>ACCESS DENIED</div>
         <p style={{ fontSize:13, color:'#555', lineHeight:1.7, marginBottom:24 }}>
-          Restricted to authorised accounts only.
-          {currentUser && <><br/><span style={{ color:'#c8102e', marginTop:6, display:'block' }}>{currentUser.email}</span></>}
+          This admin panel is restricted to authorised accounts only.
+          {currentUser && <><br/><span style={{ color:'#333', marginTop:6, display:'block' }}>Logged in as: <strong style={{ color:'#c8102e' }}>{currentUser.email}</strong></span></>}
+          {!currentUser && <><br/><span style={{ color:'#555' }}>You are not logged in.</span></>}
         </p>
         <button onClick={onBack} className="btn-primary" style={{ width:'100%', padding:13 }}>← Back to Site</button>
       </div>
     </div>
   )
 
-  // ── RENDER ───────────────────────────────────────────────
   return (
     <div style={{ minHeight:'100vh', background:'#f4f4f4' }}>
       {/* Header */}
-      <div style={{ background:'#0a0a0a', padding:'0 12px', position:'sticky', top:0, zIndex:50 }}>
+      <div style={{ background:'#0a0a0a', padding:'0 12px' }}>
+        {/* Top row: logo + exit */}
         <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', height:48 }}>
           <div style={{ display:'flex', alignItems:'center', gap:10 }}>
             <span style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:22, letterSpacing:'.18em', color:'#fff' }}>DRYNN ADMIN</span>
             <div style={{ width:8, height:8, borderRadius:'50%', background:'#00a86b', boxShadow:'0 0 6px #00a86b' }} />
-            {isSuperAdmin && <span style={{ fontSize:10, color:'#c8102e', fontWeight:700, border:'1px solid #c8102e', borderRadius:3, padding:'1px 5px' }}>SUPER</span>}
           </div>
-          <button onClick={onBack} style={{ padding:'7px 18px', borderRadius:6, border:'1.5px solid #c8102e', cursor:'pointer', background:'#c8102e', color:'#fff', fontSize:12, fontWeight:700, display:'flex', alignItems:'center', gap:6 }}>
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>Exit
+          <button onClick={onBack} style={{ padding:'7px 18px', borderRadius:6, border:'1.5px solid #c8102e', cursor:'pointer', background:'#c8102e', color:'#fff', fontSize:12, fontWeight:700, letterSpacing:'.04em', display:'flex', alignItems:'center', gap:6 }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
+            Exit
           </button>
         </div>
-        {/* Tab bar */}
-        <div style={{ display:'flex', gap:4, overflowX:'auto', paddingBottom:8, WebkitOverflowScrolling:'touch', scrollbarWidth:'none' }}>
-          {[
-            ['orders',     'Orders'],
-            ['products',   'Products'],
-            ['samples',    'Samples'],
-            ['uploads',    'Uploads'],
-            ['grouporders','👥 Groups'],
-            ['analytics',  '📊 Analytics'],
-            ['visitors',   '👤 Visitors'],
-            ['users',      '🧑 Users'],
-            ['media',      '🎬 Media'],
-            ['colors',     '🎨 Colors'],
-            ...(isSuperAdmin ? [['admins','🔑 Admins']] : []),
-          ].map(([key, label]) => (
-            <button key={key} onClick={()=>{
-              setTab(key)
-              if(key==='orders')      loadOrders()
-              if(key==='products')    loadProducts()
-              if(key==='samples')     loadSamples()
-              if(key==='uploads')     loadOrders()
-              if(key==='grouporders') loadGroupOrders()
-              if(key==='analytics')   loadOrders()
-              if(key==='visitors')    loadVisitors()
-              if(key==='users')       loadAllUsers()
-              if(key==='media')       loadMediaUrls()
-              if(key==='colors')      loadAdminColors()
-              if(key==='admins')      loadAdmins()
-            }} style={{ flexShrink:0, padding:'6px 14px', borderRadius:4, border:'none', cursor:'pointer',
-              background:tab===key?'#c8102e':'#222', color:'#fff', fontSize:12, fontWeight:700 }}>
-              {label}
-            </button>
-          ))}
+        {/* Bottom row: tabs */}
+        <div style={{ display:'flex', gap:6, overflowX:'auto', paddingBottom:8, WebkitOverflowScrolling:'touch', scrollbarWidth:'none' }}>
+          <button onClick={()=>{setTab('orders');loadOrders()}} style={{ flexShrink:0, padding:'6px 16px', borderRadius:4, border:'none', cursor:'pointer', background:tab==='orders'?'#c8102e':'#222', color:'#fff', fontSize:12, fontWeight:700 }}>Orders</button>
+          <button onClick={()=>{setTab('products');loadProducts()}} style={{ flexShrink:0, padding:'6px 16px', borderRadius:4, border:'none', cursor:'pointer', background:tab==='products'?'#c8102e':'#222', color:'#fff', fontSize:12, fontWeight:700 }}>Products</button>
+          <button onClick={()=>{setTab('samples');loadSamples()}} style={{ flexShrink:0, padding:'6px 16px', borderRadius:4, border:'none', cursor:'pointer', background:tab==='samples'?'#c8102e':'#222', color:'#fff', fontSize:12, fontWeight:700 }}>Samples</button>
+          <button onClick={()=>{setTab('uploads');loadOrders()}} style={{ flexShrink:0, padding:'6px 16px', borderRadius:4, border:'none', cursor:'pointer', background:tab==='uploads'?'#c8102e':'#222', color:'#fff', fontSize:12, fontWeight:700 }}>Uploads</button>
+          <button onClick={()=>{setTab('analytics');loadOrders()}} style={{ flexShrink:0, padding:'6px 16px', borderRadius:4, border:'none', cursor:'pointer', background:tab==='analytics'?'#c8102e':'#222', color:'#fff', fontSize:12, fontWeight:700 }}>📊 Analytics</button>
+          <button onClick={()=>{setTab('visitors');loadVisitors()}} style={{ flexShrink:0, padding:'6px 16px', borderRadius:4, border:'none', cursor:'pointer', background:tab==='visitors'?'#c8102e':'#222', color:'#fff', fontSize:12, fontWeight:700 }}>👤 Visitors</button>
+          <button onClick={()=>{setTab('users');loadAllUsers()}} style={{ flexShrink:0, padding:'6px 16px', borderRadius:4, border:'none', cursor:'pointer', background:tab==='users'?'#c8102e':'#222', color:'#fff', fontSize:12, fontWeight:700 }}>🧑 Users</button>
+          <button onClick={()=>{setTab('media');loadMediaUrls()}} style={{ flexShrink:0, padding:'6px 16px', borderRadius:4, border:'none', cursor:'pointer', background:tab==='media'?'#c8102e':'#222', color:'#fff', fontSize:12, fontWeight:700 }}>🎬 Media</button>
+          <button onClick={()=>{setTab('colors');loadAdminColors()}} style={{ flexShrink:0, padding:'6px 16px', borderRadius:4, border:'none', cursor:'pointer', background:tab==='colors'?'#c8102e':'#222', color:'#fff', fontSize:12, fontWeight:700 }}>🎨 Colors</button>
+          <button onClick={()=>{setTab('grouporders');loadGroupOrders()}} style={{ flexShrink:0, padding:'6px 16px', borderRadius:4, border:'none', cursor:'pointer', background:tab==='grouporders'?'#c8102e':'#222', color:'#fff', fontSize:12, fontWeight:700 }}>👥 Group Orders</button>
         </div>
       </div>
 
-      <div style={{ maxWidth:1200, margin:'0 auto', padding:'20px 16px 80px' }}>
+      {/* Stats bar */}
+      {tab==='orders' && (
+        <div style={{ background:'#fff', borderBottom:'1px solid #e0e0e0', padding:'12px 20px' }}>
+          <div style={{ display:'flex', gap:24, flexWrap:'wrap' }}>
+            {ORDER_STATUSES.map(s => {
+              const count = orders.filter(o=>o.status===s||(!o.status&&s==='Received')).length
+              return <div key={s} style={{ display:'flex', gap:6, alignItems:'center', fontSize:12 }}>
+                <div style={{ width:8, height:8, borderRadius:'50%', background:STATUS_COLORS[s] }} />
+                <span style={{ fontWeight:600 }}>{s}:</span><span style={{ color:'#888' }}>{count}</span>
+              </div>
+            })}
+            <div style={{ marginLeft:'auto', fontSize:12, color:'#888' }}>Total: <strong>{orders.length}</strong></div>
+          </div>
+        </div>
+      )}
 
-        {/* ══ ORDERS TAB ══ */}
+      <div style={{ padding:'20px', maxWidth:1200, margin:'0 auto' }}>
+
+        {/* ORDERS TAB */}
         {tab==='orders' && (
           <div>
             <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16 }}>
-              <h2 style={{ fontSize:18, fontWeight:700 }}>Orders ({orders.length})</h2>
-              <button className="btn-secondary" style={{ padding:'7px 14px', fontSize:12 }} onClick={loadOrders}>↻ Refresh</button>
+              <h2 style={{ fontSize:18, fontWeight:700 }}>All Orders</h2>
+              <button className="btn-secondary" style={{ padding:'8px 16px', fontSize:12 }} onClick={loadOrders}>↻ Refresh</button>
             </div>
-            {loading ? <div style={{ textAlign:'center', padding:40, color:'#888' }}>Loading…</div>
-            : orders.length === 0 ? <div style={{ textAlign:'center', padding:40, color:'#aaa' }}>No orders yet.</div>
-            : orders.map(o => {
-              const isCustom = o.order_type === 'custom' || (o.design_file && o.design_file !== 'catalog-order' && o.design_file !== '{}')
-              const parseDesigns = (df) => {
-                if (!df || df === 'catalog-order' || df === '{}') return {}
-                try {
-                  const p = JSON.parse(df)
-                  if (typeof p !== 'object') return df.startsWith('https://') ? { front:df } : {}
-                  const cleaned = {}
-                  Object.entries(p).forEach(([k,v]) => { if (v && typeof v==='string' && v.startsWith('https://')) cleaned[k]=v })
-                  return cleaned
-                } catch { return df.startsWith('https://') ? { front:df } : {} }
-              }
-              const parsedDesigns = parseDesigns(o.design_file)
-              const designSides   = ['front','back','left','right'].filter(s => parsedDesigns[s])
+            {loading ? <div style={{ textAlign:'center', padding:40, color:'#888' }}>Loading orders…</div> : (
+              <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
+                {orders.length===0 && <div style={{ textAlign:'center', padding:60, color:'#888', background:'#fff', borderRadius:10 }}>No orders yet.</div>}
+                {orders.map(o => {
+                  const isCustom = o.order_type === 'custom' || (o.design_file && o.design_file !== 'catalog-order')
+                  const parseDesigns = (df) => {
+                    if (!df || df === 'catalog-order') return {}
+                    try { const p = JSON.parse(df); return typeof p==='object' ? p : { front: df } } catch { return { front: df } }
+                  }
+                  const parsedDesigns = parseDesigns(o.design_file)
+                  const designSides = ['front','back','left','right']
+                    .map(s => ({ label: s.charAt(0).toUpperCase()+s.slice(1), url: parsedDesigns[s]?.startsWith('http') ? parsedDesigns[s] : null }))
+                    .filter(s => s.url)
 
-              return (
-                <div key={o.id} style={{ background:'#fff', borderRadius:10, border:'1px solid #e8e8e8', overflow:'hidden', marginBottom:12 }}>
-                  {/* Type banner */}
-                  <div style={{ padding:'5px 16px', background:isCustom?'rgba(200,16,46,.05)':'#f8f8f8', borderBottom:'1px solid #f0f0f0', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-                    <span style={{ fontSize:10, fontWeight:700, textTransform:'uppercase', letterSpacing:'.08em', color:isCustom?'#c8102e':'#888' }}>
-                      {isCustom ? '🎨 Custom Design' : '🛍 Catalog Order'}
-                    </span>
-                    <span style={{ fontSize:10, color:'#bbb' }}>{new Date(o.placed_at||o.created_at).toLocaleString('en-IN')}</span>
-                  </div>
-
-                  <div style={{ padding:'14px 16px' }}>
-                    {/* Design images */}
-                    {isCustom && designSides.length > 0 && (
-                      <div style={{ display:'flex', gap:6, flexWrap:'wrap', marginBottom:10 }}>
-                        {designSides.map(s => (
-                          <a key={s} href={parsedDesigns[s]} target="_blank" rel="noreferrer" title={s}>
-                            <img src={parsedDesigns[s]} alt={s}
-                              style={{ width:56, height:56, objectFit:'contain', borderRadius:6, border:'1px solid #e0e0e0', background:'#f8f8f8' }}
-                              onError={e=>e.target.style.display='none'} />
-                          </a>
-                        ))}
-                        {o.print_sheet_url && (
-                          <a href={o.print_sheet_url} target="_blank" rel="noreferrer" title="Print Sheet">
-                            <div style={{ width:56, height:56, borderRadius:6, border:'1.5px solid rgba(200,16,46,.3)', background:'rgba(200,16,46,.05)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:20 }}>🖨</div>
-                          </a>
-                        )}
+                  return (
+                  <div key={o.id} style={{ background:'#fff', borderRadius:10, border:'1px solid #e8e8e8', boxShadow:'0 1px 4px rgba(0,0,0,.04)', overflow:'hidden' }}>
+                    {editOrder===o.id ? (
+                      <div style={{ padding:'16px 20px' }}>
+                        <OrderEditRow order={o} onSave={async(status)=>{await updateOrderStatus(o.id,status);setEditOrder(null)}} onCancel={()=>setEditOrder(null)} statuses={ORDER_STATUSES} colors={STATUS_COLORS} />
                       </div>
+                    ) : (
+                      <>
+                        {/* Order type banner */}
+                        <div style={{ padding:'6px 16px', background: isCustom ? 'rgba(200,16,46,.06)' : '#f8f8f8', borderBottom:'1px solid #f0f0f0', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+                          <span style={{ fontSize:10, fontWeight:700, letterSpacing:'.08em', textTransform:'uppercase', color: isCustom ? '#c8102e' : '#888' }}>
+                            {isCustom ? '🎨 Custom Design Order' : '🛍️ Catalog Order'}
+                          </span>
+                          <span style={{ fontSize:10, color:'#bbb' }}>{new Date(o.placed_at||o.created_at).toLocaleString('en-IN')}</span>
+                        </div>
+
+                        <div style={{ padding:'14px 16px' }}>
+                          {/* Studio Step 5 style preview — garment + design composited */}
+                          {isCustom && <AdminOrderPreview order={o} />}
+                          {/* Show design images for custom orders even if AdminOrderPreview fails */}
+                          {isCustom && (() => {
+                            const pd = parsedDesigns
+                            const sides = ['front','back','left','right'].filter(s => pd[s])
+                            if (!sides.length) return null
+                            return (
+                              <div style={{ display:'flex', gap:6, flexWrap:'wrap', marginTop:6 }}>
+                                {sides.map(s => (
+                                  <div key={s} style={{ textAlign:'center' }}>
+                                    <img src={pd[s]} alt={s}
+                                      style={{ width:56, height:56, objectFit:'contain', borderRadius:6, border:'1px solid #e0e0e0', background:'#f8f8f8' }}
+                                      onError={e=>e.target.style.display='none'} />
+                                    <div style={{ fontSize:8, color:'#888', marginTop:2, textTransform:'capitalize' }}>{s}</div>
+                                  </div>
+                                ))}
+                              </div>
+                            )
+                          })()}
+
+                          <div style={{ display:'flex', gap:14, flexWrap:'wrap' }}>
+
+                            {/* Product image for catalog orders */}
+                            {!isCustom && (() => {
+                              const matchProd = products.find(p => p.name === o.garment || String(p.id) === String(o.product_id))
+                              const imgSrc = o.product_image || matchProd?.img_front || matchProd?.image_url
+                              return imgSrc ? (
+                                <div style={{ flexShrink:0, textAlign:'center' }}>
+                                  <img src={imgSrc} alt={o.garment}
+                                    style={{ width:72, height:72, objectFit:'contain', borderRadius:8, border:'1.5px solid #e0e0e0', background:'#f8f8f8', display:'block' }}
+                                    onError={e=>e.target.style.display='none'} />
+                                  <div style={{ fontSize:9, color:'#888', marginTop:3, fontWeight:600 }}>{o.product_category || matchProd?.category || 'Product'}</div>
+                                </div>
+                              ) : (
+                                <div style={{ width:72, height:72, borderRadius:8, border:'1.5px dashed #e0e0e0', background:'#f8f8f8', display:'flex', alignItems:'center', justifyContent:'center', fontSize:10, color:'#bbb', flexShrink:0, textAlign:'center' }}>
+                                  No Image
+                                </div>
+                              )
+                            })()}
+
+                            {/* Order details */}
+                            <div style={{ flex:1, minWidth:160 }}>
+                              <div style={{ fontSize:14, fontWeight:700, marginBottom:3 }}>{o.name}</div>
+                              <div style={{ fontSize:11, color:'#555', marginBottom:2 }}>📞 {o.phone}</div>
+                              <div style={{ fontSize:11, color:'#888', marginBottom:2 }}>👕 {o.garment} · 🎨 {o.color} · 📏 {o.size} · Qty {o.qty}</div>
+                              {o.design_sides && <div style={{ fontSize:11, color:'#c8102e', marginBottom:2 }}>🖨️ Print sides: {o.design_sides}</div>}
+                              {(() => {
+                                let textSummary = []
+                                if (o.side_text) {
+                                  try {
+                                    const st = JSON.parse(o.side_text)
+                                    const SIDE_LABELS = { front:'Front', back:'Back', left:'Left', right:'Right' }
+                                    textSummary = Object.entries(st).filter(([,t])=>t.on&&t.val).map(([s,t])=>`${SIDE_LABELS[s]}: "${t.val}"`)
+                                  } catch(e) {}
+                                } else if (o.text_on && o.text_val) {
+                                  textSummary = [`Front: "${o.text_val}"`]
+                                }
+                                return textSummary.length > 0
+                                  ? <div style={{ fontSize:11, color:'#0a1f5d', marginBottom:2 }}>✍️ Text — {textSummary.join(' · ')}</div>
+                                  : null
+                              })()}
+                              {/* ── PRINT SHEET (most important for printer) ── */}
+                              {o.print_sheet && (
+                                <div style={{ margin:'8px 0 6px', background:'#0a0a0a', borderRadius:8, overflow:'hidden', border:'2px solid #c8102e' }}>
+                                  <div style={{ background:'#c8102e', padding:'4px 10px', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+                                    <span style={{ fontSize:10, fontWeight:700, letterSpacing:'.12em', textTransform:'uppercase', color:'#fff' }}>🖨️ Print-Ready Sheet</span>
+                                    <a href={o.print_sheet} target="_blank" rel="noopener noreferrer"
+                                      style={{ fontSize:10, fontWeight:700, color:'#fff', textDecoration:'underline', cursor:'pointer' }}>Open Full Size ↗</a>
+                                  </div>
+                                  <a href={o.print_sheet} target="_blank" rel="noopener noreferrer">
+                                    <img src={o.print_sheet} alt="Print Sheet"
+                                      style={{ width:'100%', display:'block', maxHeight:200, objectFit:'contain', background:'#fff' }}
+                                      onError={e=>e.target.style.display='none'} />
+                                  </a>
+                                </div>
+                              )}
+                              <div style={{ fontSize:10, color:'#aaa', marginBottom:4 }}>📍 {o.address}</div>
+                              <div style={{ fontSize:13, fontWeight:700, color:'#0a1f5d' }}>₹{Number(o.total||0).toLocaleString()}</div>
+                            </div>
+
+                            {/* Actions */}
+                            <div style={{ display:'flex', flexDirection:'column', gap:6, alignItems:'flex-end' }}>
+                              <span style={{ fontSize:11, fontWeight:700, padding:'4px 10px', borderRadius:50, background:STATUS_COLORS[o.status||'Received']+'22', color:STATUS_COLORS[o.status||'Received'] }}>
+                                {o.status||'Received'}
+                              </span>
+                              <button onClick={()=>togglePaymentStatus(o.id, o.payment_status||'Unpaid')}
+                                style={{ padding:'4px 10px', fontSize:11, fontWeight:700, borderRadius:50, border:'none', cursor:'pointer',
+                                  background: o.payment_status==='Paid' ? '#e6f9f0' : '#fff3f3',
+                                  color: o.payment_status==='Paid' ? '#00a86b' : '#c8102e' }}>
+                                {o.payment_status==='Paid' ? '✓ Paid' : '✗ Unpaid'}
+                              </button>
+                              {o.phone && (
+                                <a href={`https://wa.me/91${o.phone.replace(/\D/g,'').replace(/^91/,'')}`} target="_blank" rel="noopener noreferrer"
+                                  style={{ padding:'5px 10px', fontSize:11, borderRadius:4, border:'1px solid #00a86b', color:'#00a86b', background:'none', cursor:'pointer', fontWeight:700, textDecoration:'none' }}>
+                                  💬 WhatsApp
+                                </a>
+                              )}
+                              <button onClick={()=>setEditOrder(o.id)} style={{ padding:'5px 12px', fontSize:11, borderRadius:4, border:'1px solid #0a1f5d', color:'#0a1f5d', background:'none', cursor:'pointer', fontWeight:600 }}>Edit Status</button>
+                              <button onClick={()=>deleteOrder(o.id)} style={{ padding:'5px 10px', fontSize:11, borderRadius:4, border:'1px solid #fdd', color:'#c8102e', background:'none', cursor:'pointer', fontWeight:600 }}>Delete</button>
+                            </div>
+                          </div>
+                        </div>
+                      </>
                     )}
-
-                    <div style={{ display:'flex', gap:14, flexWrap:'wrap', alignItems:'flex-start' }}>
-                      <div style={{ flex:1, minWidth:180 }}>
-                        <div style={{ fontWeight:700, fontSize:14, marginBottom:3 }}>{o.name}</div>
-                        <div style={{ fontSize:12, color:'#555', marginBottom:2 }}>
-                          {o.garment} {o.color && `· ${o.color}`} {o.size && `· ${o.size}`} {o.qty && `· Qty: ${o.qty}`}
-                        </div>
-                        {o.phone && <div style={{ fontSize:12, color:'#777' }}>📞 {o.phone}</div>}
-                        {o.address && <div style={{ fontSize:11, color:'#999', marginTop:2 }}>{o.address}</div>}
-                        {o.custom_text && <div style={{ fontSize:11, color:'#9b59b6', marginTop:3 }}>Text: {o.custom_text}</div>}
-                      </div>
-
-                      <div style={{ display:'flex', flexDirection:'column', gap:6, alignItems:'flex-end', flexShrink:0 }}>
-                        <div style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:22, color:'#0a1f5d', lineHeight:1 }}>
-                          ₹{Number(o.total||0).toLocaleString()}
-                        </div>
-                        {/* Status dropdown inline */}
-                        <select value={o.status||'Received'}
-                          onChange={e => updateOrderStatus(o.id, e.target.value)}
-                          style={{ border:`1.5px solid ${STATUS_COLORS[o.status]||'#ccc'}`, borderRadius:6, padding:'6px 10px', fontSize:12, fontWeight:700, color:STATUS_COLORS[o.status]||'#888', outline:'none', cursor:'pointer', background:'#fff' }}>
-                          {ORDER_STATUSES.map(s=><option key={s} value={s}>{s}</option>)}
-                        </select>
-                        {/* Payment toggle */}
-                        <button onClick={()=>togglePaymentStatus(o.id, o.payment_status)}
-                          style={{ padding:'5px 12px', fontSize:11, fontWeight:700, borderRadius:20, border:'1.5px solid',
-                            borderColor:o.payment_status==='Paid'?'#00a86b':'#f5a623',
-                            color:o.payment_status==='Paid'?'#00a86b':'#f5a623', background:'#fff', cursor:'pointer' }}>
-                          {o.payment_status==='Paid'?'✓ Paid':'⏳ Unpaid'}
-                        </button>
-                        <button onClick={()=>deleteOrder(o.id)}
-                          style={{ padding:'5px 10px', fontSize:11, borderRadius:4, border:'1px solid #fdd', color:'#c8102e', background:'none', cursor:'pointer', fontWeight:600 }}>
-                          Delete
-                        </button>
-                      </div>
-                    </div>
                   </div>
-                </div>
-              )
-            })}
+                )})}
+
+              </div>
+            )}
           </div>
         )}
 
-        {/* ══ PRODUCTS TAB ══ */}
+        {/* PRODUCTS TAB */}
         {tab==='products' && (
           <div>
             <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16 }}>
               <h2 style={{ fontSize:18, fontWeight:700 }}>Products ({products.length})</h2>
-              <button className="btn-primary" style={{ padding:'8px 16px', fontSize:12 }} onClick={()=>setShowAddProduct(v=>!v)}>
-                {showAddProduct ? '✕ Cancel' : '+ Add Product'}
+              <button className="btn-primary" style={{ padding:'8px 18px', fontSize:12 }} onClick={()=>setShowAddProduct(v=>!v)}>
+                {showAddProduct ? 'Cancel' : 'Add Product'}
               </button>
             </div>
 
-            {/* Add product form */}
+            {/* Add New Product Form */}
             {showAddProduct && (
-              <div style={{ background:'#fff', border:'1px solid #e8e8e8', borderRadius:12, padding:'20px', marginBottom:20 }}>
-                <p style={{ fontSize:12, fontWeight:700, textTransform:'uppercase', letterSpacing:'.1em', color:'#888', marginBottom:16 }}>New Product</p>
-                <div style={{ display:'grid', gridTemplateColumns:'repeat(2,1fr)', gap:10 }}>
-                  {[['Name','name','text'],['Price (₹)','price','number'],['MRP (₹)','mrp','number'],['Tag','tag','text']].map(([label,key,type])=>(
-                    <div key={key}>
-                      <label style={{ fontSize:11, color:'#888', fontWeight:700, display:'block', marginBottom:4 }}>{label}</label>
-                      <input type={type} value={newProduct[key]} onChange={e=>setNewProduct(p=>({...p,[key]:e.target.value}))}
-                        className="input-field" style={{ fontSize:13 }} />
-                    </div>
-                  ))}
+              <div style={{ background:'#fff', borderRadius:12, padding:'20px', border:'1.5px solid #c8102e', marginBottom:20 }}>
+                <div style={{ fontSize:14, fontWeight:700, marginBottom:14, color:'#c8102e' }}>+ Add New Product</div>
+                <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12, marginBottom:12 }}>
+                  <div style={{ gridColumn:'1/-1' }}>
+                    <label style={{ fontSize:10, fontWeight:700, letterSpacing:'.1em', color:'#888', textTransform:'uppercase', display:'block', marginBottom:4 }}>Product Name *</label>
+                    <input className="input-field" placeholder="e.g. Premium Cotton Tee" value={newProduct.name} onChange={e=>setNewProduct({...newProduct,name:e.target.value})} style={{ padding:'8px 12px', fontSize:13 }} />
+                  </div>
                   <div>
-                    <label style={{ fontSize:11, color:'#888', fontWeight:700, display:'block', marginBottom:4 }}>Category</label>
-                    <select value={newProduct.category} onChange={e=>setNewProduct(p=>({...p,category:e.target.value}))}
-                      className="input-field" style={{ fontSize:13 }}>
-                      {['T-Shirts','Hoodies','Polo','Joggers','Caps','Jackets','Others'].map(c=><option key={c}>{c}</option>)}
+                    <label style={{ fontSize:10, fontWeight:700, letterSpacing:'.1em', color:'#888', textTransform:'uppercase', display:'block', marginBottom:4 }}>Price (₹) *</label>
+                    <input className="input-field" type="number" placeholder="699" value={newProduct.price} onChange={e=>setNewProduct({...newProduct,price:e.target.value})} style={{ padding:'8px 12px', fontSize:13 }} />
+                  </div>
+                  <div>
+                    <label style={{ fontSize:10, fontWeight:700, letterSpacing:'.1em', color:'#888', textTransform:'uppercase', display:'block', marginBottom:4 }}>MRP (₹) *</label>
+                    <input className="input-field" type="number" placeholder="999" value={newProduct.mrp} onChange={e=>setNewProduct({...newProduct,mrp:e.target.value})} style={{ padding:'8px 12px', fontSize:13 }} />
+                  </div>
+                  <div>
+                    <label style={{ fontSize:10, fontWeight:700, letterSpacing:'.1em', color:'#888', textTransform:'uppercase', display:'block', marginBottom:4 }}>Category</label>
+                    <select className="input-field" value={newProduct.category} onChange={e=>setNewProduct({...newProduct,category:e.target.value})} style={{ padding:'8px 12px', fontSize:13 }}>
+                      {['T-Shirts','Hoodies','Polos','Joggers'].map(c=><option key={c}>{c}</option>)}
                     </select>
                   </div>
                   <div>
-                    <label style={{ fontSize:11, color:'#888', fontWeight:700, display:'block', marginBottom:4 }}>Emoji</label>
-                    <input value={newProduct.emoji} onChange={e=>setNewProduct(p=>({...p,emoji:e.target.value}))}
-                      className="input-field" style={{ fontSize:13 }} />
+                    <label style={{ fontSize:10, fontWeight:700, letterSpacing:'.1em', color:'#888', textTransform:'uppercase', display:'block', marginBottom:4 }}>Tag</label>
+                    <input className="input-field" placeholder="New / Best Seller / Sale" value={newProduct.tag} onChange={e=>setNewProduct({...newProduct,tag:e.target.value})} style={{ padding:'8px 12px', fontSize:13 }} />
                   </div>
-                </div>
-                <div style={{ marginTop:10 }}>
-                  <label style={{ fontSize:11, color:'#888', fontWeight:700, display:'block', marginBottom:4 }}>Product Image</label>
-                  <div style={{ display:'flex', gap:8, alignItems:'center' }}>
-                    <input className="input-field" style={{ fontSize:12, flex:1 }} placeholder="Paste Cloudinary URL, or upload below"
-                      value={newProduct.image_url||''} onChange={e=>setNewProduct(p=>({...p,image_url:e.target.value}))} />
-                    <label style={{ padding:'9px 14px', background:'#0a1f5d', color:'#fff', borderRadius:6, fontSize:12, fontWeight:700, cursor:'pointer', flexShrink:0 }}>
-                      Upload
-                      <input type="file" accept="image/*" style={{ display:'none' }} onChange={e=>{ setProdImgFile(e.target.files[0]); if(e.target.files[0]) setNewProduct(p=>({...p,image_url:'Uploading…'})) }} />
+                  <div>
+                    <label style={{ fontSize:10, fontWeight:700, letterSpacing:'.1em', color:'#888', textTransform:'uppercase', display:'block', marginBottom:4 }}>Emoji Icon</label>
+                    <select className="input-field" value={newProduct.emoji} onChange={e=>setNewProduct({...newProduct,emoji:e.target.value})} style={{ padding:'8px 12px', fontSize:13 }}>
+                      {[['T-Shirt','T-Shirt'],['Hoodie','Hoodie'],['Polo','Polo'],['Joggers','Joggers']].map(([e,l])=><option key={e} value={e}>{l}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label style={{ fontSize:10, fontWeight:700, letterSpacing:'.1em', color:'#888', textTransform:'uppercase', display:'block', marginBottom:4 }}>Rating</label>
+                    <input className="input-field" type="number" min="1" max="5" step="0.1" placeholder="4.5" value={newProduct.rating} onChange={e=>setNewProduct({...newProduct,rating:e.target.value})} style={{ padding:'8px 12px', fontSize:13 }} />
+                  </div>
+                  <div>
+                    <label style={{ fontSize:10, fontWeight:700, letterSpacing:'.1em', color:'#888', textTransform:'uppercase', display:'block', marginBottom:4 }}>Reviews Count</label>
+                    <input className="input-field" type="number" placeholder="0" value={newProduct.reviews} onChange={e=>setNewProduct({...newProduct,reviews:e.target.value})} style={{ padding:'8px 12px', fontSize:13 }} />
+                  </div>
+                  <div style={{ gridColumn:'1/-1' }}>
+                    <label style={{ display:'flex', alignItems:'center', gap:10, cursor:'pointer', userSelect:'none', background: newProduct.studio_only ? 'rgba(200,16,46,.07)' : '#f8f8f8', border: `1.5px solid ${newProduct.studio_only ? '#c8102e' : '#e8e8e8'}`, borderRadius:8, padding:'12px 14px' }}>
+                      <input type="checkbox" checked={newProduct.studio_only} onChange={e=>setNewProduct({...newProduct,studio_only:e.target.checked})}
+                        style={{ width:18, height:18, accentColor:'#c8102e', cursor:'pointer', flexShrink:0 }} />
+                      <div>
+                        <div style={{ fontSize:13, fontWeight:700, color: newProduct.studio_only ? '#c8102e' : '#0a0a0a' }}>Studio Only</div>
+                        <div style={{ fontSize:11, color:'#888', marginTop:2 }}>Hide from Products page - visible only in Design Studio</div>
+                      </div>
                     </label>
                   </div>
-                  {prodImgFile && <div style={{ fontSize:11, color:'#00a86b', marginTop:4 }}>✓ {prodImgFile.name} — will upload on save</div>}
                 </div>
-                <div style={{ display:'flex', alignItems:'center', gap:8, marginTop:10 }}>
-                  <input type="checkbox" id="studio_only_new" checked={newProduct.studio_only} onChange={e=>setNewProduct(p=>({...p,studio_only:e.target.checked}))} />
-                  <label htmlFor="studio_only_new" style={{ fontSize:12, color:'#555', cursor:'pointer' }}>Studio Only (not shown in public shop)</label>
-                </div>
-                <button className="btn-primary" style={{ marginTop:14, padding:'10px 24px', fontSize:13, opacity:addingProduct?.6:1 }}
-                  onClick={addProduct} disabled={addingProduct}>
-                  {addingProduct ? 'Saving…' : 'Add Product'}
+                <button className="btn-primary" style={{ padding:'10px 24px', fontSize:13, opacity:addingProduct?.6:1 }} onClick={addProduct} disabled={addingProduct}>
+                  {addingProduct ? 'Adding…' : 'Add Product'}
                 </button>
               </div>
             )}
 
-            {/* Products grid */}
-            <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(220px,1fr))', gap:12 }}>
+            {/* Products List */}
+            <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
               {products.map(p => (
-                <div key={p.id} style={{ background:'#fff', border:'1px solid #e8e8e8', borderRadius:12, overflow:'hidden' }}>
-                  <div style={{ height:140, background:'#f8f8f8', display:'flex', alignItems:'center', justifyContent:'center', position:'relative' }}>
-                    {p.image_url
-                      ? <img src={p.image_url} alt={p.name} style={{ width:'100%', height:'100%', objectFit:'contain' }} />
-                      : <span style={{ fontSize:64 }}>{p.emoji||'.'}</span>}
-                    {p.studio_only && <div style={{ position:'absolute', top:6, right:6, background:'#0a1f5d', color:'#fff', fontSize:8, fontWeight:700, padding:'2px 6px', borderRadius:3 }}>STUDIO</div>}
-                  </div>
+                <div key={p.id} style={{ background:'#fff', borderRadius:10, padding:'16px 20px', border:'1px solid #e8e8e8' }}>
                   {editProd===p.id ? (
-                    <div style={{ padding:'12px' }}>
-                      {['name','price','mrp','tag'].map(field=>(
-                        <input key={field} className="input-field" style={{ marginBottom:6, fontSize:12 }}
-                          placeholder={field} value={p[field]||''}
-                          onChange={e=>setProducts(ps=>ps.map(x=>x.id===p.id?{...x,[field]:e.target.value}:x))} />
-                      ))}
-                      <input className="input-field" style={{ marginBottom:6, fontSize:12 }}
-                        placeholder="Image URL" value={p.image_url||''}
-                        onChange={e=>setProducts(ps=>ps.map(x=>x.id===p.id?{...x,image_url:e.target.value}:x))} />
-                      <div style={{ display:'flex', alignItems:'center', gap:6, marginBottom:8 }}>
-                        <input type="checkbox" id={`so_${p.id}`} checked={!!p.studio_only}
-                          onChange={e=>setProducts(ps=>ps.map(x=>x.id===p.id?{...x,studio_only:e.target.checked}:x))} />
-                        <label htmlFor={`so_${p.id}`} style={{ fontSize:11, color:'#555', cursor:'pointer' }}>Studio Only</label>
-                      </div>
-                      <div style={{ display:'flex', gap:6 }}>
-                        <button className="btn-primary" style={{ flex:1, padding:'8px', fontSize:12 }} onClick={()=>saveProduct(p)}>Save</button>
-                        <button onClick={()=>setEditProd(null)} style={{ flex:1, padding:'8px', fontSize:12, background:'none', border:'1px solid #e0e0e0', borderRadius:4, cursor:'pointer' }}>Cancel</button>
-                      </div>
-                    </div>
+                    <ProductEditRow product={p} onSave={saveProduct} onCancel={()=>setEditProd(null)} />
                   ) : (
-                    <div style={{ padding:'10px 12px' }}>
-                      <div style={{ fontSize:13, fontWeight:700, marginBottom:1 }}>{p.name}</div>
-                      <div style={{ fontSize:11, color:'#888', marginBottom:6 }}>{p.category}</div>
-                      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-                        <span style={{ fontWeight:700, color:'#c8102e', fontSize:14 }}>₹{Number(p.price).toLocaleString()}</span>
-                        <div style={{ display:'flex', gap:6 }}>
-                          <button onClick={()=>setEditProd(p.id)} style={{ padding:'6px 12px', fontSize:11, borderRadius:4, border:'1px solid #e0e0e0', background:'none', cursor:'pointer', fontWeight:600 }}>Edit</button>
-                          <button onClick={()=>deleteProduct(p.id)} style={{ padding:'6px 12px', fontSize:11, borderRadius:4, border:'1px solid #fdd', color:'#c8102e', background:'none', cursor:'pointer', fontWeight:600 }}>✕</button>
+                    <div style={{ display:'flex', gap:16, alignItems:'center', flexWrap:'wrap' }}>
+                      <div style={{ width:60, height:60, borderRadius:8, overflow:'hidden', background:'#f8f8f8', border:'1px solid #e8e8e8', flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center' }}>
+                        {p.image_url
+                          ? <img src={p.image_url} alt={p.name} style={{ width:'100%', height:'100%', objectFit:'contain' }} />
+                          : <span style={{ fontSize:30 }}>{p.emoji}</span>}
+                      </div>
+                      <div style={{ flex:1 }}>
+                        <div style={{ fontSize:14, fontWeight:700, display:'flex', alignItems:'center', gap:8 }}>
+                          {p.name}
+                          {p.studio_only && <span style={{ fontSize:9, fontWeight:700, letterSpacing:'.1em', textTransform:'uppercase', background:'rgba(200,16,46,.1)', color:'#c8102e', border:'1px solid rgba(200,16,46,.25)', borderRadius:3, padding:'2px 7px' }}>🎨 Studio Only</span>}
                         </div>
+                        <div style={{ fontSize:12, color:'#888' }}>{p.category} · ₹{Number(p.price).toLocaleString()} (MRP ₹{Number(p.mrp).toLocaleString()})</div>
+                        <div style={{ fontSize:11, color:'#aaa' }}>⭐ {p.rating} · {p.reviews} reviews · Tag: {p.tag}</div>
+                      </div>
+                      <div style={{ display:'flex', gap:8 }}>
+                        <button onClick={()=>setEditProd(p.id)} style={{ padding:'8px 16px', fontSize:12, borderRadius:4, border:'1px solid #0a1f5d', color:'#0a1f5d', background:'none', cursor:'pointer', fontWeight:600 }}>Edit</button>
+                        <button onClick={()=>deleteProduct(p.id)} style={{ padding:'8px 12px', fontSize:12, borderRadius:4, border:'1px solid #fdd', color:'#c8102e', background:'none', cursor:'pointer', fontWeight:600 }}>✕</button>
                       </div>
                     </div>
                   )}
                 </div>
               ))}
             </div>
+
           </div>
         )}
 
-        {/* ══ SAMPLES TAB ══ */}
+        {/* SAMPLES TAB */}
+
+        {tab==='uploads' && (
+          <div>
+            <h2 style={{ fontSize:18, fontWeight:700, marginBottom:16 }}>Customer Design Uploads</h2>
+            {loading ? (
+              <div style={{ textAlign:'center', padding:40, color:'#888' }}>Loading…</div>
+            ) : (() => {
+              const parseDF = (df) => { if (!df || df==='catalog-order') return {}; try { const p=JSON.parse(df); return typeof p==='object'?p:{front:df} } catch { return {front:df} } }
+              const customOrders = orders.filter(o => o.design_file && o.design_file !== 'catalog-order')
+              const GD = {
+                'T-Shirt': 'https://res.cloudinary.com/dfhdyp4oq/image/upload/drynn/products/tshirt_white.png',
+                'Hoodie':  'https://res.cloudinary.com/dfhdyp4oq/image/upload/drynn/products/hoodie_navy.png',
+                'Polo':    'https://res.cloudinary.com/dfhdyp4oq/image/upload/drynn/products/polo_white.png',
+                'Joggers': 'https://res.cloudinary.com/dfhdyp4oq/image/upload/drynn/products/joggers_black.png',
+              }
+              if (customOrders.length === 0) return (
+                <div style={{ textAlign:'center', padding:60, color:'#888', background:'#fff', borderRadius:12, fontSize:13 }}>
+                  No design uploads yet.
+                </div>
+              )
+              return (
+                <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(220px,1fr))', gap:16 }}>
+                  {customOrders.map(o => {
+                    const gk = o.garment?.toLowerCase().includes('hoodie') ? 'Hoodie'
+                      : o.garment?.toLowerCase().includes('polo') ? 'Polo'
+                      : o.garment?.toLowerCase().includes('jogger') ? 'Joggers' : 'T-Shirt'
+                    const gi = GD[gk]
+                    const pd = parseDF(o.design_file)
+                    const sides = ['front','back','left','right']
+                      .map(s => ({ label:s.charAt(0).toUpperCase()+s.slice(1), url: pd[s]?.startsWith('http')?pd[s]:null }))
+                      .filter(s => s.url)
+                    return (
+                      <div key={o.id} style={{ background:'#fff', borderRadius:12, overflow:'hidden', border:'1px solid #e8e8e8', boxShadow:'0 2px 8px rgba(0,0,0,.05)' }}>
+                        <div style={{ position:'relative', background:'#f5f5f5', padding:8 }}>
+                          <div style={{ position:'relative', borderRadius:8, overflow:'hidden' }}>
+                            <img src={gi} alt={gk} style={{ width:'100%', display:'block' }} onError={e=>e.target.style.opacity='0.1'} />
+                            <img src={pd.front || Object.values(pd)[0] || ''} alt="design"
+                              style={{ position:'absolute', top:'44%', left:'50%', transform:'translate(-50%,-50%)', width:'38%', objectFit:'contain', pointerEvents:'none' }}
+                              onError={e=>e.target.style.display='none'} />
+                          </div>
+                          {sides.length > 1 && (
+                            <div style={{ display:'flex', gap:4, marginTop:6, flexWrap:'wrap' }}>
+                              {sides.map(s => (
+                                <a key={s.label} href={s.url} target="_blank" rel="noreferrer"
+                                  style={{ fontSize:9, fontWeight:700, padding:'3px 8px', borderRadius:20, background:'#0a1f5d', color:'#fff', textDecoration:'none' }}>
+                                  {s.label} ↗
+                                </a>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                        <div style={{ padding:'10px 12px' }}>
+                          <div style={{ fontSize:13, fontWeight:700, marginBottom:2 }}>{o.name}</div>
+                          <div style={{ fontSize:10, color:'#888', marginBottom:2 }}>{o.garment} · {o.size} · Qty {o.qty}</div>
+                          <div style={{ fontSize:10, color:'#aaa', marginBottom:8 }}>{new Date(o.placed_at||o.created_at).toLocaleDateString('en-IN')}</div>
+                          <a href={pd.front || Object.values(pd)[0] || ''} target="_blank" rel="noreferrer" style={{ fontSize:11, color:'#c8102e', fontWeight:700, textDecoration:'underline' }}>Open Full Design ↗</a>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )
+            })()}
+          </div>
+        )}
+
         {tab==='samples' && (
           <div>
-            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16 }}>
-              <h2 style={{ fontSize:18, fontWeight:700 }}>Sample Designs ({samples.length})</h2>
-              <button className="btn-secondary" style={{ padding:'7px 14px', fontSize:12 }} onClick={loadSamples}>↻ Refresh</button>
-            </div>
-            {/* Add sample form */}
-            <div style={{ background:'#fff', border:'1px solid #e8e8e8', borderRadius:12, padding:'20px', marginBottom:20 }}>
-              <p style={{ fontSize:12, fontWeight:700, textTransform:'uppercase', letterSpacing:'.1em', color:'#888', marginBottom:12 }}>Add New Sample</p>
-              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10, marginBottom:10 }}>
+            <h2 style={{ fontSize:18, fontWeight:700, marginBottom:16 }}>Sample Designs</h2>
+
+            {/* Upload new sample */}
+            <div style={{ background:'#fff', borderRadius:12, padding:'20px', border:'1px solid #e8e8e8', marginBottom:20 }}>
+              <div style={{ fontSize:14, fontWeight:700, marginBottom:14 }}>Add New Sample Design</div>
+              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12, marginBottom:12 }}>
                 <div>
-                  <label style={{ fontSize:11, color:'#888', fontWeight:700, display:'block', marginBottom:4 }}>Design Name *</label>
-                  <input className="input-field" style={{ fontSize:13 }} placeholder="e.g. Dragon Fire"
-                    value={sampleForm.name} onChange={e=>setSampleForm(f=>({...f,name:e.target.value}))} />
+                  <label style={{ fontSize:10, fontWeight:700, letterSpacing:'.1em', color:'#888', textTransform:'uppercase', display:'block', marginBottom:4 }}>Design Name *</label>
+                  <input className="input-field" placeholder="e.g. Cricket Team" value={sampleForm.name} onChange={e=>setSampleForm({...sampleForm,name:e.target.value})} style={{ padding:'8px 12px', fontSize:13 }} />
                 </div>
                 <div>
-                  <label style={{ fontSize:11, color:'#888', fontWeight:700, display:'block', marginBottom:4 }}>Category</label>
-                  <input className="input-field" style={{ fontSize:13 }} placeholder="e.g. Anime, Sports"
-                    value={sampleForm.category} onChange={e=>setSampleForm(f=>({...f,category:e.target.value}))} />
+                  <label style={{ fontSize:10, fontWeight:700, letterSpacing:'.1em', color:'#888', textTransform:'uppercase', display:'block', marginBottom:4 }}>Category</label>
+                  <input className="input-field" placeholder="e.g. College, Farewell, Sports" value={sampleForm.category} onChange={e=>setSampleForm({...sampleForm,category:e.target.value})} style={{ padding:'8px 12px', fontSize:13 }} />
                 </div>
               </div>
-              <div>
-                <label style={{ fontSize:11, color:'#888', fontWeight:700, display:'block', marginBottom:4 }}>Image</label>
-                <div style={{ display:'flex', gap:8, alignItems:'center', flexWrap:'wrap' }}>
-                  <input className="input-field" style={{ fontSize:12, flex:1, minWidth:180 }} placeholder="Paste URL or upload file"
-                    value={sampleForm.image_url} onChange={e=>setSampleForm(f=>({...f,image_url:e.target.value}))} />
-                  <label style={{ padding:'9px 14px', background:'#0a1f5d', color:'#fff', borderRadius:6, fontSize:12, fontWeight:700, cursor:'pointer', flexShrink:0 }}>
-                    📁 Upload
-                    <input type="file" accept="image/*" style={{ display:'none' }} onChange={e=>setSampleFile(e.target.files[0])} />
-                  </label>
+              {/* File upload */}
+              <div style={{ marginBottom:12 }}>
+                <label style={{ fontSize:10, fontWeight:700, letterSpacing:'.1em', color:'#888', textTransform:'uppercase', display:'block', marginBottom:4 }}>Upload Image</label>
+                <div onClick={()=>document.getElementById('sampleFileInput').click()}
+                  style={{ border:'2px dashed #d0d0d0', borderRadius:8, padding:'16px', cursor:'pointer', background:'#fafafa', textAlign:'center' }}>
+                  <input id="sampleFileInput" type="file" accept=".png,.jpg,.jpeg,.svg" style={{ display:'none' }} onChange={handleSampleFile} />
+                  {sampleFile
+                    ? <div>
+                        <img src={URL.createObjectURL(sampleFile)} alt="" style={{ maxHeight:80, maxWidth:'100%', borderRadius:4, marginBottom:6 }} />
+                        <p style={{ fontSize:11, color:'#00a86b', fontWeight:600 }}>✓ {sampleFile.name}</p>
+                      </div>
+                    : <p style={{ fontSize:12, color:'#888' }}>Click to upload design image (PNG, JPG, SVG)</p>}
                 </div>
-                {sampleFile && (
-                  <div style={{ marginTop:8, display:'flex', alignItems:'center', gap:8 }}>
-                    <img src={URL.createObjectURL(sampleFile)} alt="" style={{ maxHeight:60, borderRadius:4 }} />
-                    <div>
-                      <div style={{ fontSize:11, color:'#00a86b', fontWeight:700 }}>✓ {sampleFile.name}</div>
-                      {samplePct > 0 && samplePct < 100 && (
-                        <div style={{ height:3, width:100, background:'#e0e0e0', borderRadius:2, marginTop:4 }}>
-                          <div style={{ height:'100%', width:`${samplePct}%`, background:'#c8102e', borderRadius:2 }} />
-                        </div>
-                      )}
-                    </div>
+              </div>
+              {sampleUploadPct > 0 && sampleUploadPct < 100 && (
+                <div style={{ marginBottom:12 }}>
+                  <div style={{ display:'flex', justifyContent:'space-between', fontSize:11, color:'#555', marginBottom:4 }}>
+                    <span>Uploading…</span><span>{sampleUploadPct}%</span>
                   </div>
-                )}
-              </div>
-              <button className="btn-primary" style={{ marginTop:14, padding:'10px 24px', fontSize:13, opacity:sampleSaving?.6:1 }}
-                onClick={saveSample} disabled={sampleSaving}>
-                {sampleSaving ? 'Saving…' : '+ Add Sample'}
+                  <div style={{ height:4, background:'#f0f0f0', borderRadius:2 }}>
+                    <div style={{ height:'100%', width:`${sampleUploadPct}%`, background:'#c8102e', borderRadius:2, transition:'width .3s' }} />
+                  </div>
+                </div>
+              )}
+              <button className="btn-primary" style={{ padding:'10px 24px', fontSize:13, opacity:sampleSaving?.6:1 }} onClick={saveSample} disabled={sampleSaving}>
+                {sampleSaving ? 'Saving…' : 'Add Sample Design'}
               </button>
             </div>
-            {/* Samples grid */}
-            {samplesLoading ? <div style={{ textAlign:'center', padding:32, color:'#888' }}>Loading…</div>
-            : samples.length===0 ? <div style={{ textAlign:'center', padding:32, color:'#aaa' }}>No samples yet.</div>
-            : (
-              <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(160px,1fr))', gap:10 }}>
+
+            {/* Existing samples grid */}
+            {samplesLoading ? (
+              <div style={{ textAlign:'center', padding:32, color:'#888' }}>Loading…</div>
+            ) : samples.length === 0 ? (
+              <div style={{ textAlign:'center', padding:40, background:'#fff', borderRadius:12, color:'#888', fontSize:13 }}>No sample designs yet. Add your first one above!</div>
+            ) : (
+              <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(160px,1fr))', gap:12 }}>
                 {samples.map(s => (
-                  <div key={s.id} style={{ background:'#fff', border:'1px solid #e8e8e8', borderRadius:10, overflow:'hidden' }}>
+                  <div key={s.id} style={{ background:'#fff', borderRadius:10, overflow:'hidden', border:'1px solid #e8e8e8' }}>
                     <img src={s.image_url} alt={s.name} style={{ width:'100%', aspectRatio:'1', objectFit:'cover', display:'block' }} />
-                    <div style={{ padding:'8px 10px' }}>
-                      <div style={{ fontSize:12, fontWeight:700, marginBottom:2 }}>{s.name}</div>
-                      {s.category && <div style={{ fontSize:10, color:'#888', marginBottom:6 }}>{s.category}</div>}
-                      <button onClick={()=>deleteSample(s.id)}
-                        style={{ width:'100%', padding:'6px', fontSize:11, borderRadius:4, border:'1px solid #fdd', color:'#c8102e', background:'none', cursor:'pointer', fontWeight:600 }}>
-                        Delete
-                      </button>
+                    <div style={{ padding:'10px 12px' }}>
+                      <div style={{ fontSize:13, fontWeight:700, marginBottom:2 }}>{s.name}</div>
+                      {s.category && <div style={{ fontSize:11, color:'#888', marginBottom:8 }}>{s.category}</div>}
+                      <button onClick={()=>deleteSample(s.id)} style={{ fontSize:11, color:'#c8102e', background:'none', border:'1px solid #fdd', borderRadius:4, padding:'4px 10px', cursor:'pointer', width:'100%' }}>Delete</button>
                     </div>
                   </div>
                 ))}
@@ -4365,38 +4479,100 @@ function AdminPanel({ onBack }) {
           </div>
         )}
 
-        {/* ══ UPLOADS TAB ══ */}
-        {tab==='uploads' && (
+        {/* GROUP ORDERS TAB */}
+        {tab==='grouporders' && (
           <div>
-            <h2 style={{ fontSize:18, fontWeight:700, marginBottom:16 }}>📎 Design Uploads</h2>
-            {loading ? <div style={{ textAlign:'center', padding:40, color:'#888' }}>Loading…</div>
-            : (
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16 }}>
+              <h2 style={{ fontSize:18, fontWeight:700 }}>👥 Group Orders</h2>
+              <button className="btn-secondary" style={{ padding:'8px 16px', fontSize:12 }} onClick={loadGroupOrders}>↻ Refresh</button>
+            </div>
+            {groupOrdersLoading ? (
+              <div style={{ textAlign:'center', padding:40, color:'#888' }}>Loading…</div>
+            ) : groupOrders.length === 0 ? (
+              <div style={{ textAlign:'center', padding:60, background:'#fff', borderRadius:12, color:'#888', fontSize:13 }}>No group orders yet.</div>
+            ) : (
               <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
-                {orders.filter(o => {
-                  if (!o.design_file || o.design_file==='catalog-order' || o.design_file==='{}') return false
-                  try { const p=JSON.parse(o.design_file); return Object.values(p).some(v=>v&&v.startsWith('https://')) } catch { return o.design_file.startsWith('https://') }
-                }).map(o => {
-                  let designs = {}
-                  try { const p=JSON.parse(o.design_file); Object.entries(p).forEach(([k,v])=>{ if(v&&v.startsWith('https://')) designs[k]=v }) } catch { if(o.design_file.startsWith('https://')) designs.front=o.design_file }
+                {groupOrders.map(g => {
+                  const members = groupMembers[g.group_code] || []
+                  const isOpen = expandedGroup === g.group_code
                   return (
-                    <div key={o.id} style={{ background:'#fff', border:'1px solid #e8e8e8', borderRadius:10, padding:'14px 16px', display:'flex', gap:12, flexWrap:'wrap', alignItems:'center' }}>
-                      <div style={{ flex:1, minWidth:140 }}>
-                        <div style={{ fontWeight:700, fontSize:13 }}>{o.name}</div>
-                        <div style={{ fontSize:11, color:'#888' }}>{o.garment} · {new Date(o.placed_at||o.created_at).toLocaleDateString('en-IN')}</div>
+                    <div key={g.id} style={{ background:'#fff', borderRadius:10, border:'1px solid #e8e8e8', overflow:'hidden', boxShadow:'0 1px 4px rgba(0,0,0,.04)' }}>
+                      {/* Group header row */}
+                      <div style={{ padding:'16px 20px', display:'flex', gap:14, alignItems:'center', flexWrap:'wrap' }}>
+                        <div style={{ flex:1, minWidth:180 }}>
+                          <div style={{ fontSize:14, fontWeight:700, marginBottom:3 }}>{g.title}</div>
+                          <div style={{ fontSize:11, color:'#888' }}>{g.garment} · Organizer: {g.organizer_name} · {g.organizer_phone}</div>
+                          <div style={{ fontSize:10, color:'#aaa', marginTop:2 }}>
+                            Code: <strong style={{ color:'#0a1f5d', letterSpacing:'.08em' }}>{g.group_code}</strong>
+                            {g.deadline && ` · Deadline: ${new Date(g.deadline).toLocaleDateString('en-IN')}`}
+                            {g.created_at && ` · Created: ${new Date(g.created_at).toLocaleDateString('en-IN')}`}
+                          </div>
+                        </div>
+                        <div style={{ display:'flex', alignItems:'center', gap:10, flexWrap:'wrap' }}>
+                          <span style={{ fontSize:11, fontWeight:700, padding:'4px 10px', borderRadius:50,
+                            background: g.status==='open'?'#e6f9f0':'#f4f4f4',
+                            color: g.status==='open'?'#00a86b':'#888' }}>
+                            {g.status==='open'?'● Open':'○ Closed'}
+                          </span>
+                          {/* WhatsApp organizer */}
+                          {g.organizer_phone && (
+                            <a href={`https://wa.me/91${g.organizer_phone.replace(/\D/g,'').replace(/^91/,'')}`}
+                              target="_blank" rel="noopener noreferrer"
+                              style={{ padding:'6px 12px', fontSize:11, borderRadius:4, border:'1px solid #00a86b', color:'#00a86b', background:'none', fontWeight:700, textDecoration:'none', display:'flex', alignItems:'center', gap:4 }}>
+                              💬 WhatsApp
+                            </a>
+                          )}
+                          <button onClick={()=>loadGroupMembers(g.group_code)}
+                            style={{ padding:'6px 14px', fontSize:11, borderRadius:4, border:'1px solid #0a1f5d', color:'#0a1f5d', background:'none', cursor:'pointer', fontWeight:600 }}>
+                            {isOpen ? '▲ Hide Members' : `▼ View Members${members.length?` (${members.length})`:''}`}
+                          </button>
+                          <button onClick={()=>deleteGroupOrder(g.id, g.group_code)}
+                            style={{ padding:'6px 12px', fontSize:11, borderRadius:4, border:'1px solid #fdd', color:'#c8102e', background:'none', cursor:'pointer', fontWeight:600 }}>Delete</button>
+                        </div>
                       </div>
-                      <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
-                        {Object.entries(designs).map(([side,url])=>(
-                          <a key={side} href={url} target="_blank" rel="noreferrer">
-                            <img src={url} alt={side} style={{ width:60, height:60, objectFit:'contain', borderRadius:6, border:'1px solid #e0e0e0', background:'#f8f8f8' }}
-                              onError={e=>e.target.style.display='none'} />
-                          </a>
-                        ))}
-                        {o.print_sheet_url && (
-                          <a href={o.print_sheet_url} target="_blank" rel="noreferrer">
-                            <div style={{ width:60, height:60, borderRadius:6, border:'1.5px solid rgba(200,16,46,.3)', background:'rgba(200,16,46,.05)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:24 }}>🖨</div>
-                          </a>
-                        )}
-                      </div>
+
+                      {/* Members list */}
+                      {isOpen && (
+                        <div style={{ borderTop:'1px solid #f0f0f0', background:'#fafafa', padding:'14px 20px' }}>
+                          {members.length === 0 ? (
+                            <p style={{ fontSize:13, color:'#aaa', textAlign:'center', padding:'12px 0' }}>No members have joined yet.</p>
+                          ) : (
+                            <div>
+                              <div style={{ fontSize:11, fontWeight:700, color:'#888', letterSpacing:'.1em', textTransform:'uppercase', marginBottom:10 }}>
+                                {members.length} Member{members.length!==1?'s':''}
+                              </div>
+                              <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+                                {members.map((m,i) => (
+                                  <div key={m.id||i} style={{ display:'flex', gap:12, alignItems:'center', background:'#fff', borderRadius:8, padding:'10px 14px', border:'1px solid #eee', flexWrap:'wrap' }}>
+                                    <div style={{ width:28, height:28, borderRadius:'50%', background:'#0a1f5d', color:'#fff', display:'flex', alignItems:'center', justifyContent:'center', fontSize:12, fontWeight:700, flexShrink:0 }}>
+                                      {i+1}
+                                    </div>
+                                    <div style={{ flex:1, minWidth:140 }}>
+                                      <div style={{ fontSize:13, fontWeight:700 }}>{m.member_name}</div>
+                                      <div style={{ fontSize:11, color:'#888' }}>{m.member_phone} · Size: <strong>{m.size}</strong></div>
+                                      {m.address && <div style={{ fontSize:10, color:'#aaa', marginTop:1 }}>{m.address}</div>}
+                                    </div>
+                                    <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+                                      <span style={{ fontSize:11, fontWeight:700, padding:'3px 9px', borderRadius:50,
+                                        background: m.payment_status==='paid'?'#e6f9f0':'#fff3f3',
+                                        color: m.payment_status==='paid'?'#00a86b':'#c8102e' }}>
+                                        {m.payment_status==='paid'?'✓ Paid':'✗ Unpaid'}
+                                      </span>
+                                      {m.member_phone && (
+                                        <a href={`https://wa.me/91${m.member_phone.replace(/\D/g,'').replace(/^91/,'')}`}
+                                          target="_blank" rel="noopener noreferrer"
+                                          style={{ fontSize:11, padding:'3px 9px', borderRadius:4, border:'1px solid #00a86b', color:'#00a86b', fontWeight:700, textDecoration:'none' }}>
+                                          💬
+                                        </a>
+                                      )}
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
                   )
                 })}
@@ -4405,145 +4581,198 @@ function AdminPanel({ onBack }) {
           </div>
         )}
 
-        {/* ══ GROUP ORDERS TAB ══ */}
-        {tab==='grouporders' && (
-          <div>
-            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16 }}>
-              <h2 style={{ fontSize:18, fontWeight:700 }}>👥 Group Orders ({groupOrders.length})</h2>
-              <button className="btn-secondary" style={{ padding:'7px 14px', fontSize:12 }} onClick={loadGroupOrders}>↻ Refresh</button>
-            </div>
-            {groupOrdersLoading ? <div style={{ textAlign:'center', padding:40, color:'#888' }}>Loading…</div>
-            : groupOrders.length===0 ? <div style={{ textAlign:'center', padding:40, color:'#aaa' }}>No group orders yet.</div>
-            : groupOrders.map(g => (
-              <div key={g.id} style={{ background:'#fff', border:'1px solid #e8e8e8', borderRadius:12, overflow:'hidden', marginBottom:12 }}>
-                <div style={{ padding:'14px 16px', display:'flex', justifyContent:'space-between', alignItems:'flex-start', flexWrap:'wrap', gap:8 }}>
-                  <div>
-                    <div style={{ fontWeight:700, fontSize:15, marginBottom:3 }}>{g.title}</div>
-                    <div style={{ fontSize:12, color:'#555' }}>Code: <strong>{g.group_code}</strong> · {g.garment_category||'—'}</div>
-                    <div style={{ fontSize:11, color:'#888' }}>Organiser: {g.organizer} · {g.phone}</div>
-                    <div style={{ fontSize:11, color:'#888' }}>Target: {g.target_qty} pcs · Deadline: {g.deadline||'—'}</div>
-                  </div>
-                  <div style={{ display:'flex', gap:6 }}>
-                    <button onClick={()=>loadGroupMembers(g.group_code)}
-                      style={{ padding:'7px 14px', fontSize:11, borderRadius:6, border:'1px solid #0a1f5d', color:'#0a1f5d', background:'none', cursor:'pointer', fontWeight:700 }}>
-                      {expandedGroup===g.group_code ? '▲ Hide' : '▼ Members'}
-                    </button>
-                    <button onClick={()=>deleteGroupOrder(g.id, g.group_code)}
-                      style={{ padding:'7px 14px', fontSize:11, borderRadius:6, border:'1px solid #fdd', color:'#c8102e', background:'none', cursor:'pointer', fontWeight:700 }}>
-                      Delete
-                    </button>
-                  </div>
-                </div>
-                {expandedGroup===g.group_code && (
-                  <div style={{ borderTop:'1px solid #f0f0f0', padding:'12px 16px' }}>
-                    {!groupMembers[g.group_code] ? <div style={{ color:'#aaa', fontSize:12 }}>Loading members…</div>
-                    : groupMembers[g.group_code].length===0 ? <div style={{ color:'#aaa', fontSize:12 }}>No members joined yet.</div>
-                    : (
-                      <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
-                        {groupMembers[g.group_code].map((m,i) => (
-                          <div key={m.id} style={{ display:'flex', gap:10, fontSize:12, padding:'6px 0', borderBottom:i<groupMembers[g.group_code].length-1?'1px solid #f8f8f8':'none' }}>
-                            <span style={{ fontWeight:700, minWidth:24 }}>#{i+1}</span>
-                            <span style={{ flex:1 }}>{m.name}</span>
-                            <span style={{ color:'#888' }}>{m.phone}</span>
-                            <span style={{ color:'#0a1f5d', fontWeight:600 }}>{m.size}</span>
-                            <span style={{ color:'#c8102e', fontWeight:700 }}>×{m.qty}</span>
-                          </div>
-                        ))}
-                        <div style={{ fontSize:12, fontWeight:700, color:'#0a1f5d', paddingTop:6 }}>
-                          Total: {groupMembers[g.group_code].reduce((a,m)=>a+Number(m.qty||1),0)} pcs
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* ══ ANALYTICS TAB ══ */}
+        {/* ANALYTICS TAB */}
         {tab==='analytics' && (() => {
-          const totalOrders   = orders.length
-          const paid          = orders.filter(o=>o.payment_status==='Paid').length
-          const unpaid        = totalOrders - paid
-          const revenue       = orders.filter(o=>o.payment_status==='Paid').reduce((a,o)=>a+Number(o.total||0),0)
-          const customOrders  = orders.filter(o=>o.order_type==='custom').length
-          const catalogOrders = totalOrders - customOrders
-          const statusCounts  = {}
-          orders.forEach(o=>{ statusCounts[o.status||'Received']=(statusCounts[o.status||'Received']||0)+1 })
+          const totalOrders    = orders.length
+          const paid           = orders.filter(o=>o.payment_status==='Paid').length
+          const unpaid         = totalOrders - paid
+          const revenue        = orders.filter(o=>o.payment_status==='Paid').reduce((s,o)=>s+Number(o.total||0),0)
+          const pending        = orders.filter(o=>o.payment_status!=='Paid').reduce((s,o)=>s+Number(o.total||0),0)
+          const delivered      = orders.filter(o=>o.status==='Delivered').length
+          const statusCounts   = ORDER_STATUSES.map(s=>({ s, count: orders.filter(o=>(o.status||'Received')===s).length }))
+
+          const dayMap = {}
+          for (let i=6;i>=0;i--) {
+            const d = new Date(); d.setDate(d.getDate()-i)
+            dayMap[d.toLocaleDateString('en-IN',{day:'2-digit',month:'short'})] = 0
+          }
+          orders.forEach(o => {
+            const d = new Date(o.placed_at||o.created_at)
+            const key = d.toLocaleDateString('en-IN',{day:'2-digit',month:'short'})
+            if (key in dayMap) dayMap[key]++
+          })
+          const days = Object.entries(dayMap)
+          const maxDay = Math.max(...days.map(([,v])=>v), 1)
+
           return (
             <div>
-              <h2 style={{ fontSize:18, fontWeight:700, marginBottom:16 }}>📊 Analytics</h2>
-              <div style={{ display:'grid', gridTemplateColumns:'repeat(2,1fr)', gap:12, marginBottom:20 }}>
+              <h2 style={{ fontSize:18, fontWeight:700, marginBottom:20 }}>📊 Analytics & Revenue</h2>
+
+              <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(160px,1fr))', gap:12, marginBottom:24 }}>
                 {[
-                  { label:'Total Orders',   value:totalOrders,                         color:'#0a1f5d' },
-                  { label:'Revenue (Paid)', value:'₹'+revenue.toLocaleString('en-IN'), color:'#00a86b' },
-                  { label:'Paid',           value:paid,                                color:'#00a86b' },
-                  { label:'Unpaid',         value:unpaid,                              color:'#f5a623' },
-                  { label:'Custom Orders',  value:customOrders,                        color:'#c8102e' },
-                  { label:'Catalog Orders', value:catalogOrders,                       color:'#0a7abf' },
-                ].map(s=>(
-                  <div key={s.label} style={{ background:'#fff', border:'1px solid #e8e8e8', borderRadius:10, padding:'16px', textAlign:'center' }}>
-                    <div style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:32, color:s.color, lineHeight:1 }}>{s.value}</div>
-                    <div style={{ fontSize:10, color:'#aaa', fontWeight:700, textTransform:'uppercase', letterSpacing:'.08em', marginTop:4 }}>{s.label}</div>
+                  { label:'Total Orders',      value:totalOrders,                               color:'#0a1f5d', bg:'#f0f3ff' },
+                  { label:'Revenue Collected', value:`₹${revenue.toLocaleString('en-IN')}`,     color:'#00a86b', bg:'#e6f9f0' },
+                  { label:'Pending Payment',   value:`₹${pending.toLocaleString('en-IN')}`,     color:'#c8102e', bg:'#fff3f3' },
+                  { label:'Paid Orders',       value:paid,                                      color:'#00a86b', bg:'#e6f9f0' },
+                  { label:'Unpaid Orders',     value:unpaid,                                    color:'#c8102e', bg:'#fff3f3' },
+                  { label:'Delivered',         value:delivered,                                 color:'#9b59b6', bg:'#f5eeff' },
+                ].map(c => (
+                  <div key={c.label} style={{ background:c.bg, borderRadius:10, padding:'16px 18px' }}>
+                    <div style={{ fontSize:10, fontWeight:700, letterSpacing:'.1em', textTransform:'uppercase', color:'#888', marginBottom:6 }}>{c.label}</div>
+                    <div style={{ fontSize:22, fontWeight:800, color:c.color }}>{c.value}</div>
                   </div>
                 ))}
               </div>
-              <div style={{ background:'#fff', border:'1px solid #e8e8e8', borderRadius:10, padding:'16px' }}>
-                <p style={{ fontSize:12, fontWeight:700, textTransform:'uppercase', letterSpacing:'.1em', color:'#888', marginBottom:12 }}>Order Status Breakdown</p>
-                {Object.entries(statusCounts).map(([s,n])=>(
-                  <div key={s} style={{ display:'flex', alignItems:'center', gap:10, marginBottom:8 }}>
-                    <span style={{ fontSize:12, fontWeight:700, minWidth:90, color:STATUS_COLORS[s]||'#888' }}>{s}</span>
-                    <div style={{ flex:1, height:10, background:'#f0f0f0', borderRadius:5 }}>
-                      <div style={{ height:'100%', width:`${(n/Math.max(totalOrders,1))*100}%`, background:STATUS_COLORS[s]||'#888', borderRadius:5 }} />
+
+              <div style={{ background:'#fff', borderRadius:12, padding:'20px', marginBottom:16, border:'1px solid #e8e8e8' }}>
+                <div style={{ fontSize:13, fontWeight:700, marginBottom:16 }}>Orders by Status</div>
+                <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
+                  {statusCounts.map(({s,count}) => (
+                    <div key={s} style={{ display:'flex', alignItems:'center', gap:12 }}>
+                      <div style={{ width:80, fontSize:12, fontWeight:600, color:STATUS_COLORS[s] }}>{s}</div>
+                      <div style={{ flex:1, background:'#f4f4f4', borderRadius:4, height:18, overflow:'hidden' }}>
+                        <div style={{ height:'100%', width:`${totalOrders?(count/totalOrders)*100:0}%`, background:STATUS_COLORS[s], borderRadius:4, transition:'width .4s' }} />
+                      </div>
+                      <div style={{ width:28, fontSize:12, fontWeight:700, textAlign:'right' }}>{count}</div>
                     </div>
-                    <span style={{ fontSize:12, fontWeight:700, minWidth:24, textAlign:'right' }}>{n}</span>
-                  </div>
-                ))}
+                  ))}
+                </div>
+              </div>
+
+              <div style={{ background:'#fff', borderRadius:12, padding:'20px', border:'1px solid #e8e8e8' }}>
+                <div style={{ fontSize:13, fontWeight:700, marginBottom:16 }}>Orders — Last 7 Days</div>
+                <div style={{ display:'flex', alignItems:'flex-end', gap:8, height:100 }}>
+                  {days.map(([day, count]) => (
+                    <div key={day} style={{ flex:1, display:'flex', flexDirection:'column', alignItems:'center', gap:4 }}>
+                      <div style={{ fontSize:11, fontWeight:700, color:'#0a1f5d' }}>{count||''}</div>
+                      <div style={{ width:'100%', background:'#c8102e', borderRadius:'4px 4px 0 0', height:`${(count/maxDay)*72}px`, minHeight:count?4:0, transition:'height .4s' }} />
+                      <div style={{ fontSize:9, color:'#aaa', textAlign:'center', lineHeight:1.2 }}>{day}</div>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
           )
         })()}
 
-        {/* ══ VISITORS TAB ══ */}
+        {/* VISITORS TAB */}
         {tab==='visitors' && (() => {
-          const filtered = visitors.filter(v =>
-            !visitorSearch || (v.user_email||'').toLowerCase().includes(visitorSearch.toLowerCase()) || (v.user_name||'').toLowerCase().includes(visitorSearch.toLowerCase())
-          )
-          const deleteVisitor = async (email) => {
-            if (!window.confirm(`Delete all session history for ${email}?`)) return
-            const { error, count } = await supabase.from('drynn_user_sessions').delete({ count:'exact' }).eq('user_email', email)
-            if (error) { alert('Delete failed: ' + error.message + ' · ' + error.code); return }
-            setVisitors(prev => prev.filter(v => v.user_email !== email))
-            showToast(`Deleted ${count??''} session(s)`)
+          const fmtDur = (sec) => {
+            if (!sec) return '—'
+            const m = Math.floor(sec / 60), s = sec % 60
+            return m > 0 ? `${m}m ${s}s` : `${s}s`
           }
+          const fmtTime = (iso) => iso ? new Date(iso).toLocaleString('en-IN', { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' }) : '—'
+
+          // Aggregate by email
+          const byEmail = {}
+          visitors.forEach(v => {
+            if (!byEmail[v.user_email]) byEmail[v.user_email] = { email: v.user_email, name: v.user_name, visits: 0, totalSec: 0, allPages: new Set(), lastSeen: null, device: v.device_info, sessions: [] }
+            const e = byEmail[v.user_email]
+            e.visits++
+            e.totalSec += (v.duration_sec || 0)
+            ;(v.pages_visited || []).forEach(p => e.allPages.add(p))
+            if (!e.lastSeen || v.started_at > e.lastSeen) e.lastSeen = v.started_at
+            e.sessions.push(v)
+          })
+
+          const rows = Object.values(byEmail)
+            .filter(r => !visitorSearch || r.email.toLowerCase().includes(visitorSearch.toLowerCase()) || r.name?.toLowerCase().includes(visitorSearch.toLowerCase()))
+            .sort((a,b) => (b.lastSeen||'') > (a.lastSeen||'') ? 1 : -1)
+
+          const deleteVisitor = async (email) => {
+            if (!window.confirm(`Delete all session history for ${email}?\nThis cannot be undone.`)) return
+            const { error: delErr } = await supabase.from('drynn_user_sessions').delete().eq('user_email', email)
+            if (delErr) { alert('Delete failed: ' + delErr.message); return }
+            // Also remove from local state immediately
+            setVisitors(prev => prev.filter(v => v.user_email !== email))
+            showToast('Visitor history deleted')
+          }
+
           return (
             <div>
-              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:12 }}>
-                <h2 style={{ fontSize:18, fontWeight:700 }}>👤 Visitors ({visitors.length})</h2>
-                <button className="btn-secondary" style={{ padding:'7px 14px', fontSize:12 }} onClick={loadVisitors}>↻ Refresh</button>
+              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16, flexWrap:'wrap', gap:10 }}>
+                <h2 style={{ fontSize:18, fontWeight:700 }}>👤 Visitor Monitoring</h2>
+                <div style={{ display:'flex', gap:8, alignItems:'center' }}>
+                  <input value={visitorSearch} onChange={e=>setVisitorSearch(e.target.value)} placeholder="Search by name or email…"
+                    style={{ border:'1.5px solid #e0e0e0', borderRadius:6, padding:'7px 12px', fontSize:12, outline:'none', width:220 }} />
+                  <button className="btn-secondary" style={{ padding:'7px 14px', fontSize:12 }} onClick={loadVisitors}>↻ Refresh</button>
+                </div>
               </div>
-              <input className="input-field" style={{ marginBottom:14, fontSize:13 }} placeholder="Search by email or name…"
-                value={visitorSearch} onChange={e=>setVisitorSearch(e.target.value)} />
-              {visitorsLoading ? <div style={{ textAlign:'center', padding:40, color:'#888' }}>Loading…</div>
-              : filtered.length===0 ? <div style={{ textAlign:'center', padding:40, color:'#aaa' }}>No visitors found.</div>
-              : (
-                <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
-                  {filtered.map((v,i) => (
-                    <div key={i} style={{ background:'#fff', border:'1px solid #e8e8e8', borderRadius:8, padding:'12px 14px', display:'flex', justifyContent:'space-between', alignItems:'center', flexWrap:'wrap', gap:8 }}>
-                      <div>
-                        <div style={{ fontWeight:700, fontSize:13 }}>{v.user_name||v.user_email||'Anonymous'}</div>
-                        <div style={{ fontSize:11, color:'#888' }}>
-                          {v.user_email && <span>{v.user_email} · </span>}
-                          {v.started_at && <span>{new Date(v.started_at).toLocaleString('en-IN')}</span>}
+
+              {/* Summary cards */}
+              <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(150px,1fr))', gap:12, marginBottom:20 }}>
+                {[
+                  { label:'Total Sessions',  value: visitors.length,                                          color:'#0a1f5d', bg:'#f0f3ff' },
+                  { label:'Unique Users',    value: Object.keys(byEmail).length,                              color:'#00a86b', bg:'#e6f9f0' },
+                  { label:'Avg Time',        value: fmtDur(Math.round(visitors.reduce((a,v)=>a+(v.duration_sec||0),0) / (visitors.length||1))), color:'#c8102e', bg:'#fff3f3' },
+                  { label:'Today\'s Visits', value: visitors.filter(v=>v.started_at?.startsWith(new Date().toISOString().slice(0,10))).length, color:'#9b59b6', bg:'#f5eeff' },
+                ].map(c=>(
+                  <div key={c.label} style={{ background:c.bg, borderRadius:10, padding:'14px 16px' }}>
+                    <div style={{ fontSize:9, fontWeight:700, letterSpacing:'.1em', textTransform:'uppercase', color:'#888', marginBottom:6 }}>{c.label}</div>
+                    <div style={{ fontSize:20, fontWeight:800, color:c.color }}>{c.value}</div>
+                  </div>
+                ))}
+              </div>
+
+              {visitorsLoading ? (
+                <div style={{ textAlign:'center', padding:40, color:'#888' }}>Loading visitors…</div>
+              ) : rows.length === 0 ? (
+                <div style={{ textAlign:'center', padding:40, color:'#aaa', fontSize:13 }}>No visitor data yet. Data appears once logged-in users browse the site.</div>
+              ) : (
+                <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
+                  {rows.map(r => (
+                    <div key={r.email} style={{ background:'#fff', border:'1px solid #e8e8e8', borderRadius:12, padding:'16px 20px' }}>
+                      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', flexWrap:'wrap', gap:8 }}>
+                        <div>
+                          <div style={{ fontSize:14, fontWeight:700, color:'#0a0a0a' }}>{r.name || '—'}</div>
+                          <div style={{ fontSize:11, color:'#888', marginTop:2 }}>{r.email}</div>
                         </div>
-                        {v.page_views && <div style={{ fontSize:10, color:'#bbb' }}>Pages: {v.page_views}</div>}
+                        <div style={{ display:'flex', gap:8, flexWrap:'wrap', alignItems:'center' }}>
+                          <span style={{ background:'#f0f3ff', color:'#0a1f5d', fontSize:11, fontWeight:700, padding:'4px 10px', borderRadius:20 }}>🔁 {r.visits} visit{r.visits!==1?'s':''}</span>
+                          <span style={{ background:'#e6f9f0', color:'#00a86b', fontSize:11, fontWeight:700, padding:'4px 10px', borderRadius:20 }}>⏱ {fmtDur(r.totalSec)} total</span>
+                          <span style={{ background:'#fff3f3', color:'#c8102e', fontSize:11, fontWeight:700, padding:'4px 10px', borderRadius:20 }}>🕐 Last: {fmtTime(r.lastSeen)}</span>
+                          <button onClick={()=>deleteVisitor(r.email)}
+                            style={{ padding:'4px 10px', fontSize:11, fontWeight:700, borderRadius:4, border:'1px solid #fdd', color:'#c8102e', background:'none', cursor:'pointer' }}>
+                            🗑 Delete
+                          </button>
+                        </div>
                       </div>
-                      {v.user_email && (
-                        <button onClick={()=>deleteVisitor(v.user_email)}
-                          style={{ padding:'5px 12px', fontSize:11, borderRadius:4, border:'1px solid #fdd', color:'#c8102e', background:'none', cursor:'pointer', fontWeight:600, flexShrink:0 }}>
-                          Delete
-                        </button>
+                      <div style={{ marginTop:12, display:'flex', gap:20, flexWrap:'wrap' }}>
+                        <div>
+                          <div style={{ fontSize:10, fontWeight:700, letterSpacing:'.1em', textTransform:'uppercase', color:'#aaa', marginBottom:4 }}>Pages Visited</div>
+                          <div style={{ display:'flex', gap:4, flexWrap:'wrap' }}>
+                            {[...r.allPages].map(p=>(
+                              <span key={p} style={{ background:'#f4f4f4', color:'#555', fontSize:10, fontWeight:600, padding:'3px 8px', borderRadius:4, textTransform:'capitalize' }}>{p}</span>
+                            ))}
+                          </div>
+                        </div>
+                        {r.device && (
+                          <div>
+                            <div style={{ fontSize:10, fontWeight:700, letterSpacing:'.1em', textTransform:'uppercase', color:'#aaa', marginBottom:4 }}>Device</div>
+                            <div style={{ fontSize:11, color:'#555' }}>
+                              {r.device.mobile ? '📱 Mobile' : '💻 Desktop'} · {r.device.screen} · {r.device.language}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                      {/* Per-session breakdown */}
+                      {r.sessions.length > 1 && (
+                        <div style={{ marginTop:12, borderTop:'1px solid #f0f0f0', paddingTop:10 }}>
+                          <div style={{ fontSize:10, fontWeight:700, letterSpacing:'.1em', textTransform:'uppercase', color:'#aaa', marginBottom:6 }}>Session History</div>
+                          <div style={{ display:'flex', flexDirection:'column', gap:4 }}>
+                            {r.sessions.slice(0,5).map(s=>(
+                              <div key={s.id} style={{ display:'flex', gap:12, fontSize:11, color:'#888', alignItems:'center' }}>
+                                <span style={{ color:'#555', fontWeight:600 }}>{fmtTime(s.started_at)}</span>
+                                <span>·</span>
+                                <span>{fmtDur(s.duration_sec)}</span>
+                                <span>·</span>
+                                <span>{(s.pages_visited||[]).join(', ')}</span>
+                              </div>
+                            ))}
+                            {r.sessions.length > 5 && <div style={{ fontSize:11, color:'#aaa' }}>+{r.sessions.length-5} more sessions</div>}
+                          </div>
+                        </div>
                       )}
                     </div>
                   ))}
@@ -4553,229 +4782,136 @@ function AdminPanel({ onBack }) {
           )
         })()}
 
-        {/* ══ USERS TAB ══ */}
+
+        {/* ── USERS TAB ── */}
         {tab==='users' && (
           <div>
-            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:8 }}>
-              <div>
-                <h2 style={{ fontSize:18, fontWeight:700, marginBottom:2 }}>🧑 All Users</h2>
-                <p style={{ fontSize:12, color:'#888' }}>{allUsers.length} users · includes visitors + customers</p>
-              </div>
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16 }}>
+              <h2 style={{ fontSize:18, fontWeight:700 }}>🧑 All Users & Uploads</h2>
               <button className="btn-secondary" style={{ padding:'7px 14px', fontSize:12 }} onClick={loadAllUsers}>↻ Refresh</button>
             </div>
-            {!usersLoading && allUsers.length > 0 && (
-              <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:10, marginBottom:16 }}>
-                {[
-                  { label:'Total',     value:allUsers.length,                                color:'#0a1f5d' },
-                  { label:'Customers', value:allUsers.filter(u=>u.orders.length>0).length,   color:'#00a86b' },
-                  { label:'Visitors',  value:allUsers.filter(u=>u.orders.length===0).length, color:'#f5a623' },
-                ].map(s=>(
-                  <div key={s.label} style={{ background:'#fff', border:'1px solid #e8e8e8', borderRadius:10, padding:'12px', textAlign:'center' }}>
-                    <div style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:28, color:s.color, lineHeight:1 }}>{s.value}</div>
-                    <div style={{ fontSize:10, color:'#aaa', fontWeight:700, textTransform:'uppercase', letterSpacing:'.08em', marginTop:2 }}>{s.label}</div>
-                  </div>
-                ))}
-              </div>
-            )}
-            {usersLoading ? <div style={{ textAlign:'center', padding:40, color:'#888' }}>Loading…</div>
-            : allUsers.length===0 ? <div style={{ textAlign:'center', padding:40, color:'#aaa' }}>No users found.</div>
-            : (
-              <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
-                {allUsers.map((u,i) => {
-                  const hasOrders    = u.orders.length > 0
-                  const customOrders = u.orders.filter(o=>o.order_type==='custom'||(o.design_file&&o.design_file!=='catalog-order'&&o.design_file!=='{}'))
-                  return (
-                    <div key={i} style={{ background:'#fff', border:'1.5px solid', borderColor:hasOrders?'#e8e8e8':'#f5f5f5', borderRadius:12, padding:'14px 16px' }}>
-                      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', flexWrap:'wrap', gap:8, marginBottom:8 }}>
-                        <div>
-                          <div style={{ display:'flex', alignItems:'center', gap:6, flexWrap:'wrap', marginBottom:2 }}>
-                            <span style={{ fontSize:14, fontWeight:700 }}>{u.name||'—'}</span>
-                            {!hasOrders && <span style={{ fontSize:9, fontWeight:700, padding:'2px 6px', borderRadius:50, background:'#fff8e1', color:'#f5a623', border:'1px solid #ffe082' }}>VISITOR</span>}
-                            {customOrders.length>0 && <span style={{ fontSize:9, fontWeight:700, padding:'2px 6px', borderRadius:50, background:'rgba(155,89,182,.1)', color:'#9b59b6', border:'1px solid rgba(155,89,182,.25)' }}>🎨 STUDIO</span>}
-                          </div>
-                          <div style={{ fontSize:11, color:'#888', display:'flex', gap:10, flexWrap:'wrap' }}>
-                            {u.email && <span>✉ {u.email}</span>}
-                            {u.phone && <span>📞 {u.phone}</span>}
-                            {u.sessions.length>0 && <span>👁 {u.sessions.length} visit{u.sessions.length!==1?'s':''}</span>}
-                          </div>
-                        </div>
-                        <div style={{ display:'flex', gap:6 }}>
-                          <span style={{ background:'#f0f3ff', color:'#0a1f5d', fontSize:11, fontWeight:700, padding:'4px 10px', borderRadius:20 }}>{u.orders.length} order{u.orders.length!==1?'s':''}</span>
-                          {u.phone && <a href={`https://wa.me/91${u.phone.replace(/\D/g,'').replace(/^91/,'')}`} target="_blank" rel="noreferrer" style={{ fontSize:11, padding:'4px 10px', borderRadius:20, border:'1px solid #00a86b', color:'#00a86b', fontWeight:700, textDecoration:'none' }}>💬</a>}
+            {usersLoading ? (
+              <div style={{ textAlign:'center', padding:40, color:'#888' }}>Loading users…</div>
+            ) : allUsers.length === 0 ? (
+              <div style={{ textAlign:'center', padding:40, color:'#aaa', fontSize:13 }}>No users found. Data is aggregated from orders.</div>
+            ) : (
+              <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
+                {allUsers.map((u, i) => (
+                  <div key={i} style={{ background:'#fff', border:'1px solid #e8e8e8', borderRadius:12, padding:'16px 20px' }}>
+                    <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', flexWrap:'wrap', gap:8, marginBottom:10 }}>
+                      <div>
+                        <div style={{ fontSize:14, fontWeight:700 }}>{u.name || '—'}</div>
+                        <div style={{ fontSize:11, color:'#888' }}>📞 {u.phone} {u.address ? `· ${u.address}` : ''}</div>
+                      </div>
+                      <span style={{ background:'#f0f3ff', color:'#0a1f5d', fontSize:11, fontWeight:700, padding:'4px 10px', borderRadius:20 }}>
+                        {u.orders.length} order{u.orders.length!==1?'s':''}
+                      </span>
+                    </div>
+                    {u.uploads.length > 0 && (
+                      <div>
+                        <div style={{ fontSize:10, fontWeight:700, letterSpacing:'.1em', textTransform:'uppercase', color:'#aaa', marginBottom:6 }}>Uploaded Designs</div>
+                        <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
+                          {u.uploads.map((url, j) => (
+                            <a key={j} href={url} target="_blank" rel="noreferrer">
+                              <img src={url} alt="upload" style={{ width:56, height:56, objectFit:'contain', borderRadius:6, border:'1px solid #e0e0e0', background:'#f8f8f8' }}
+                                onError={e=>e.target.style.display='none'} />
+                            </a>
+                          ))}
                         </div>
                       </div>
-                      {customOrders.length>0 && (
-                        <div style={{ marginBottom:8 }}>
-                          <div style={{ fontSize:10, fontWeight:700, textTransform:'uppercase', color:'#9b59b6', marginBottom:5 }}>🎨 Studio Designs</div>
-                          <div style={{ display:'flex', gap:5, flexWrap:'wrap' }}>
-                            {customOrders.map(o => {
-                              let designs = []
-                              try { const p=JSON.parse(o.design_file); designs=Object.entries(p).filter(([,v])=>v&&v.startsWith('https://')) } catch {}
-                              return designs.map(([side,url]) => (
-                                <a key={side+url} href={url} target="_blank" rel="noreferrer">
-                                  <img src={url} alt={side} style={{ width:48, height:48, objectFit:'contain', borderRadius:5, border:'1.5px solid rgba(155,89,182,.3)', background:'#f8f8f8' }} onError={e=>e.target.style.display='none'} />
-                                </a>
-                              ))
-                            })}
+                    )}
+                    <div style={{ marginTop:10 }}>
+                      <div style={{ fontSize:10, fontWeight:700, letterSpacing:'.1em', textTransform:'uppercase', color:'#aaa', marginBottom:6 }}>Orders</div>
+                      <div style={{ display:'flex', flexDirection:'column', gap:4 }}>
+                        {u.orders.slice(0,3).map(o => (
+                          <div key={o.id} style={{ fontSize:11, color:'#555', display:'flex', gap:10 }}>
+                            <span style={{ fontWeight:600, color:'#0a0a0a' }}>{o.garment}</span>
+                            <span>·</span><span>₹{o.total}</span>
+                            <span>·</span><span style={{ color: o.status==='Delivered'?'#00a86b':'#f5a623' }}>{o.status}</span>
                           </div>
-                        </div>
-                      )}
-                      {hasOrders && (
-                        <div style={{ display:'flex', flexDirection:'column', gap:3 }}>
-                          {u.orders.slice(0,3).map(o=>(
-                            <div key={o.id} style={{ fontSize:11, color:'#555', display:'flex', gap:8, flexWrap:'wrap' }}>
-                              <span style={{ fontWeight:600, color:'#0a0a0a' }}>{o.garment||o.product_name}</span>
-                              <span>·</span><span>₹{Number(o.total||0).toLocaleString()}</span>
-                              <span>·</span><span style={{ color:STATUS_COLORS[o.status]||'#888', fontWeight:600 }}>{o.status}</span>
-                            </div>
-                          ))}
-                          {u.orders.length>3 && <div style={{ fontSize:11, color:'#aaa' }}>+{u.orders.length-3} more</div>}
-                        </div>
-                      )}
+                        ))}
+                        {u.orders.length > 3 && <div style={{ fontSize:11, color:'#aaa' }}>+{u.orders.length-3} more</div>}
+                      </div>
                     </div>
-                  )
-                })}
+                  </div>
+                ))}
               </div>
             )}
           </div>
         )}
 
-        {/* ══ MEDIA TAB ══ */}
+        {/* ── MEDIA TAB ── */}
         {tab==='media' && (
           <div>
-            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:8 }}>
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16 }}>
               <h2 style={{ fontSize:18, fontWeight:700 }}>🎬 Media Manager</h2>
-              <button className="btn-secondary" style={{ padding:'7px 14px', fontSize:12 }} onClick={loadMediaUrls}>↻ Load</button>
+              <button className="btn-secondary" style={{ padding:'7px 14px', fontSize:12 }} onClick={loadMediaUrls}>↻ Load Current</button>
             </div>
-            <p style={{ fontSize:12, color:'#888', marginBottom:20 }}>Paste a URL or upload a file. Changes go live immediately for all users.</p>
+            <p style={{ fontSize:12, color:'#888', marginBottom:20 }}>Paste Cloudinary or any direct URL. Changes go live immediately for all users.</p>
             {[
-              { key:'video_intro',  label:'🎬 Intro / Splash video',       accept:'video/*' },
-              { key:'video_studio', label:'🎬 Studio page header video',   accept:'video/*' },
-              { key:'video_home',   label:'🎬 Home page hero video',       accept:'video/*' },
-              { key:'audio_song',   label:'🎵 Background song (MP3/AAC)', accept:'audio/*' },
+              { key:'video_intro',  label:'🎬 Video 1 — Intro / Splash screen' },
+              { key:'video_studio', label:'🎬 Video 2 — Studio page header' },
+              { key:'video_home',   label:'🎬 Video 3 — Home page hero' },
+              { key:'audio_song',   label:'🎵 Background Song (MP3/AAC URL)' },
             ].map(item => (
-              <div key={item.key} style={{ background:'#fff', border:'1px solid #e8e8e8', borderRadius:10, padding:'16px', marginBottom:16 }}>
-                <label style={{ fontSize:11, fontWeight:700, textTransform:'uppercase', letterSpacing:'.1em', color:'#555', display:'block', marginBottom:8 }}>{item.label}</label>
-                <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
-                  <input className="input-field" style={{ fontSize:12, flex:1, minWidth:200 }}
-                    value={mediaUrls[item.key]||''}
-                    onChange={e=>setMediaUrls(m=>({...m,[item.key]:e.target.value}))}
-                    placeholder="https://res.cloudinary.com/…" />
+              <div key={item.key} style={{ marginBottom:20, background:'#fff', border:'1px solid #e8e8e8', borderRadius:10, padding:'16px' }}>
+                <label style={{ fontSize:11, fontWeight:700, letterSpacing:'.1em', textTransform:'uppercase', color:'#555', display:'block', marginBottom:8 }}>{item.label}</label>
+                <div style={{ display:'flex', gap:8 }}>
+                  <input className="input-field" style={{ fontSize:12 }}
+                    value={mediaUrls[item.key] || ''}
+                    onChange={e => setMediaUrls(m => ({ ...m, [item.key]: e.target.value }))}
+                    placeholder="https://res.cloudinary.com/..." />
                   <button className="btn-primary" style={{ padding:'10px 16px', fontSize:12, flexShrink:0 }}
-                    disabled={mediaSaving} onClick={()=>saveMediaUrl(item.key, mediaUrls[item.key])}>
-                    Save URL
+                    disabled={mediaSaving}
+                    onClick={() => saveMediaUrl(item.key, mediaUrls[item.key])}>
+                    Save
                   </button>
-                  <label style={{ padding:'10px 14px', background:'#0a1f5d', color:'#fff', borderRadius:6, fontSize:12, fontWeight:700, cursor:'pointer', flexShrink:0, display:'flex', alignItems:'center', gap:5 }}>
-                    📁 Upload
-                    <input type="file" accept={item.accept} style={{ display:'none' }}
-                      onChange={e=>{ if(e.target.files[0]) handleMediaFileUpload(item.key, e.target.files[0]) }} />
-                  </label>
                 </div>
                 {mediaUrls[item.key] && item.key.startsWith('video') && (
-                  <video src={mediaUrls[item.key]} style={{ width:'100%', maxHeight:140, marginTop:10, borderRadius:6, objectFit:'cover' }} controls muted />
+                  <video src={mediaUrls[item.key]} style={{ width:'100%', maxHeight:120, marginTop:8, borderRadius:6, objectFit:'cover' }} controls muted />
                 )}
-                {mediaUrls[item.key] && item.key==='audio_song' && (
-                  <audio src={mediaUrls[item.key]} style={{ width:'100%', marginTop:10 }} controls />
+                {mediaUrls[item.key] && item.key === 'audio_song' && (
+                  <audio src={mediaUrls[item.key]} style={{ width:'100%', marginTop:8 }} controls />
                 )}
               </div>
             ))}
           </div>
         )}
 
-        {/* ══ COLORS TAB ══ */}
+        {/* ── COLORS TAB ── */}
         {tab==='colors' && (
           <div>
-            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:8 }}>
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16 }}>
               <h2 style={{ fontSize:18, fontWeight:700 }}>🎨 Color Manager</h2>
-              <button className="btn-secondary" style={{ padding:'7px 14px', fontSize:12 }} onClick={loadAdminColors}>↻ Load</button>
+              <button className="btn-secondary" style={{ padding:'7px 14px', fontSize:12 }} onClick={loadAdminColors}>↻ Load Current</button>
             </div>
-            <p style={{ fontSize:12, color:'#888', marginBottom:16 }}>These colours appear in Studio, Shop and Group Order pages.</p>
+            <p style={{ fontSize:12, color:'#888', marginBottom:16 }}>These colors appear in Studio, Shop, and Group Order pages.</p>
             <div style={{ background:'#fff', border:'1px solid #e8e8e8', borderRadius:10, padding:'20px', marginBottom:16 }}>
-              <div style={{ fontSize:11, fontWeight:700, textTransform:'uppercase', letterSpacing:'.1em', color:'#aaa', marginBottom:12 }}>Current Colours ({adminColors.length})</div>
+              <div style={{ fontSize:11, fontWeight:700, letterSpacing:'.1em', textTransform:'uppercase', color:'#aaa', marginBottom:12 }}>Current Colors</div>
               <div style={{ display:'flex', gap:10, flexWrap:'wrap', marginBottom:16 }}>
-                {adminColors.map((c,i) => (
+                {adminColors.map((c, i) => (
                   <div key={i} style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:4 }}>
-                    <div style={{ width:36, height:36, borderRadius:'50%', background:c, border:c==='#ffffff'?'2px solid #ccc':'none', boxShadow:'0 2px 8px rgba(0,0,0,.12)' }} />
-                    <span style={{ fontSize:9, color:'#888', fontFamily:'monospace' }}>{c}</span>
-                    <button onClick={()=>{ if(window.confirm('Remove colour '+c+'?')){ const nc=adminColors.filter((_,j)=>j!==i); saveAdminColors(nc) } }}
-                      style={{ fontSize:9, color:'#c8102e', background:'none', border:'none', cursor:'pointer', padding:0, fontWeight:700 }}>✕</button>
+                    <div style={{ width:36, height:36, borderRadius:'50%', background:c, border: c==='#ffffff'?'2px solid #ccc':'2px solid transparent', boxShadow:'0 2px 8px rgba(0,0,0,.12)' }} />
+                    <span style={{ fontSize:9, color:'#888' }}>{c}</span>
+                    <button onClick={() => { const nc = adminColors.filter((_,j)=>j!==i); saveAdminColors(nc) }}
+                      style={{ fontSize:9, color:'#c8102e', background:'none', border:'none', cursor:'pointer', padding:0 }}>✕</button>
                   </div>
                 ))}
               </div>
-              <div style={{ display:'flex', gap:8, alignItems:'center', flexWrap:'wrap' }}>
+              <div style={{ display:'flex', gap:8, alignItems:'center' }}>
                 <input type="color" value={newColor} onChange={e=>setNewColor(e.target.value)}
                   style={{ width:40, height:36, padding:0, border:'1.5px solid #e0e0e0', borderRadius:4, cursor:'pointer' }} />
-                <input className="input-field" style={{ maxWidth:120, fontSize:12, fontFamily:'monospace' }}
-                  value={newColor} onChange={e=>setNewColor(e.target.value)} placeholder="#000000" />
+                <input className="input-field" style={{ maxWidth:120, fontSize:12 }} value={newColor} onChange={e=>setNewColor(e.target.value)} placeholder="#000000" />
                 <button className="btn-primary" style={{ padding:'10px 16px', fontSize:12 }}
-                  onClick={()=>{ if(!adminColors.includes(newColor)) saveAdminColors([...adminColors, newColor]); else showToast('Colour already added') }}>
-                  + Add
+                  onClick={() => { if (!adminColors.includes(newColor)) saveAdminColors([...adminColors, newColor]) }}>
+                  + Add Color
                 </button>
               </div>
-              {colorsSaving && <div style={{ fontSize:11, color:'#0a7abf', marginTop:8 }}>Saving…</div>}
             </div>
-            <button className="btn-secondary" style={{ fontSize:12 }} onClick={()=>{ if(window.confirm('Reset to defaults?')) saveAdminColors([...DEFAULT_SWATCHES]) }}>
-              ↺ Reset to Defaults
+            <button className="btn-secondary" style={{ fontSize:12 }}
+              onClick={() => saveAdminColors([...DEFAULT_SWATCHES])}>
+              Reset to Defaults
             </button>
-          </div>
-        )}
-
-        {/* ══ ADMINS TAB (super admin only) ══ */}
-        {tab==='admins' && isSuperAdmin && (
-          <div>
-            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:8 }}>
-              <div>
-                <h2 style={{ fontSize:18, fontWeight:700, marginBottom:2 }}>🔑 Admin Management</h2>
-                <p style={{ fontSize:12, color:'#888' }}>Only super admin can add or remove admins.</p>
-              </div>
-            </div>
-            <div style={{ background:'#fff', border:'1px solid #e8e8e8', borderRadius:10, padding:'20px', marginBottom:20 }}>
-              <p style={{ fontSize:12, fontWeight:700, textTransform:'uppercase', letterSpacing:'.1em', color:'#888', marginBottom:12 }}>Add New Admin</p>
-              <div style={{ display:'flex', gap:10, flexWrap:'wrap' }}>
-                <input className="input-field" style={{ flex:1, minWidth:220, fontSize:13 }}
-                  value={newAdminEmail} onChange={e=>setNewAdminEmail(e.target.value)}
-                  onKeyDown={e=>e.key==='Enter'&&addAdmin()}
-                  placeholder="Enter Google email address" />
-                <button className="btn-primary" style={{ padding:'10px 20px', fontSize:13, opacity:adminSaving?.6:1 }}
-                  onClick={addAdmin} disabled={adminSaving}>
-                  {adminSaving?'Adding…':'+ Add Admin'}
-                </button>
-              </div>
-            </div>
-            <div style={{ background:'#fff', border:'1px solid #e8e8e8', borderRadius:10, overflow:'hidden' }}>
-              <div style={{ padding:'12px 20px', borderBottom:'1px solid #f0f0f0', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-                <p style={{ fontSize:12, fontWeight:700, textTransform:'uppercase', letterSpacing:'.1em', color:'#888' }}>Admins ({adminsList.length})</p>
-                <button onClick={loadAdmins} style={{ fontSize:11, color:'#888', background:'none', border:'1px solid #e0e0e0', borderRadius:4, padding:'4px 10px', cursor:'pointer' }}>↻</button>
-              </div>
-              {adminsLoading ? <div style={{ textAlign:'center', padding:32, color:'#aaa' }}>Loading…</div>
-              : adminsList.map((a,i) => (
-                <div key={a.id} style={{ display:'flex', alignItems:'center', gap:14, padding:'14px 20px', borderBottom:i<adminsList.length-1?'1px solid #f8f8f8':'none', flexWrap:'wrap' }}>
-                  <div style={{ width:38, height:38, borderRadius:'50%', background:a.role==='superadmin'?'#c8102e':'#0a1f5d', color:'#fff', display:'flex', alignItems:'center', justifyContent:'center', fontSize:16, fontWeight:700, flexShrink:0 }}>
-                    {a.email[0].toUpperCase()}
-                  </div>
-                  <div style={{ flex:1, minWidth:160 }}>
-                    <div style={{ fontSize:14, fontWeight:700, marginBottom:2 }}>{a.email}</div>
-                    <div style={{ display:'flex', gap:8, flexWrap:'wrap', alignItems:'center' }}>
-                      <span style={{ fontSize:10, fontWeight:700, padding:'2px 8px', borderRadius:50,
-                        background:a.role==='superadmin'?'rgba(200,16,46,.1)':'rgba(10,31,93,.08)',
-                        color:a.role==='superadmin'?'#c8102e':'#0a1f5d',
-                        border:`1px solid ${a.role==='superadmin'?'rgba(200,16,46,.25)':'rgba(10,31,93,.2)'}` }}>
-                        {a.role==='superadmin'?'👑 Super Admin':'🔑 Admin'}
-                      </span>
-                      {a.added_by && <span style={{ fontSize:10, color:'#bbb' }}>by {a.added_by}</span>}
-                      {a.created_at && <span style={{ fontSize:10, color:'#ccc' }}>{new Date(a.created_at).toLocaleDateString('en-IN')}</span>}
-                    </div>
-                  </div>
-                  {a.role!=='superadmin' && (
-                    <button onClick={()=>removeAdmin(a.email)}
-                      style={{ padding:'7px 14px', fontSize:12, fontWeight:700, borderRadius:6, border:'1px solid #fdd', color:'#c8102e', background:'none', cursor:'pointer' }}>
-                      Remove
-                    </button>
-                  )}
-                  {a.role==='superadmin' && <span style={{ fontSize:11, color:'#ccc', fontStyle:'italic' }}>Owner</span>}
-                </div>
-              ))}
-            </div>
           </div>
         )}
 
@@ -4786,7 +4922,154 @@ function AdminPanel({ onBack }) {
   )
 }
 
+function OrderEditRow({ order, onSave, onCancel, statuses, colors }) {
+  const [status, setStatus] = useState(order.status||'Received')
+  return (
+    <div style={{ display:'flex', gap:12, alignItems:'center', flexWrap:'wrap' }}>
+      <div style={{ flex:1, fontSize:13, fontWeight:600 }}>{order.name} - {order.garment}</div>
+      <select value={status} onChange={e=>setStatus(e.target.value)}
+        style={{ border:'1.5px solid #0a1f5d', borderRadius:6, padding:'8px 12px', fontSize:12, fontWeight:600, color:colors[status], outline:'none', cursor:'pointer' }}>
+        {statuses.map(s=><option key={s} value={s}>{s}</option>)}
+      </select>
+      <button className="btn-primary" style={{ padding:'8px 16px', fontSize:12 }} onClick={()=>onSave(status)}>Save</button>
+      <button onClick={onCancel} style={{ padding:'8px 14px', fontSize:12, background:'none', border:'1px solid #e0e0e0', borderRadius:4, cursor:'pointer', color:'#888' }}>Cancel</button>
+    </div>
+  )
+}
 
+function ProductEditRow({ product, onSave, onCancel }) {
+  const [p, setP]           = useState({...product, studio_only: product.studio_only || false})
+  const [imgFile, setImgFile] = useState(null)
+  const [imgPct, setImgPct]   = useState(0)
+  const [imgSaving, setImgSaving] = useState(false)
+
+  // Mockup view uploads — saved directly to drynn_products columns (no drynn_settings)
+  const garmentType = p.category==='Hoodies'?'Hoodie':p.category==='Polos'?'Polo':p.category==='Joggers'?'Joggers':'T-Shirt'
+  const VIEWS = ['front','back','left','right']
+  const VIEW_LABELS = { front:'▲ Front', back:'▼ Back', left:'◀ Left', right:'▶ Right' }
+  const [mockupUploading, setMockupUploading] = useState({})
+  const [mockupSaved, setMockupSaved]         = useState({})
+
+  const handleMockupFile = async (view, file) => {
+    if (!file) return
+    setMockupUploading(u => ({ ...u, [view]: true }))
+    try {
+      const url = await uploadToCloudinary(file, () => {})
+      const colName = `img_${view}` // img_front | img_back | img_left | img_right
+      const { error: prodErr } = await supabase
+        .from('drynn_products')
+        .update({ [colName]: url })
+        .eq('id', product.id)
+      if (prodErr) { alert('Save failed: ' + prodErr.message); return }
+      setP(prev => ({ ...prev, [colName]: url }))
+      setMockupSaved(s => ({ ...s, [view]: true }))
+      setTimeout(() => setMockupSaved(s => ({ ...s, [view]: false })), 2500)
+    } catch(e) {
+      alert('Mockup upload failed: ' + e.message)
+    }
+    setMockupUploading(u => ({ ...u, [view]: false }))
+  }
+
+  const handleImgUpload = async () => {
+    if (!imgFile) { onSave(p); return }
+    setImgSaving(true)
+    try {
+      const url = await uploadToCloudinary(imgFile, pct => setImgPct(pct))
+      onSave({ ...p, image_url: url })
+    } catch(e) {
+      alert('Image upload failed: ' + e.message)
+    } finally { setImgSaving(false) }
+  }
+
+  return (
+    <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
+      <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(180px,1fr))', gap:12 }}>
+        {[['name','Name',p.name],['price','Price (₹)',p.price],['mrp','MRP (₹)',p.mrp],['tag','Tag',p.tag],['rating','Rating',p.rating]].map(([k,label,val])=>(
+          <div key={k}>
+            <label style={{ fontSize:10, fontWeight:700, letterSpacing:'.1em', color:'#888', textTransform:'uppercase', display:'block', marginBottom:4 }}>{label}</label>
+            <input className="input-field" value={val||''} onChange={e=>setP({...p,[k]:e.target.value})} style={{ padding:'8px 12px', fontSize:13 }} />
+          </div>
+        ))}
+      </div>
+
+      {/* Image upload */}
+      <div>
+        <label style={{ fontSize:10, fontWeight:700, letterSpacing:'.1em', color:'#888', textTransform:'uppercase', display:'block', marginBottom:6 }}>Product Image</label>
+        <div style={{ display:'flex', gap:12, alignItems:'center', flexWrap:'wrap' }}>
+          {(p.image_url) && (
+            <img src={p.image_url} alt="" style={{ width:64, height:64, objectFit:'contain', borderRadius:8, border:'1px solid #e0e0e0', background:'#f8f8f8' }} />
+          )}
+          <div onClick={()=>document.getElementById(`imgUpload_${product.id}`).click()}
+            style={{ flex:1, minWidth:160, padding:'12px', border:'1.5px dashed #d0d0d0', borderRadius:8, background:'#fafafa', cursor:'pointer', textAlign:'center' }}>
+            <input id={`imgUpload_${product.id}`} type="file" accept=".png,.jpg,.jpeg,.webp" style={{ display:'none' }}
+              onChange={e=>{ const f=e.target.files[0]; if(f) setImgFile(f) }} />
+            <div style={{ fontSize:11, color: imgFile ? '#00a86b' : '#888', fontWeight:600 }}>
+              {imgFile ? `✓ ${imgFile.name}` : 'Upload new image'}
+            </div>
+            <div style={{ fontSize:10, color:'#bbb', marginTop:2 }}>PNG, JPG · replaces current</div>
+          </div>
+        </div>
+        {imgPct > 0 && imgPct < 100 && (
+          <div style={{ marginTop:8 }}>
+            <div style={{ height:4, background:'#f0f0f0', borderRadius:2 }}>
+              <div style={{ height:'100%', width:`${imgPct}%`, background:'#c8102e', borderRadius:2, transition:'width .3s' }} />
+            </div>
+            <div style={{ fontSize:10, color:'#888', marginTop:2 }}>Uploading… {imgPct}%</div>
+          </div>
+        )}
+      </div>
+
+      {/* Mockup Views (front / back / left / right) */}
+      <div>
+        <label style={{ fontSize:10, fontWeight:700, letterSpacing:'.1em', color:'#888', textTransform:'uppercase', display:'block', marginBottom:8 }}>
+          Garment Views — {garmentType}
+        </label>
+        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8 }}>
+          {VIEWS.map(view => {
+            const url = p[`img_${view}`] || null  // read from product state directly
+            const busy = mockupUploading[view]
+            const done = mockupSaved[view]
+            return (
+              <div key={view} style={{ background:'#f8f8f8', borderRadius:8, padding:10, border:'1px solid #eee' }}>
+                <div style={{ fontSize:10, fontWeight:700, color:'#555', letterSpacing:'.08em', textTransform:'uppercase', marginBottom:6 }}>{VIEW_LABELS[view]}</div>
+                {url && <img src={url} alt={view} style={{ width:'100%', height:70, objectFit:'contain', borderRadius:6, marginBottom:6, background:'#fff', border:'1px solid #eee' }} />}
+                <label style={{ display:'block', cursor:'pointer' }}>
+                  <input type="file" accept=".png,.jpg,.jpeg" style={{ display:'none' }} onChange={e => handleMockupFile(view, e.target.files[0])} />
+                  <div style={{ padding:'6px 10px', borderRadius:6, border:'1.5px dashed #d0d0d0', textAlign:'center', background: done?'rgba(0,168,107,.06)':busy?'#f0f0f0':'#fff', cursor:'pointer' }}>
+                    {busy ? <span style={{ fontSize:11, color:'#888' }}>⏳ Uploading…</span>
+                          : done ? <span style={{ fontSize:11, color:'#00a86b', fontWeight:700 }}>✅ Saved!</span>
+                          : <span style={{ fontSize:11, color:'#c8102e', fontWeight:700 }}>{url ? '🔄 Replace' : '📤 Upload'}</span>}
+                  </div>
+                </label>
+              </div>
+            )
+          })}
+        </div>
+      </div>
+
+      {/* Studio Only toggle */}
+      <label style={{ display:'flex', alignItems:'center', gap:10, cursor:'pointer', userSelect:'none', background: p.studio_only ? 'rgba(200,16,46,.06)' : '#f8f8f8', border: `1.5px solid ${p.studio_only ? '#c8102e' : '#e8e8e8'}`, borderRadius:8, padding:'11px 14px' }}>
+        <input type="checkbox" checked={!!p.studio_only} onChange={e=>setP({...p,studio_only:e.target.checked})}
+          style={{ width:18, height:18, accentColor:'#c8102e', cursor:'pointer', flexShrink:0 }} />
+        <div>
+          <div style={{ fontSize:13, fontWeight:700, color: p.studio_only ? '#c8102e' : '#0a0a0a' }}>Studio Only</div>
+          <div style={{ fontSize:11, color:'#888', marginTop:1 }}>Hide from Products page - show only in Design Studio</div>
+        </div>
+      </label>
+
+      <div style={{ display:'flex', gap:10 }}>
+        <button className="btn-primary" style={{ padding:'8px 20px', fontSize:12, opacity:imgSaving?.6:1 }} onClick={handleImgUpload} disabled={imgSaving}>
+          {imgSaving ? 'Uploading…' : 'Save Product'}
+        </button>
+        <button onClick={onCancel} style={{ padding:'8px 16px', fontSize:12, background:'none', border:'1px solid #e0e0e0', borderRadius:4, cursor:'pointer', color:'#888' }}>Cancel</button>
+      </div>
+    </div>
+  )
+}
+
+// ══════════════════════════════════════════════════════════════
+// ORDER TRACKING PAGE
+// ══════════════════════════════════════════════════════════════
 function OrderTrackingPage({ onNav }) {
   const [orderId, setOrderId]   = useState('')
   const [phone, setPhone]       = useState('')
@@ -5089,10 +5372,9 @@ function CreateGroupOrder({ user, selectedProduct, onChangeProduct }) {
       created_at:          new Date().toISOString(),
       status:              'open',
     }
-    const { error } = await supabase.from('drynn_group_orders').insert(groupData)
+    const { error } = await supabase.from('drynn_group_orders').insert(groupData).catch(()=>({ error:{message:'Table may not exist'} }))
     setSaving(false)
-    if (error) { alert('Failed to create group order: ' + error.message); return }
-    setCreated({ ...groupData, previewGarmentImg })
+    setCreated({ ...groupData, previewGarmentImg, error: error?.message })
   }
 
   const shareUrl = created ? `${typeof window!=='undefined'?window.location.origin:''}/group/${created.group_code}` : ''

@@ -3216,7 +3216,8 @@ function OrdersPage({ user, onBack, onNav }) {
 }
 
 function AccountPage({ user, onLogout, onNav }) {
-  const { isAdmin } = useIsAdmin(user)
+  const { isAdmin: isAdminHook } = useIsAdmin(user)
+  const isAdmin = isAdminHook || user?.email === SUPER_ADMIN_EMAIL
   return (
     <div>
       <div style={{ background:'linear-gradient(135deg,#0a1f5d,#1a0a2e)', padding:'40px 20px', textAlign:'center' }}>
@@ -5601,7 +5602,7 @@ function MainSite({ user }) {
     { key:'account',  label:'Account', icon:'⏣' },
   ]
 
-  const isAdmin = user?.email === ADMIN_EMAIL
+  const isAdmin = user?.email === ADMIN_EMAIL || user?.email === SUPER_ADMIN_EMAIL
 
   return (
     <div style={{ paddingBottom:64 }}>

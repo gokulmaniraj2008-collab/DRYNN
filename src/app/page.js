@@ -606,7 +606,7 @@ function InteractiveMockup({ garmentImgSrc, designImgSrc, color, posX, posY, sca
         onWheel={onWheel}
         style={{ position:'relative', borderRadius:18, overflow:'hidden', background:'#fff', boxShadow:'0 12px 48px rgba(0,0,0,.5)', cursor:zoom>1?'grab':'default', touchAction:'none', userSelect:'none' }}>
         <div style={{ transform:`scale(${zoom}) translate(${panX/zoom}px,${panY/zoom}px)`, transformOrigin:'center center', transition:dragRef.current.dragging?'none':'transform 0.1s', filter:canvasFilter }}>
-          <img src={garmentImgSrc} alt="garment" style={{ width:'100%', display:'block', filter:colorToFilter(color) }} onError={e=>{e.target.style.opacity='0.05'}} />
+          <img src={garmentImgSrc} alt="garment" style={{ width:'100%', display:'block', filter:colorToFilter(color) }} onError={e=>{e.target.src='https://placehold.co/400x400/f0f0f0/cccccc?text=No+Image'}} />
           <div style={{ position:'absolute', inset:0, display:'flex', alignItems:'center', justifyContent:'center', fontSize:100, opacity:0.03, pointerEvents:'none' }}>{garmentEmoji}</div>
           {designImgSrc && (
             <img src={designImgSrc} alt="design" style={{ position:'absolute', top:`${posY}%`, left:`${posX}%`, transform:`translate(-50%,-50%) rotate(${rotation}deg)`, width:`${scale}%`, objectFit:'contain', pointerEvents:'none' }} />
@@ -786,7 +786,7 @@ function ProductImageViewer({ product, fallbackSrc, designImgSrc, sideImgs, side
             <img
               src={f.src} alt={f.label}
               style={{ width:'100%', display:'block', filter:colorToFilter(color), minHeight:260, objectFit:'contain' }}
-              onError={e=>{ e.target.style.opacity='0.05' }}
+              onError={e=>{ e.target.src='https://placehold.co/400x400/f0f0f0/cccccc?text=No+Image' }}
             />
             {/* Design overlay — per side */}
             {(() => {
@@ -895,7 +895,7 @@ function ProductImageViewer({ product, fallbackSrc, designImgSrc, sideImgs, side
                 background:'#fff', padding:0, cursor:'pointer', transition:'border-color .15s', flexShrink:0 }}>
               <img src={f.src} alt={f.label}
                 style={{ width:'100%', height:'100%', objectFit:'contain', filter:colorToFilter(color) }}
-                onError={e=>{ e.target.style.opacity='0.1' }} />
+                onError={e=>{ e.target.src='https://placehold.co/400x400/f0f0f0/cccccc?text=No+Image' }} />
             </button>
           ))}
         </div>
@@ -1298,9 +1298,9 @@ function StudioPage({ user, onNav, onAddToCart }) {
   // Garment image — use admin product image if available, fallback to mockup, fallback to default
   const GARMENT_DEFAULTS = {
     'T-Shirt': 'https://res.cloudinary.com/dfhdyp4oq/image/upload/drynn/products/tshirt_white.png',
-    'Hoodie':  'https://res.cloudinary.com/dfhdyp4oq/image/upload/drynn/products/hoodie_navy.png',
+    'Hoodie':  'https://res.cloudinary.com/dfhdyp4oq/image/upload/drynn/products/hoodie_white.png',
     'Polo':    'https://res.cloudinary.com/dfhdyp4oq/image/upload/drynn/products/polo_white.png',
-    'Joggers': 'https://res.cloudinary.com/dfhdyp4oq/image/upload/drynn/products/joggers_black.png',
+    'Joggers': 'https://res.cloudinary.com/dfhdyp4oq/image/upload/drynn/products/joggers_white.png',
   }
   const GARMENT_EMOJI = {'T-Shirt':'.','Hoodie':'.','Polo':'.','Joggers':'.'}
   const garmentType = selectedProduct
@@ -1343,7 +1343,7 @@ function StudioPage({ user, onNav, onAddToCart }) {
       <div style={{ position:'relative', borderRadius:14, overflow:'hidden', background:bgColor, boxShadow:'0 8px 32px rgba(0,0,0,.5)', filter:canvasFilter }}>
         {/* Garment base — switches per selected side tab */}
         <img src={sideGarmentImg} alt={`${garmentType} ${ps}`} style={{ width:'100%', display:'block', filter:colorToFilter(color), minHeight:220, objectFit:'contain' }}
-          onError={e=>{ e.target.style.opacity='0.05' }} />
+          onError={e=>{ e.target.src='https://placehold.co/400x400/f0f0f0/cccccc?text=No+Image' }} />
         {/* Fallback emoji */}
         <div style={{ position:'absolute', inset:0, display:'flex', alignItems:'center', justifyContent:'center', fontSize:80, opacity:0.04, pointerEvents:'none' }}>
           {GARMENT_EMOJI[garmentType]}
@@ -1467,7 +1467,7 @@ function StudioPage({ user, onNav, onAddToCart }) {
               : GARMENT_DEFAULTS[garmentType]
             return <img src={sideGarmentImg} alt={garmentType}
               style={{ width:'100%', display:'block', filter:colorToFilter(color), minHeight:200, objectFit:'contain' }}
-              onError={e=>{ e.target.style.opacity='0.05' }} />
+              onError={e=>{ e.target.src='https://placehold.co/400x400/f0f0f0/cccccc?text=No+Image' }} />
           })()}
           {sideImgs[activeSide] && (() => {
             const pp = sidePos[activeSide]
@@ -3342,9 +3342,9 @@ function AdminOrderPreview({ order }) {
   const o = order
   const GARMENT_DEFAULTS = {
     'T-Shirt': 'https://res.cloudinary.com/dfhdyp4oq/image/upload/drynn/products/tshirt_white.png',
-    'Hoodie':  'https://res.cloudinary.com/dfhdyp4oq/image/upload/drynn/products/hoodie_navy.png',
+    'Hoodie':  'https://res.cloudinary.com/dfhdyp4oq/image/upload/drynn/products/hoodie_white.png',
     'Polo':    'https://res.cloudinary.com/dfhdyp4oq/image/upload/drynn/products/polo_white.png',
-    'Joggers': 'https://res.cloudinary.com/dfhdyp4oq/image/upload/drynn/products/joggers_black.png',
+    'Joggers': 'https://res.cloudinary.com/dfhdyp4oq/image/upload/drynn/products/joggers_white.png',
   }
   const SIDE_LABELS = { front:'Front', back:'Back', left:'Left', right:'Right' }
   const SIDES = ['front','back','left','right']
@@ -5042,9 +5042,9 @@ function CreateGroupOrder({ user, selectedProduct, onChangeProduct }) {
 
   const GARMENT_DEFAULTS = {
     'T-Shirts': 'https://res.cloudinary.com/dfhdyp4oq/image/upload/drynn/products/tshirt_white.png',
-    'Hoodies':  'https://res.cloudinary.com/dfhdyp4oq/image/upload/drynn/products/hoodie_navy.png',
+    'Hoodies':  'https://res.cloudinary.com/dfhdyp4oq/image/upload/drynn/products/hoodie_white.png',
     'Polos':    'https://res.cloudinary.com/dfhdyp4oq/image/upload/drynn/products/polo_white.png',
-    'Joggers':  'https://res.cloudinary.com/dfhdyp4oq/image/upload/drynn/products/joggers_black.png',
+    'Joggers':  'https://res.cloudinary.com/dfhdyp4oq/image/upload/drynn/products/joggers_white.png',
   }
 
   // Garment image to use in preview — prefer product's own image
@@ -5401,9 +5401,9 @@ function JoinGroupOrder({ user }) {
                   <img
                     src={group.product_image || {
                       'T-Shirt': 'https://res.cloudinary.com/dfhdyp4oq/image/upload/drynn/products/tshirt_white.png',
-                      'Hoodie':  'https://res.cloudinary.com/dfhdyp4oq/image/upload/drynn/products/hoodie_navy.png',
+                      'Hoodie':  'https://res.cloudinary.com/dfhdyp4oq/image/upload/drynn/products/hoodie_white.png',
                       'Polo':    'https://res.cloudinary.com/dfhdyp4oq/image/upload/drynn/products/polo_white.png',
-                      'Joggers': 'https://res.cloudinary.com/dfhdyp4oq/image/upload/drynn/products/joggers_black.png',
+                      'Joggers': 'https://res.cloudinary.com/dfhdyp4oq/image/upload/drynn/products/joggers_white.png',
                     }[group.garment] || 'https://res.cloudinary.com/dfhdyp4oq/image/upload/drynn/products/tshirt_white.png'}
                     alt="garment" style={{ width:200, height:200, objectFit:'contain', display:'block' }}
                     onError={e=>e.target.style.opacity='0.1'} />

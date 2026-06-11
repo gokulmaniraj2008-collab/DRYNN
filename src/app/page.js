@@ -3694,7 +3694,7 @@ function AdminPanel({ onBack }) {
   const [products,       setProducts]       = useState(PRODUCTS.map(p=>({...p})))
   const [editProd,       setEditProd]       = useState(null)
   const [showAddProduct, setShowAddProduct] = useState(false)
-  const [newProduct,     setNewProduct]     = useState({ name:'', price:'', mrp:'', tag:'', category:'T-Shirts', emoji:'.', rating:'4.5', reviews:'0', studio_only:false })
+  const [newProduct,     setNewProduct]     = useState({ name:'', price:'', mrp:'', tag:'', category:'T-Shirts', emoji:'.', rating:'4.5', reviews:'0', studio_only:false, image_url:'', img_front:'', img_back:'', img_left:'', img_right:'' })
   const [addingProduct,  setAddingProduct]  = useState(false)
   const [prodImgFile,    setProdImgFile]    = useState(null)
   const [prodImgUploading, setProdImgUploading] = useState(false)
@@ -3910,6 +3910,8 @@ function AdminPanel({ onBack }) {
       tag:newProduct.tag||'New', tag_color:'#0a1f5d', category:newProduct.category,
       emoji:newProduct.emoji, rating:Number(newProduct.rating)||4.5,
       reviews:Number(newProduct.reviews)||0, image_url:imageUrl,
+      img_front:newProduct.img_front||imageUrl||null, img_back:newProduct.img_back||null,
+      img_left:newProduct.img_left||null, img_right:newProduct.img_right||null,
       studio_only:newProduct.studio_only||false,
     }
     const { error } = await supabase.from('drynn_products').insert(product)
@@ -4244,6 +4246,24 @@ function AdminPanel({ onBack }) {
                   </div>
                   {prodImgFile && <div style={{ fontSize:11, color:'#00a86b', marginTop:4 }}>✓ {prodImgFile.name} — will upload on save</div>}
                 </div>
+                <div style={{ marginTop:10 }}>
+                  <label style={{ fontSize:11, color:'#888', fontWeight:700, display:'block', marginBottom:8 }}>Side Views (for Studio)</label>
+                  <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8 }}>
+                    {[['Front','img_front'],['Back','img_back'],['Left Side','img_left'],['Right Side','img_right']].map(([label,key])=>(
+                      <div key={key}>
+                        <label style={{ fontSize:10, color:'#888', fontWeight:700, display:'block', marginBottom:3 }}>{label}</label>
+                        <div style={{ display:'flex', gap:4 }}>
+                          <input className="input-field" style={{ fontSize:11, flex:1 }} placeholder="URL or upload"
+                            value={newProduct[key]||''} onChange={e=>setNewProduct(p=>({...p,[key]:e.target.value}))} />
+                          <label style={{ padding:'6px 10px', background:'#0a1f5d', color:'#fff', borderRadius:6, fontSize:11, fontWeight:700, cursor:'pointer', flexShrink:0 }}>
+                            ↑<input type="file" accept="image/*" style={{ display:'none' }} onChange={async e=>{ const f=e.target.files[0]; if(!f) return; try { const url=await uploadToCloudinary(f,()=>{}); setNewProduct(p=>({...p,[key]:url})); showToast(label+' uploaded ✓') } catch(err) { showToast('Upload failed') } }} />
+                          </label>
+                        </div>
+                        {newProduct[key] && newProduct[key]!=='Uploading…' && <img src={newProduct[key]} style={{ width:'100%', height:60, objectFit:'contain', marginTop:4, borderRadius:4, background:'#f8f8f8' }} alt={label} />}
+                      </div>
+                    ))}
+                  </div>
+                </div>
                 <div style={{ display:'flex', alignItems:'center', gap:8, marginTop:10 }}>
                   <input type="checkbox" id="studio_only_new" checked={newProduct.studio_only} onChange={e=>setNewProduct(p=>({...p,studio_only:e.target.checked}))} />
                   <label htmlFor="studio_only_new" style={{ fontSize:12, color:'#555', cursor:'pointer' }}>Studio Only (not shown in public shop)</label>
@@ -4267,15 +4287,30 @@ function AdminPanel({ onBack }) {
                   </div>
                   {editProd===p.id ? (
                     <div style={{ padding:'12px' }}>
+                      <div style={{ fontSize:13, fontWeight:700, color:'#0a1f5d', marginBottom:10, paddingBottom:8, borderBottom:'1px solid #f0f0f0' }}>✏️ Edit: {p.name}</div>
                       {['name','price','mrp','tag'].map(field=>(
                         <input key={field} className="input-field" style={{ marginBottom:6, fontSize:12 }}
                           placeholder={field} value={p[field]||''}
                           onChange={e=>setProducts(ps=>ps.map(x=>x.id===p.id?{...x,[field]:e.target.value}:x))} />
                       ))}
                       <input className="input-field" style={{ marginBottom:6, fontSize:12 }}
-                        placeholder="Image URL" value={p.image_url||''}
+                        placeholder="Main Image URL" value={p.image_url||''}
                         onChange={e=>setProducts(ps=>ps.map(x=>x.id===p.id?{...x,image_url:e.target.value}:x))} />
-                      <div style={{ display:'flex', alignItems:'center', gap:6, marginBottom:8 }}>
+                      <div style={{ fontSize:10, fontWeight:700, color:'#888', textTransform:'uppercase', letterSpacing:'.08em', margin:'8px 0 6px' }}>Side Views</div>
+                      {[['Front','img_front'],['Back','img_back'],['Left','img_left'],['Right','img_right']].map(([label,key])=>(
+                        <div key={key} style={{ marginBottom:6 }}>
+                          <div style={{ fontSize:10, color:'#aaa', marginBottom:2 }}>{label}</div>
+                          <div style={{ display:'flex', gap:4 }}>
+                            <input className="input-field" style={{ fontSize:11, flex:1 }} placeholder={label+' image URL'}
+                              value={p[key]||''} onChange={e=>setProducts(ps=>ps.map(x=>x.id===p.id?{...x,[key]:e.target.value}:x))} />
+                            <label style={{ padding:'6px 10px', background:'#0a1f5d', color:'#fff', borderRadius:6, fontSize:11, fontWeight:700, cursor:'pointer', flexShrink:0 }}>
+                              ↑<input type="file" accept="image/*" style={{ display:'none' }} onChange={async e=>{ const f=e.target.files[0]; if(!f) return; try { const url=await uploadToCloudinary(f,()=>{}); setProducts(ps=>ps.map(x=>x.id===p.id?{...x,[key]:url}:x)); showToast(label+' uploaded ✓') } catch(err) { showToast('Upload failed') } }} />
+                            </label>
+                          </div>
+                          {p[key] && <img src={p[key]} style={{ width:'100%', height:50, objectFit:'contain', marginTop:3, borderRadius:4, background:'#f8f8f8' }} alt={label} />}
+                        </div>
+                      ))}
+                      <div style={{ display:'flex', alignItems:'center', gap:6, marginBottom:8, marginTop:4 }}>
                         <input type="checkbox" id={`so_${p.id}`} checked={!!p.studio_only}
                           onChange={e=>setProducts(ps=>ps.map(x=>x.id===p.id?{...x,studio_only:e.target.checked}:x))} />
                         <label htmlFor={`so_${p.id}`} style={{ fontSize:11, color:'#555', cursor:'pointer' }}>Studio Only</label>

@@ -3563,6 +3563,8 @@ function useIsAdmin(user) {
   const [isSuperAdmin, setIsSuperAdmin] = React.useState(false)
   React.useEffect(() => {
     if (!user?.email) { setIsAdmin(false); setIsSuperAdmin(false); return }
+    // Hardcoded superadmin fallback
+    if (user.email === SUPER_ADMIN_EMAIL) { setIsAdmin(true); setIsSuperAdmin(true); return }
     supabase.from('drynn_admins').select('role').eq('email', user.email).single()
       .then(({ data }) => {
         setIsAdmin(!!data)

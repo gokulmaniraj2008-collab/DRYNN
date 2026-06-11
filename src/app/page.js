@@ -3681,27 +3681,61 @@ function MockupUploader() {
 }
 
 function StorageWidget({ supabase, showToast }) {
-  const [tableData, setTableData] = React.useState([])
-  const [loading,   setLoading]   = React.useState(false)
-  const [cleaning,  setCleaning]  = React.useState(false)
+  const [tableData,    setTableData]    = React.useState([])
+  const [loading,      setLoading]      = React.useState(false)
+  const [cleaning,     setCleaning]     = React.useState(false)
+  const [totalDbBytes, setTotalDbBytes] = React.useState(null)   // sum of all table sizes
+  const [fileBytes,    setFileBytes]    = React.useState(null)   // Supabase Storage total
+
+  const DB_LIMIT_BYTES   = 500  * 1024 * 1024   // 500 MB
+  const FILE_LIMIT_BYTES = 1024 * 1024 * 1024   // 1 GB
+
+  const fmtBytes = (b) => {
+    if (b == null) return '—'
+    if (b >= 1024*1024*1024) return (b/(1024*1024*1024)).toFixed(2)+' GB'
+    if (b >= 1024*1024)      return (b/(1024*1024)).toFixed(2)+' MB'
+    if (b >= 1024)           return (b/1024).toFixed(1)+' KB'
+    return b+' B'
+  }
+  const pct       = (used, limit) => Math.min(100, ((used||0)/limit)*100)
+  const barColor  = (p) => p > 85 ? '#c8102e' : p > 60 ? '#f5a623' : '#00a86b'
+
+  // ── Load Supabase Storage bucket usage ──────────────────────
+  const loadFileStorage = async () => {
+    try {
+      const { data: buckets } = await supabase.storage.listBuckets()
+      if (!buckets || buckets.length === 0) { setFileBytes(0); return }
+      let total = 0
+      for (const bucket of buckets) {
+        const folders = ['', 'drynn', 'drynn/products', 'drynn/orders', 'drynn/designs']
+        for (const folder of folders) {
+          const { data: files } = await supabase.storage.from(bucket.name).list(folder, { limit:1000 })
+          if (files) files.forEach(f => { if (f.metadata?.size) total += f.metadata.size })
+        }
+      }
+      setFileBytes(total)
+    } catch(e) { setFileBytes(0) }
+  }
 
   const loadStorage = async () => {
     setLoading(true)
     try {
       const { data, error } = await supabase.rpc('get_table_sizes').catch(() => ({ data: null, error: true }))
       if (error || !data) {
-        // fallback: just show known tables
         setTableData([
-          { table_name:'drynn_orders',         size_pretty:'—' },
-          { table_name:'drynn_user_sessions',  size_pretty:'—' },
-          { table_name:'drynn_products',       size_pretty:'—' },
-          { table_name:'drynn_group_orders',   size_pretty:'—' },
-          { table_name:'drynn_admins',         size_pretty:'—' },
+          { table_name:'drynn_orders',        size_pretty:'—', size_bytes:0 },
+          { table_name:'drynn_user_sessions', size_pretty:'—', size_bytes:0 },
+          { table_name:'drynn_products',      size_pretty:'—', size_bytes:0 },
+          { table_name:'drynn_group_orders',  size_pretty:'—', size_bytes:0 },
+          { table_name:'drynn_admins',        size_pretty:'—', size_bytes:0 },
         ])
+        setTotalDbBytes(0)
       } else {
         setTableData(data)
+        setTotalDbBytes(data.reduce((sum, t) => sum + (t.size_bytes || 0), 0))
       }
     } catch(e) {}
+    await loadFileStorage()
     setLoading(false)
   }
 
@@ -3710,35 +3744,57 @@ function StorageWidget({ supabase, showToast }) {
     setCleaning(true)
     const { error } = await supabase.rpc('cleanup_duplicate_sessions').catch(() => ({ error: true }))
     if (error) {
-      // fallback manual cleanup
       const { data: sessions } = await supabase.from('drynn_user_sessions').select('id, user_email, created_at').order('created_at', { ascending: false })
       if (sessions) {
-        const seen = new Set()
-        const toDelete = []
-        sessions.forEach(s => {
-          if (seen.has(s.user_email)) { toDelete.push(s.id) }
-          else seen.add(s.user_email)
-        })
+        const seen = new Set(), toDelete = []
+        sessions.forEach(s => { if (seen.has(s.user_email)) toDelete.push(s.id); else seen.add(s.user_email) })
         if (toDelete.length > 0) {
           await supabase.from('drynn_user_sessions').delete().in('id', toDelete)
           showToast('Cleaned ' + toDelete.length + ' duplicate sessions ✓')
-        } else {
-          showToast('No duplicates found')
-        }
+        } else { showToast('No duplicates found') }
       }
-    } else {
-      showToast('Sessions cleaned ✓')
-    }
+    } else { showToast('Sessions cleaned ✓') }
     setCleaning(false)
     loadStorage()
   }
 
-  const TOTAL_MB = 500
   const tableColors = ['#c8102e','#0a1f5d','#00a86b','#f5a623','#0a7abf','#9b59b6','#e67e22','#1abc9c']
+
+  // ── Usage bar sub-component ──────────────────────────────────
+  const UsageBar = ({ label, icon, usedBytes, limitBytes, limitLabel }) => {
+    const p     = pct(usedBytes, limitBytes)
+    const color = barColor(p)
+    const loaded = usedBytes != null
+    return (
+      <div style={{ background:'#f8f8f8', borderRadius:8, padding:'12px 14px', marginBottom:10 }}>
+        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:6 }}>
+          <span style={{ fontSize:11, fontWeight:700, color:'#555' }}>{icon} {label}</span>
+          <span style={{ fontSize:12, fontWeight:800, color: loaded ? color : '#aaa', fontVariantNumeric:'tabular-nums' }}>
+            {loaded ? fmtBytes(usedBytes) : '—'} <span style={{ color:'#bbb', fontWeight:400 }}>/</span> {limitLabel}
+          </span>
+        </div>
+        <div style={{ height:10, background:'#e0e0e0', borderRadius:5, overflow:'hidden' }}>
+          <div style={{
+            height:'100%', borderRadius:5, transition:'width .7s ease',
+            width: loaded ? `${p}%` : '0%',
+            background: `linear-gradient(90deg, ${color}cc, ${color})`,
+            minWidth: loaded && p > 0 ? 4 : 0,
+          }} />
+        </div>
+        <div style={{ display:'flex', justifyContent:'space-between', marginTop:4 }}>
+          <span style={{ fontSize:9, color:'#aaa' }}>{loaded ? `${p.toFixed(2)}% used` : 'Click Load to refresh'}</span>
+          <span style={{ fontSize:9, fontWeight:700, color: loaded ? color : '#aaa' }}>
+            {loaded ? (p > 85 ? '⚠ Near limit' : p > 60 ? '• Moderate' : '✓ Safe') : ''}
+          </span>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div style={{ background:'#fff', border:'1px solid #e8e8e8', borderRadius:10, padding:'16px', marginTop:16 }}>
-      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:12 }}>
+      {/* Header */}
+      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:14 }}>
         <p style={{ fontSize:12, fontWeight:700, textTransform:'uppercase', letterSpacing:'.1em', color:'#888' }}>🗄️ Database Storage</p>
         <div style={{ display:'flex', gap:8 }}>
           <button onClick={cleanSessions} disabled={cleaning}
@@ -3751,29 +3807,38 @@ function StorageWidget({ supabase, showToast }) {
           </button>
         </div>
       </div>
+
+      {/* ── Usage bars always visible ── */}
+      <UsageBar icon="🗄️" label="Database (PostgreSQL)" usedBytes={totalDbBytes} limitBytes={DB_LIMIT_BYTES}   limitLabel="500 MB" />
+      <UsageBar icon="🪣" label="File Storage (Buckets)" usedBytes={fileBytes}    limitBytes={FILE_LIMIT_BYTES} limitLabel="1 GB"   />
+
+      {/* ── Load button or table breakdown ── */}
       {tableData.length === 0 ? (
-        <div style={{ textAlign:'center', padding:'20px 0' }}>
-          <button onClick={loadStorage} style={{ fontSize:12, padding:'8px 20px', background:'#0a1f5d', color:'#fff', border:'none', borderRadius:6, cursor:'pointer', fontWeight:700 }}>
-            Load Storage Info
+        <div style={{ textAlign:'center', padding:'14px 0 4px' }}>
+          <button onClick={loadStorage} disabled={loading}
+            style={{ fontSize:12, padding:'8px 20px', background:'#0a1f5d', color:'#fff', border:'none', borderRadius:6, cursor:'pointer', fontWeight:700, opacity:loading?0.6:1 }}>
+            {loading ? 'Loading…' : 'Load Storage Info'}
           </button>
         </div>
       ) : (
-        <div>
+        <div style={{ marginTop:6 }}>
+          <p style={{ fontSize:10, fontWeight:700, letterSpacing:'.12em', textTransform:'uppercase', color:'#aaa', marginBottom:8 }}>Table Breakdown</p>
           {tableData.map((t, i) => (
-            <div key={t.table_name} style={{ display:'flex', alignItems:'center', gap:10, marginBottom:8 }}>
-              <span style={{ fontSize:11, fontWeight:700, minWidth:170, color:'#555', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+            <div key={t.table_name} style={{ display:'flex', alignItems:'center', gap:10, marginBottom:7 }}>
+              <span style={{ fontSize:10, fontWeight:700, minWidth:160, color:'#555', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
                 {t.table_name.replace('drynn_','')}
               </span>
-              <div style={{ flex:1, height:8, background:'#f0f0f0', borderRadius:4 }}>
-                <div style={{ height:'100%', width: t.size_bytes ? `${Math.min(100,(t.size_bytes/5242880)*100)}%` : '4%',
-                  background:tableColors[i % tableColors.length], borderRadius:4, minWidth:4 }} />
+              <div style={{ flex:1, height:6, background:'#f0f0f0', borderRadius:3 }}>
+                <div style={{ height:'100%', borderRadius:3, minWidth:3,
+                  width: t.size_bytes && totalDbBytes ? `${Math.min(100,(t.size_bytes/totalDbBytes)*100)}%` : '3%',
+                  background: tableColors[i % tableColors.length] }} />
               </div>
-              <span style={{ fontSize:11, fontWeight:700, minWidth:40, textAlign:'right', color:'#888' }}>{t.size_pretty||'—'}</span>
+              <span style={{ fontSize:10, fontWeight:700, minWidth:44, textAlign:'right', color:'#888' }}>{t.size_pretty||'—'}</span>
             </div>
           ))}
-          <div style={{ marginTop:12, paddingTop:10, borderTop:'1px solid #f0f0f0', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-            <span style={{ fontSize:11, color:'#aaa' }}>Free tier limit: {TOTAL_MB} MB</span>
-            <span style={{ fontSize:11, fontWeight:700, color:'#00a86b' }}>✓ Well within limits</span>
+          <div style={{ marginTop:10, paddingTop:10, borderTop:'1px solid #f0f0f0', display:'flex', justifyContent:'space-between' }}>
+            <span style={{ fontSize:10, color:'#aaa' }}>Supabase Free Tier · DB 500 MB · Storage 1 GB</span>
+            <span style={{ fontSize:10, fontWeight:700, color:'#0a1f5d' }}>Total DB: {fmtBytes(totalDbBytes)}</span>
           </div>
         </div>
       )}

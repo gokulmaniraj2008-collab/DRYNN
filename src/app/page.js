@@ -3712,24 +3712,9 @@ function StorageWidget({ supabase, showToast }) {
   // Fix: recurse into folders properly; item.id present = file, absent = folder
   const loadFileStorage = async () => {
     try {
-      const loadStorage = async () => {
-  setLoading(true)
-  try {
-    const { data, error } = await supabase.rpc('get_table_sizes').catch(() => ({ data: null, error: true }))
-    if (!error && data && data.length > 0) {
-      setTableData(data)
-      setTotalDbBytes(data.reduce((sum, t) => sum + (t.size_bytes || 0), 0))
-    } else {
-      setTableData([])
-      setTotalDbBytes(0)
-    }
-  } catch(e) {
-    setTableData([])
-    setTotalDbBytes(0)
-  }
-  await loadFileStorage()
-  setLoading(false)
-      }
+      const { data: buckets, error: bErr } = await supabase.storage.listBuckets()
+      if (bErr || !buckets || buckets.length === 0) { setFileBytes(0); return }
+      let total = 0
       for (const bucket of buckets) {
         const { data: rootFiles } = await supabase.storage
           .from(bucket.name)

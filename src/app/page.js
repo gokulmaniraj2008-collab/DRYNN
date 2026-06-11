@@ -3729,7 +3729,8 @@ function StorageWidget({ supabase, showToast }) {
   const loadStorage = async () => {
     setLoading(true)
     try {
-      const { data, error } = await supabase.rpc('get_table_sizes').catch(() => ({ data: null, error: true }))
+      const { data, error } = await supabase.rpc('get_table_sizes').catch((e) => { console.error('RPC catch:', e); return { data: null, error: true } })
+if (error) console.error('RPC error:', error)
       if (error || !data) {
         setTableData([
           { table_name:'drynn_orders',        size_pretty:'—', size_bytes:0 },

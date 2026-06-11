@@ -4172,7 +4172,7 @@ function AdminPanel({ onBack }) {
         <div style={{ display:'flex', gap:4, overflowX:'auto', paddingBottom:8, WebkitOverflowScrolling:'touch', scrollbarWidth:'none' }}>
           {[
             ['orders',     'Orders'],
-            ['products',   'Products'],
+            ['catalog',    '🛍 Catalog'],
             ['samples',    'Samples'],
             ['uploads',    'Uploads'],
             ['grouporders','👥 Groups'],
@@ -4180,24 +4180,21 @@ function AdminPanel({ onBack }) {
               ['analytics',  '📊 Analytics'],
               ['people',     '👥 People'],
               ['media',      '🎬 Media'],
-              ['colors',     '🎨 Colors'],
               ['admins',     '🔑 Admins'],
             ] : [
               ['media',      '🎬 Media'],
-              ['colors',     '🎨 Colors'],
             ]),
           ].map(([key, label]) => (
             <button key={key} onClick={()=>{
               setTab(key)
               if(key==='orders')      loadOrders()
-              if(key==='products')    loadProducts()
+              if(key==='catalog')     { loadProducts(); loadAdminColors() }
               if(key==='samples')     loadSamples()
               if(key==='uploads')     loadOrders()
               if(key==='grouporders') loadGroupOrders()
               if(key==='analytics')   loadOrders()
               if(key==='people')      { loadVisitors(); loadAllUsers() }
               if(key==='media')       loadMediaUrls()
-              if(key==='colors')      loadAdminColors()
               if(key==='admins')      loadAdmins()
             }} style={{ flexShrink:0, padding:'6px 14px', borderRadius:4, border:'none', cursor:'pointer',
               background:tab===key?'#c8102e':'#222', color:'#fff', fontSize:12, fontWeight:700 }}>
@@ -4304,8 +4301,21 @@ function AdminPanel({ onBack }) {
         )}
 
         {/* ══ PRODUCTS TAB ══ */}
-        {tab==='products' && (
+        {tab==='catalog' && (() => {
+          const [catalogSection, setCatalogSection] = React.useState('products')
+          return (
           <div>
+            {/* Sub-tab bar */}
+            <div style={{ display:'flex', gap:0, marginBottom:20, borderBottom:'2px solid #f0f0f0' }}>
+              {[['products','📦 Products'],['colors','🎨 Colours']].map(([k,l])=>(
+                <button key={k} className={`tab-btn${catalogSection===k?' active':''}`}
+                  onClick={()=>setCatalogSection(k)}>{l}</button>
+              ))}
+            </div>
+
+            {/* ── Products section ── */}
+            {catalogSection==='products' && (
+            <div>
             <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16 }}>
               <h2 style={{ fontSize:18, fontWeight:700 }}>Products ({products.length})</h2>
               <button className="btn-primary" style={{ padding:'8px 16px', fontSize:12 }} onClick={()=>setShowAddProduct(v=>!v)}>
@@ -4441,7 +4451,49 @@ function AdminPanel({ onBack }) {
               ))}
             </div>
           </div>
-        )}
+            )}
+
+            {/* ── Colours section ── */}
+            {catalogSection==='colors' && (
+            <div>
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:8 }}>
+              <h2 style={{ fontSize:18, fontWeight:700 }}>🎨 Colour Manager</h2>
+              <button className="btn-secondary" style={{ padding:'7px 14px', fontSize:12 }} onClick={loadAdminColors}>↻ Load</button>
+            </div>
+            <p style={{ fontSize:12, color:'#888', marginBottom:16 }}>These colours appear in Studio, Shop and Group Order pages.</p>
+            <div style={{ background:'#fff', border:'1px solid #e8e8e8', borderRadius:10, padding:'20px', marginBottom:16 }}>
+              <div style={{ fontSize:11, fontWeight:700, textTransform:'uppercase', letterSpacing:'.1em', color:'#aaa', marginBottom:12 }}>Current Colours ({adminColors.length})</div>
+              <div style={{ display:'flex', gap:10, flexWrap:'wrap', marginBottom:16 }}>
+                {adminColors.map((c,i) => (
+                  <div key={i} style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:4 }}>
+                    <div style={{ width:36, height:36, borderRadius:'50%', background:c, border:c==='#ffffff'?'2px solid #ccc':'none', boxShadow:'0 2px 8px rgba(0,0,0,.12)' }} />
+                    <span style={{ fontSize:9, color:'#888', fontFamily:'monospace' }}>{c}</span>
+                    <button onClick={()=>{ if(window.confirm('Remove colour '+c+'?')){ const nc=adminColors.filter((_,j)=>j!==i); saveAdminColors(nc) } }}
+                      style={{ fontSize:9, color:'#c8102e', background:'none', border:'none', cursor:'pointer', padding:0, fontWeight:700 }}>✕</button>
+                  </div>
+                ))}
+              </div>
+              <div style={{ display:'flex', gap:8, alignItems:'center', flexWrap:'wrap' }}>
+                <input type="color" value={newColor} onChange={e=>setNewColor(e.target.value)}
+                  style={{ width:40, height:36, padding:0, border:'1.5px solid #e0e0e0', borderRadius:4, cursor:'pointer' }} />
+                <input className="input-field" style={{ maxWidth:120, fontSize:12, fontFamily:'monospace' }}
+                  value={newColor} onChange={e=>setNewColor(e.target.value)} placeholder="#000000" />
+                <button className="btn-primary" style={{ padding:'10px 16px', fontSize:12 }}
+                  onClick={()=>{ if(!adminColors.includes(newColor)) saveAdminColors([...adminColors, newColor]); else showToast('Colour already added') }}>
+                  + Add
+                </button>
+              </div>
+              {colorsSaving && <div style={{ fontSize:11, color:'#0a7abf', marginTop:8 }}>Saving…</div>}
+            </div>
+            <button className="btn-secondary" style={{ fontSize:12 }} onClick={()=>{ if(window.confirm('Reset to defaults?')) saveAdminColors([...DEFAULT_SWATCHES]) }}>
+              ↺ Reset to Defaults
+            </button>
+            </div>
+            )}
+
+          </div>
+          )
+        })()}
 
         {/* ══ SAMPLES TAB ══ */}
         {tab==='samples' && (
@@ -4866,43 +4918,6 @@ function AdminPanel({ onBack }) {
         )}
 
         {/* ══ COLORS TAB ══ */}
-        {tab==='colors' && (
-          <div>
-            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:8 }}>
-              <h2 style={{ fontSize:18, fontWeight:700 }}>🎨 Color Manager</h2>
-              <button className="btn-secondary" style={{ padding:'7px 14px', fontSize:12 }} onClick={loadAdminColors}>↻ Load</button>
-            </div>
-            <p style={{ fontSize:12, color:'#888', marginBottom:16 }}>These colours appear in Studio, Shop and Group Order pages.</p>
-            <div style={{ background:'#fff', border:'1px solid #e8e8e8', borderRadius:10, padding:'20px', marginBottom:16 }}>
-              <div style={{ fontSize:11, fontWeight:700, textTransform:'uppercase', letterSpacing:'.1em', color:'#aaa', marginBottom:12 }}>Current Colours ({adminColors.length})</div>
-              <div style={{ display:'flex', gap:10, flexWrap:'wrap', marginBottom:16 }}>
-                {adminColors.map((c,i) => (
-                  <div key={i} style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:4 }}>
-                    <div style={{ width:36, height:36, borderRadius:'50%', background:c, border:c==='#ffffff'?'2px solid #ccc':'none', boxShadow:'0 2px 8px rgba(0,0,0,.12)' }} />
-                    <span style={{ fontSize:9, color:'#888', fontFamily:'monospace' }}>{c}</span>
-                    <button onClick={()=>{ if(window.confirm('Remove colour '+c+'?')){ const nc=adminColors.filter((_,j)=>j!==i); saveAdminColors(nc) } }}
-                      style={{ fontSize:9, color:'#c8102e', background:'none', border:'none', cursor:'pointer', padding:0, fontWeight:700 }}>✕</button>
-                  </div>
-                ))}
-              </div>
-              <div style={{ display:'flex', gap:8, alignItems:'center', flexWrap:'wrap' }}>
-                <input type="color" value={newColor} onChange={e=>setNewColor(e.target.value)}
-                  style={{ width:40, height:36, padding:0, border:'1.5px solid #e0e0e0', borderRadius:4, cursor:'pointer' }} />
-                <input className="input-field" style={{ maxWidth:120, fontSize:12, fontFamily:'monospace' }}
-                  value={newColor} onChange={e=>setNewColor(e.target.value)} placeholder="#000000" />
-                <button className="btn-primary" style={{ padding:'10px 16px', fontSize:12 }}
-                  onClick={()=>{ if(!adminColors.includes(newColor)) saveAdminColors([...adminColors, newColor]); else showToast('Colour already added') }}>
-                  + Add
-                </button>
-              </div>
-              {colorsSaving && <div style={{ fontSize:11, color:'#0a7abf', marginTop:8 }}>Saving…</div>}
-            </div>
-            <button className="btn-secondary" style={{ fontSize:12 }} onClick={()=>{ if(window.confirm('Reset to defaults?')) saveAdminColors([...DEFAULT_SWATCHES]) }}>
-              ↺ Reset to Defaults
-            </button>
-          </div>
-        )}
-
         {/* ══ ADMINS TAB (super admin only) ══ */}
         {tab==='admins' && (isSuperAdmin || currentUser?.email === SUPER_ADMIN_EMAIL) && (
           <div>

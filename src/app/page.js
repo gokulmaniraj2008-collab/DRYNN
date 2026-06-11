@@ -2307,7 +2307,9 @@ async function uploadToCloudinary(file, onProgress) {
 
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest()
-    xhr.open('POST', `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD}/image/upload`)
+    const mime = file.type || ''
+    const resourceType = mime.startsWith('video/') || mime.startsWith('audio/') ? 'video' : 'image'
+    xhr.open('POST', `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD}/${resourceType}/upload`)
 
     xhr.upload.onprogress = (e) => {
       if (e.lengthComputable && onProgress) {

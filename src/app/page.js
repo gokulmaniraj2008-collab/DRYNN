@@ -3566,8 +3566,16 @@ function useIsAdmin(user) {
   React.useEffect(() => {
     if (!user?.email) { setIsAdmin(false); setIsSuperAdmin(false); return }
     if (user.email === SUPER_ADMIN_EMAIL) { setIsAdmin(true); setIsSuperAdmin(true); return }
-    supabase.from('drynn_admins').select('role').eq('email', user.email).single()
-      .then(({ data }) => {
+    supabase.from('drynn_admins').select('role').eq('email', user.email).maybeSingle()
+      .then(({ data, error }) => {
+        if (error) {
+          // RLS blocking — check via drynn_settings fallback
+          supabase.from('drynn_settings').select('value').eq('key', 'admin_' + user.email).maybeSingle()
+            .then(({ data: d2 }) => {
+              if (d2?.value) { setIsAdmin(true); setIsSuperAdmin(d2.value === 'superadmin') }
+            })
+          return
+        }
         setIsAdmin(!!data)
         setIsSuperAdmin(data?.role === 'superadmin')
       })

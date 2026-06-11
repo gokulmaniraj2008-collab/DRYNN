@@ -3559,10 +3559,12 @@ const ADMIN_EMAIL = process.env.NEXT_PUBLIC_ADMIN_EMAIL
 const SUPER_ADMIN_EMAIL = 'gokulmaniraj2008@gmail.com'
 
 function useIsAdmin(user) {
-  const [isAdmin,      setIsAdmin]      = React.useState(false)
-  const [isSuperAdmin, setIsSuperAdmin] = React.useState(false)
+  const isSuperAdminEmail = user?.email === SUPER_ADMIN_EMAIL
+  const [isAdmin,      setIsAdmin]      = React.useState(isSuperAdminEmail)
+  const [isSuperAdmin, setIsSuperAdmin] = React.useState(isSuperAdminEmail)
   React.useEffect(() => {
     if (!user?.email) { setIsAdmin(false); setIsSuperAdmin(false); return }
+    if (user.email === SUPER_ADMIN_EMAIL) { setIsAdmin(true); setIsSuperAdmin(true); return }
     supabase.from('drynn_admins').select('role').eq('email', user.email).single()
       .then(({ data }) => {
         setIsAdmin(!!data)
@@ -4023,7 +4025,7 @@ function AdminPanel({ onBack }) {
     </div>
   )
 
-  if (!isAdmin) return (
+  if (!isAdmin && currentUser?.email !== SUPER_ADMIN_EMAIL) return (
     <div style={{ minHeight:'100vh', background:'#0a0a0a', display:'flex', alignItems:'center', justifyContent:'center', padding:16 }}>
       <div style={{ background:'#111', border:'1px solid #1e1e1e', borderRadius:12, padding:'40px 32px', width:'100%', maxWidth:380, textAlign:'center' }}>
         <div style={{ marginBottom:16, color:'#555' }}>
@@ -4048,7 +4050,7 @@ function AdminPanel({ onBack }) {
           <div style={{ display:'flex', alignItems:'center', gap:10 }}>
             <span style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:22, letterSpacing:'.18em', color:'#fff' }}>DRYNN ADMIN</span>
             <div style={{ width:8, height:8, borderRadius:'50%', background:'#00a86b', boxShadow:'0 0 6px #00a86b' }} />
-            {isSuperAdmin && <span style={{ fontSize:10, color:'#c8102e', fontWeight:700, border:'1px solid #c8102e', borderRadius:3, padding:'1px 5px' }}>SUPER</span>}
+            {(isSuperAdmin || currentUser?.email === SUPER_ADMIN_EMAIL) && <span style={{ fontSize:10, color:'#c8102e', fontWeight:700, border:'1px solid #c8102e', borderRadius:3, padding:'1px 5px' }}>SUPER</span>}
           </div>
           <button onClick={onBack} style={{ padding:'7px 18px', borderRadius:6, border:'1.5px solid #c8102e', cursor:'pointer', background:'#c8102e', color:'#fff', fontSize:12, fontWeight:700, display:'flex', alignItems:'center', gap:6 }}>
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>Exit
@@ -4067,7 +4069,7 @@ function AdminPanel({ onBack }) {
             ['users',      '🧑 Users'],
             ['media',      '🎬 Media'],
             ['colors',     '🎨 Colors'],
-            ...(isSuperAdmin ? [['admins','🔑 Admins']] : []),
+            ...((isSuperAdmin || currentUser?.email === SUPER_ADMIN_EMAIL) ? [['admins','🔑 Admins']] : []),
           ].map(([key, label]) => (
             <button key={key} onClick={()=>{
               setTab(key)
@@ -4723,7 +4725,7 @@ function AdminPanel({ onBack }) {
         )}
 
         {/* ══ ADMINS TAB (super admin only) ══ */}
-        {tab==='admins' && isSuperAdmin && (
+        {tab==='admins' && (isSuperAdmin || currentUser?.email === SUPER_ADMIN_EMAIL) && (
           <div>
             <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:8 }}>
               <div>

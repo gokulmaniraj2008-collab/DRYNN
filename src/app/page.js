@@ -3729,8 +3729,22 @@ function StorageWidget({ supabase, showToast }) {
   const loadStorage = async () => {
     setLoading(true)
     try {
-      const { data, error } = await supabase.rpc('get_table_sizes').catch((e) => { console.error('RPC catch:', e); return { data: null, error: true } })
-if (error) console.error('RPC error:', error)
+      // Try RPC first, fallback to settings table
+      let data = null, error = null;
+      const rpcResult = await supabase.rpc('get_table_sizes').catch(() => null)
+      if (rpcResult?.data && rpcResult.data.length > 0) {
+        data = rpcResult.data
+      } else {
+        // Fallback: read cached sizes from drynn_settings
+        const { data: cached } = await supabase.from('drynn_settings').select('value').eq('key','db_sizes').maybeSingle()
+        if (cached?.value) { try { data = JSON.parse(cached.value) } catch {} }
+        error = !data
+      }
+      const { data: rpcData, error: rpcError } = rpcResult || {}
+      const rpc = await supabase.rpc('get_table_sizes').catch(() => null)
+const { data, error } = (rpc?.data?.length > 0) ? rpc :
+  await supabase.from('drynn_settings').select('value').eq('key','db_sizes').maybeSingle()
+    .then(r => ({ data: r.data?.value ? JSON.parse(r.data.value) : null, error: !r.data }))
       if (error || !data) {
         setTableData([
           { table_name:'drynn_orders',        size_pretty:'—', size_bytes:0 },

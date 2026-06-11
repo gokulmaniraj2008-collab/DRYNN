@@ -2005,6 +2005,7 @@ function HomePage({ user, onNav, cart, onAddToCart }) {
 
 // ── Product Detail Page ──────────────────────────────────────
 function ProductDetailPage({ product, onBack, onAddToCart }) {
+  const SWATCHES  = useSwatches()
   const [size,     setSize]     = useState('M')
   const [color,    setColor]    = useState('#ffffff')
   const [qty,      setQty]      = useState(1)
@@ -2187,7 +2188,6 @@ function ProductCard({ p, onSelect, onAddToCart }) {
 }
 
 function ProductsPage({ onAddToCart, onNav }) {
-  const sharedSwatches = useSwatches()
   const products  = usePublicProducts()
   const [activeTab,    setActiveTab]    = useState('All')
   const [sort,         setSort]         = useState('popular')

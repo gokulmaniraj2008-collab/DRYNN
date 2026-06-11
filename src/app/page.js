@@ -3709,68 +3709,72 @@ function StorageWidget({ supabase, showToast }) {
   const barColor = (p) => p > 85 ? '#c8102e' : p > 60 ? '#f5a623' : '#00a86b'
 
   // ── Load Supabase Storage bucket usage ──────────────────────
+  // Fix: recurse into folders properly; item.id present = file, absent = folder
   const loadFileStorage = async () => {
     try {
-      const { data: buckets } = await supabase.storage.listBuckets()
-      if (!buckets || buckets.length === 0) { setFileBytes(0); return }
+      const { data: buckets, error: bErr } = await supabase.storage.listBuckets()
+      if (bErr || !buckets || buckets.length === 0) { setFileBytes(0); return }
       let total = 0
       for (const bucket of buckets) {
-        const folders = ['', 'drynn', 'drynn/products', 'drynn/orders', 'drynn/designs']
-        for (const folder of folders) {
-          const { data: files } = await supabase.storage.from(bucket.name).list(folder, { limit:1000 })
-          if (files) files.forEach(f => { if (f.metadata?.size) total += f.metadata.size })
+        const { data: rootFiles } = await supabase.storage
+          .from(bucket.name)
+          .list('', { limit: 1000 })
+        if (rootFiles) {
+          for (const item of rootFiles) {
+            if (item.id) {
+              total += item.metadata?.size ?? 0
+            } else {
+              const { data: subFiles } = await supabase.storage
+                .from(bucket.name)
+                .list(item.name, { limit: 1000 })
+              if (subFiles) subFiles.forEach(f => { total += f.metadata?.size ?? 0 })
+            }
+          }
         }
       }
       setFileBytes(total)
     } catch(e) { setFileBytes(0) }
   }
 
-  // ── Load Cloudinary usage via Admin API ─────────────────────
-  // Requires NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME to be set.
-  // The /usage endpoint is public (no auth needed for cloud name lookup).
+  // ── Load Cloudinary usage via /api/cloudinary-usage route ───
+  // The Cloudinary /usage endpoint needs Basic auth (API key+secret).
+  // Those must NOT be on the client — create app/api/cloudinary-usage/route.js
+  // to proxy the call server-side. If the route doesn't exist yet, bars show "—".
   const loadCloudinaryUsage = async () => {
     try {
-      const cloud = CLOUDINARY_CLOUD
-      if (!cloud) { setCloudinaryBytes(0); setCloudinaryBw(0); setCloudinaryCount(0); return }
-      const res = await fetch(`https://api.cloudinary.com/v1_1/${cloud}/usage`, {
-        method: 'GET',
-        headers: { 'Accept': 'application/json' },
-      })
-      // Cloudinary /usage requires Basic auth — if no API secret (client-side), fall back to
-      // counting files in the drynn folder via the search API (unsigned).
-      // We surface a note instead of silently failing.
-      if (res.status === 401) {
-        // Can't get usage without API secret on the client side — show 0 with a note
-        setCloudinaryBytes(0); setCloudinaryBw(0); setCloudinaryCount(null)
-        return
-      }
-      if (!res.ok) throw new Error('Cloudinary usage API error')
+      const res = await fetch('/api/cloudinary-usage')
+      if (res.status === 404) return   // route not created yet — leave null (shows "—")
+      if (!res.ok) throw new Error('cloudinary-usage error')
       const data = await res.json()
-      // data.storage.usage = bytes used, data.bandwidth.usage = bytes this month, data.resources = total assets
-      setCloudinaryBytes(data?.storage?.usage   ?? 0)
-      setCloudinaryBw(data?.bandwidth?.usage    ?? 0)
-      setCloudinaryCount(data?.resources        ?? null)
-    } catch(e) {
-      setCloudinaryBytes(0); setCloudinaryBw(0); setCloudinaryCount(null)
-    }
+      setCloudinaryBytes(data?.storage_bytes   ?? null)
+      setCloudinaryBw(data?.bandwidth_bytes    ?? null)
+      setCloudinaryCount(data?.resources       ?? null)
+    } catch(e) { /* leave null — shows "—" not "0 B" */ }
   }
 
   const loadStorage = async () => {
     setLoading(true)
+    // ── DB size: try RPC, fall back to row-count estimate ──────
     try {
-      const { data, error } = await supabase.rpc('get_table_sizes').catch(() => ({ data: null, error: true }))
-      if (error || !data) {
-        setTableData([
-          { table_name:'drynn_orders',        size_pretty:'—', size_bytes:0 },
-          { table_name:'drynn_user_sessions', size_pretty:'—', size_bytes:0 },
-          { table_name:'drynn_products',      size_pretty:'—', size_bytes:0 },
-          { table_name:'drynn_group_orders',  size_pretty:'—', size_bytes:0 },
-          { table_name:'drynn_admins',        size_pretty:'—', size_bytes:0 },
-        ])
-        setTotalDbBytes(0)
+      const { data: rpcData, error: rpcErr } = await supabase
+        .rpc('get_table_sizes')
+        .catch(() => ({ data: null, error: true }))
+
+      if (!rpcErr && rpcData && rpcData.length > 0) {
+        setTableData(rpcData)
+        setTotalDbBytes(rpcData.reduce((s, t) => s + (t.size_bytes || 0), 0))
       } else {
-        setTableData(data)
-        setTotalDbBytes(data.reduce((sum, t) => sum + (t.size_bytes || 0), 0))
+        // RPC not available — fall back to row count × 8 KB estimate per row
+        const tables = ['drynn_orders','drynn_user_sessions','drynn_products','drynn_group_orders','drynn_admins']
+        const rows = []; let dbTotal = 0
+        for (const tbl of tables) {
+          const { count } = await supabase.from(tbl).select('*', { count:'exact', head:true })
+          const est = (count || 0) * 8192
+          rows.push({ table_name: tbl, size_bytes: est, size_pretty: est > 0 ? `~${fmtBytes(est)}` : '—' })
+          dbTotal += est
+        }
+        setTableData(rows)
+        setTotalDbBytes(dbTotal)
       }
     } catch(e) {
       setTableData([])
@@ -3948,7 +3952,7 @@ function StorageWidget({ supabase, showToast }) {
 
           <div style={{ marginTop:10, paddingTop:10, borderTop:'1px solid #f0f0f0', fontSize:9, color:'#bbb', lineHeight:1.7 }}>
             Supabase Free: DB 500 MB · Storage 1 GB &nbsp;|&nbsp; Cloudinary Free: Storage 25 GB · BW 25 GB/mo
-            {cloudinaryBytes === 0 && <span style={{ color:'#f5a623' }}> · Cloudinary live usage needs API secret (server-side only)</span>}
+            {cloudinaryBytes === null && <span style={{ color:'#f5a623' }}> · Cloudinary: create <code style={{fontSize:9}}>/api/cloudinary-usage/route.js</code> to show live data</span>}
           </div>
         </>
       )}

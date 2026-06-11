@@ -1022,9 +1022,29 @@ function StudioPage({ user, onNav, onAddToCart }) {
     if (!allowed.includes(f.type)) { setUploadErr('Only PNG, JPG, SVG allowed.'); return }
     if (f.size > 20*1024*1024) { setUploadErr('Max 20MB.'); return }
     setUploadErr('')
+    // Show blob preview immediately while uploading in background
+    const blobUrl = URL.createObjectURL(f)
+    setSideImgs(prev => ({ ...prev, [activeSide]: blobUrl }))
     setSideFiles(prev => ({ ...prev, [activeSide]: f }))
     setSideSamples(prev => ({ ...prev, [activeSide]: null }))
-    setSideImgs(prev => ({ ...prev, [activeSide]: URL.createObjectURL(f) }))
+    // Upload to Cloudinary immediately — replace blob URL with real URL
+    setStatus('uploading')
+    setUploadPct(0)
+    uploadToCloudinary(f, pct => setUploadPct(pct))
+      .then(url => {
+        // Replace blob URL with permanent Cloudinary URL in sideImgs
+        setSideImgs(prev => ({ ...prev, [activeSide]: url }))
+        // Mark file as already uploaded — store URL instead of File object
+        setSideFiles(prev => ({ ...prev, [activeSide]: { _uploaded: true, _url: url, name: f.name } }))
+        setStatus('')
+        setUploadPct(0)
+      })
+      .catch(err => {
+        setUploadErr('Upload failed: ' + err.message)
+        setSideImgs(prev => ({ ...prev, [activeSide]: null }))
+        setSideFiles(prev => ({ ...prev, [activeSide]: null }))
+        setStatus('')
+      })
   }
 
   const pickSample = s => {
@@ -1214,11 +1234,18 @@ function StudioPage({ user, onNav, onAddToCart }) {
     try {
       const designUrls = {}
       for (const side of SIDES) {
-        if (sideFiles[side]) {
+        if (sideFiles[side]?._uploaded) {
+          // Already uploaded during file selection — use stored URL directly
+          designUrls[side] = sideFiles[side]._url
+        } else if (sideFiles[side]) {
+          // Fallback: upload now if not yet uploaded
           try { designUrls[side] = await uploadToCloudinary(sideFiles[side], pct=>setUploadPct(pct)) }
           catch(e) { setStatus(''); alert('Upload failed for '+side+': '+e.message); return }
         } else if (sideSamples[side]) {
           designUrls[side] = sideSamples[side].image_url
+        } else if (sideImgs[side] && sideImgs[side].startsWith('https://')) {
+          // sideImgs has a real Cloudinary URL (from previous upload)
+          designUrls[side] = sideImgs[side]
         }
       }
       setStatus('saving')
@@ -3808,12 +3835,11 @@ function AdminPanel({ onBack }) {
 
   const saveAdminColors = async (colors) => {
     setColorsSaving(true)
-    const { error } = await supabase.from('drynn_settings')
-      .upsert({ key: 'swatches', value: JSON.stringify(colors) }, { onConflict: 'key' })
-    setColorsSaving(false)
-    if (error) { showToast('Save failed: ' + error.message); return }
+    await supabase.from('drynn_settings').delete().eq('key','swatches')
+    await supabase.from('drynn_settings').insert({ key:'swatches', value: JSON.stringify(colors) })
     setAdminColors(colors)
     showToast('Colors saved!')
+    setColorsSaving(false)
   }
 
   const loadGroupMembers = async (group_code) => {
@@ -4035,10 +4061,17 @@ function AdminPanel({ onBack }) {
               <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
                 {orders.length===0 && <div style={{ textAlign:'center', padding:60, color:'#888', background:'#fff', borderRadius:10 }}>No orders yet.</div>}
                 {orders.map(o => {
-                  const isCustom = o.order_type === 'custom' || (o.design_file && o.design_file !== 'catalog-order')
+                  const isCustom = o.order_type === 'custom' || (o.design_file && o.design_file !== 'catalog-order' && o.design_file !== '{}')
                   const parseDesigns = (df) => {
-                    if (!df || df === 'catalog-order') return {}
-                    try { const p = JSON.parse(df); return typeof p==='object' ? p : { front: df } } catch { return { front: df } }
+                    if (!df || df === 'catalog-order' || df === '{}') return {}
+                    try {
+                      const p = JSON.parse(df)
+                      if (typeof p !== 'object') return df.startsWith('https://') ? { front: df } : {}
+                      // Filter out blob: URLs — they are dead and cannot be displayed
+                      const cleaned = {}
+                      Object.entries(p).forEach(([k,v]) => { if (v && typeof v === 'string' && v.startsWith('https://')) cleaned[k] = v })
+                      return cleaned
+                    } catch { return df.startsWith('https://') ? { front: df } : {} }
                   }
                   const parsedDesigns = parseDesigns(o.design_file)
                   const designSides = ['front','back','left','right']
@@ -4826,7 +4859,7 @@ function AdminPanel({ onBack }) {
                   <div key={i} style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:4 }}>
                     <div style={{ width:36, height:36, borderRadius:'50%', background:c, border: c==='#ffffff'?'2px solid #ccc':'2px solid transparent', boxShadow:'0 2px 8px rgba(0,0,0,.12)' }} />
                     <span style={{ fontSize:9, color:'#888' }}>{c}</span>
-                    <button onClick={() => { if(window.confirm('Remove this colour?')){ const nc = adminColors.filter((_,j)=>j!==i); saveAdminColors(nc) } }}
+                    <button onClick={() => { const nc = adminColors.filter((_,j)=>j!==i); saveAdminColors(nc) }}
                       style={{ fontSize:9, color:'#c8102e', background:'none', border:'none', cursor:'pointer', padding:0 }}>✕</button>
                   </div>
                 ))}

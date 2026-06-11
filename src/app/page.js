@@ -3563,8 +3563,6 @@ function useIsAdmin(user) {
   const [isSuperAdmin, setIsSuperAdmin] = React.useState(false)
   React.useEffect(() => {
     if (!user?.email) { setIsAdmin(false); setIsSuperAdmin(false); return }
-    // Hardcoded superadmin fallback
-    if (user.email === SUPER_ADMIN_EMAIL) { setIsAdmin(true); setIsSuperAdmin(true); return }
     supabase.from('drynn_admins').select('role').eq('email', user.email).single()
       .then(({ data }) => {
         setIsAdmin(!!data)
@@ -3986,7 +3984,8 @@ function AdminPanel({ onBack }) {
   const addAdmin = async () => {
     const email = newAdminEmail.trim().toLowerCase()
     if (!email || !email.includes('@')) { showToast('Enter a valid email'); return }
-    if (!isSuperAdmin) { showToast('Only super admin can add admins'); return }
+    const canManage = isSuperAdmin || currentUser?.email === SUPER_ADMIN_EMAIL
+    if (!canManage) { showToast('Only super admin can add admins'); return }
     setAdminSaving(true)
     const { error } = await supabase.from('drynn_admins').insert({ email, role:'admin', added_by:currentUser.email })
     if (error) showToast(error.message.includes('unique') ? 'Already an admin' : 'Failed: ' + error.message)
@@ -3996,7 +3995,8 @@ function AdminPanel({ onBack }) {
 
   const removeAdmin = async (email) => {
     if (email === SUPER_ADMIN_EMAIL) { showToast('Cannot remove super admin'); return }
-    if (!isSuperAdmin) { showToast('Only super admin can remove admins'); return }
+    const canManage = isSuperAdmin || currentUser?.email === SUPER_ADMIN_EMAIL
+    if (!canManage) { showToast('Only super admin can remove admins'); return }
     if (!confirm('Remove ' + email + ' as admin?')) return
     const { error } = await supabase.from('drynn_admins').delete().eq('email', email)
     if (error) showToast('Failed: ' + error.message)

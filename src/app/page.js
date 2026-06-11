@@ -3710,82 +3710,33 @@ function StorageWidget({ supabase, showToast }) {
 
   // ── Load Supabase Storage bucket usage ──────────────────────
   // Fix: recurse into folders properly; item.id present = file, absent = folder
-  const loadFileStorage = async () => {
-    try {
-      const { data: buckets, error: bErr } = await supabase.storage.listBuckets()
-      if (bErr || !buckets || buckets.length === 0) { setFileBytes(0); return }
-      let total = 0
-      for (const bucket of buckets) {
-        const { data: rootFiles } = await supabase.storage
-          .from(bucket.name)
-          .list('', { limit: 1000 })
-        if (rootFiles) {
-          for (const item of rootFiles) {
-            if (item.id) {
-              total += item.metadata?.size ?? 0
-            } else {
-              const { data: subFiles } = await supabase.storage
-                .from(bucket.name)
-                .list(item.name, { limit: 1000 })
-              if (subFiles) subFiles.forEach(f => { total += f.metadata?.size ?? 0 })
-            }
-          }
-        }
-      }
-      setFileBytes(total)
-    } catch(e) { setFileBytes(0) }
-  }
-
-  // ── Load Cloudinary usage via /api/cloudinary-usage route ───
-  // The Cloudinary /usage endpoint needs Basic auth (API key+secret).
-  // Those must NOT be on the client — create app/api/cloudinary-usage/route.js
-  // to proxy the call server-side. If the route doesn't exist yet, bars show "—".
   const loadCloudinaryUsage = async () => {
     try {
       const res = await fetch('/api/cloudinary-usage')
-      if (res.status === 404) return   // route not created yet — leave null (shows "—")
+      if (res.status === 404) return
       if (!res.ok) throw new Error('cloudinary-usage error')
       const data = await res.json()
-      setCloudinaryBytes(data?.storage_bytes   ?? null)
-      setCloudinaryBw(data?.bandwidth_bytes    ?? null)
-      setCloudinaryCount(data?.resources       ?? null)
-    } catch(e) { /* leave null — shows "—" not "0 B" */ }
+      setCloudinaryBytes(data?.storage_bytes  ?? null)
+      setCloudinaryBw(data?.bandwidth_bytes   ?? null)
+      setCloudinaryCount(data?.resources      ?? null)
+    } catch(e) {}
   }
 
   const loadStorage = async () => {
     setLoading(true)
-    // ── DB size: try RPC, fall back to row-count estimate ──────
     try {
-      console.log('[StorageWidget] calling get_table_sizes RPC...')
-      const { data: rpcData, error: rpcErr } = await supabase
-        .rpc('get_table_sizes')
-        .catch((e) => { console.log('[StorageWidget] RPC threw:', e); return { data: null, error: true } })
-
-      console.log('[StorageWidget] RPC result:', { rpcData, rpcErr })
-
-      if (!rpcErr && rpcData && rpcData.length > 0) {
-        setTableData(rpcData)
-        setTotalDbBytes(rpcData.reduce((s, t) => s + (t.size_bytes || 0), 0))
+      const res = await fetch('/api/supabase-storage')
+      if (res.ok) {
+        const data = await res.json()
+        setTotalDbBytes(data.db_bytes   ?? 0)
+        setFileBytes(data.file_bytes    ?? 0)
+        setTableData(data.tables        ?? [])
       } else {
-        console.log('[StorageWidget] RPC failed, trying row-count fallback...')
-        const tables = ['drynn_orders','drynn_user_sessions','drynn_products','drynn_group_orders','drynn_admins']
-        const rows = []; let dbTotal = 0
-        for (const tbl of tables) {
-          const { count, error: cErr } = await supabase.from(tbl).select('*', { count:'exact', head:true })
-          console.log(`[StorageWidget] ${tbl} count:`, count, 'error:', cErr)
-          const est = (count || 0) * 8192
-          rows.push({ table_name: tbl, size_bytes: est, size_pretty: est > 0 ? `~${fmtBytes(est)}` : '—' })
-          dbTotal += est
-        }
-        setTableData(rows)
-        setTotalDbBytes(dbTotal)
+        setTotalDbBytes(0); setFileBytes(0); setTableData([])
       }
     } catch(e) {
-      console.log('[StorageWidget] caught exception:', e)
-      setTableData([])
-      setTotalDbBytes(0)
+      setTotalDbBytes(0); setFileBytes(0); setTableData([])
     }
-    await loadFileStorage()
     await loadCloudinaryUsage()
     setLoading(false)
   }

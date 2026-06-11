@@ -4997,7 +4997,7 @@ function AdminPanel({ onBack }) {
                     onChange={e=>{ if(e.target.files[0]) handleMediaFileUpload(item.key, e.target.files[0]) }} />
                 </label>
                 {mediaUrls[item.key] && (
-                  <p style={{ fontSize:11, color:'#00a86b', marginTop:8, wordBreak:'break-all' }}>✓ Uploaded: {mediaUrls[item.key]}</p>
+                  <p style={{ fontSize:11, color:'#00a86b', marginTop:8 }}>✓ Uploaded successfully</p>
                 )}
                 {mediaUrls[item.key] && item.key.startsWith('video') && (
                   <video src={mediaUrls[item.key]} style={{ width:'100%', maxHeight:140, marginTop:10, borderRadius:6, objectFit:'cover' }} controls muted />

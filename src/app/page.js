@@ -3684,20 +3684,11 @@ function StorageWidget({ supabase, showToast }) {
   const [tableData,    setTableData]    = React.useState([])
   const [loading,      setLoading]      = React.useState(false)
   const [cleaning,     setCleaning]     = React.useState(false)
-  const [totalDbBytes, setTotalDbBytes] = React.useState(null)
-  const [fileBytes,    setFileBytes]    = React.useState(null)
+  const [totalDbBytes, setTotalDbBytes] = React.useState(null)   // sum of all table sizes
+  const [fileBytes,    setFileBytes]    = React.useState(null)   // Supabase Storage total
 
-  // Cloudinary state
-  const [cldLoading,      setCldLoading]      = React.useState(false)
-  const [cldAppBytes,     setCldAppBytes]      = React.useState(null)   // drynn/ folder usage
-  const [cldTotalBytes,   setCldTotalBytes]    = React.useState(null)   // account total
-  const [cldAppCount,     setCldAppCount]      = React.useState(null)
-  const [cldTotalCount,   setCldTotalCount]    = React.useState(null)
-  const [cldError,        setCldError]         = React.useState('')
-
-  const DB_LIMIT_BYTES   = 500  * 1024 * 1024        // 500 MB
-  const FILE_LIMIT_BYTES = 1024 * 1024 * 1024        // 1 GB
-  const CLD_LIMIT_BYTES  = 25   * 1024 * 1024 * 1024 // 25 GB free tier
+  const DB_LIMIT_BYTES   = 500  * 1024 * 1024   // 500 MB
+  const FILE_LIMIT_BYTES = 1024 * 1024 * 1024   // 1 GB
 
   const fmtBytes = (b) => {
     if (b == null) return '—'
@@ -3706,8 +3697,8 @@ function StorageWidget({ supabase, showToast }) {
     if (b >= 1024)           return (b/1024).toFixed(1)+' KB'
     return b+' B'
   }
-  const pct      = (used, limit) => Math.min(100, ((used||0)/limit)*100)
-  const barColor = (p) => p > 85 ? '#c8102e' : p > 60 ? '#f5a623' : '#00a86b'
+  const pct       = (used, limit) => Math.min(100, ((used||0)/limit)*100)
+  const barColor  = (p) => p > 85 ? '#c8102e' : p > 60 ? '#f5a623' : '#00a86b'
 
   // ── Load Supabase Storage bucket usage ──────────────────────
   const loadFileStorage = async () => {
@@ -3729,22 +3720,7 @@ function StorageWidget({ supabase, showToast }) {
   const loadStorage = async () => {
     setLoading(true)
     try {
-      // Try RPC first, fallback to settings table
-      let data = null, error = null;
-      const rpcResult = await supabase.rpc('get_table_sizes').catch(() => null)
-      if (rpcResult?.data && rpcResult.data.length > 0) {
-        data = rpcResult.data
-      } else {
-        // Fallback: read cached sizes from drynn_settings
-        const { data: cached } = await supabase.from('drynn_settings').select('value').eq('key','db_sizes').maybeSingle()
-        if (cached?.value) { try { data = JSON.parse(cached.value) } catch {} }
-        error = !data
-      }
-      const { data: rpcData, error: rpcError } = rpcResult || {}
-      const rpc = await supabase.rpc('get_table_sizes').catch(() => null)
-const { data, error } = (rpc?.data?.length > 0) ? rpc :
-  await supabase.from('drynn_settings').select('value').eq('key','db_sizes').maybeSingle()
-    .then(r => ({ data: r.data?.value ? JSON.parse(r.data.value) : null, error: !r.data }))
+      const { data, error } = await supabase.rpc('get_table_sizes').catch(() => ({ data: null, error: true }))
       if (error || !data) {
         setTableData([
           { table_name:'drynn_orders',        size_pretty:'—', size_bytes:0 },
@@ -3758,51 +3734,10 @@ const { data, error } = (rpc?.data?.length > 0) ? rpc :
         setTableData(data)
         setTotalDbBytes(data.reduce((sum, t) => sum + (t.size_bytes || 0), 0))
       }
-    } catch(e) { setTotalDbBytes(0); setTableData([]) }
+    } catch(e) {}
     await loadFileStorage()
     setLoading(false)
   }
-
-  // ── Load Cloudinary usage via Admin API ──────────────────────
-  // Cloudinary Admin API requires server-side auth (api_key + api_secret).
-  // We call it via a simple Next.js API route /api/cloudinary-usage
-  // which proxies the request server-side to avoid exposing the secret.
-  const loadCloudinary = async () => {
-    setCldLoading(true)
-    setCldError('')
-    try {
-      // First fetch: app folder usage (drynn/ prefix) — resources list
-      const appRes = await fetch('/api/cloudinary-usage?folder=drynn').catch(() => null)
-      // Second fetch: account-level usage summary
-      const totalRes = await fetch('/api/cloudinary-usage?type=usage').catch(() => null)
-
-      if (appRes && appRes.ok) {
-        const appData = await appRes.json()
-        // appData = { totalBytes, count } — summed from resources
-        setCldAppBytes(appData.totalBytes ?? 0)
-        setCldAppCount(appData.count ?? 0)
-      } else {
-        setCldAppBytes(0); setCldAppCount(0)
-      }
-
-      if (totalRes && totalRes.ok) {
-        const usageData = await totalRes.json()
-        // usageData = { storage: { usage }, derived_storage: { usage }, resources }
-        const raw = (usageData.storage?.usage ?? 0) + (usageData.derived_storage?.usage ?? 0)
-        setCldTotalBytes(raw)
-        setCldTotalCount(usageData.resources ?? 0)
-      } else {
-        setCldTotalBytes(0); setCldTotalCount(0)
-      }
-    } catch(e) {
-      setCldError('Could not load Cloudinary data. Make sure /api/cloudinary-usage exists.')
-      setCldAppBytes(0); setCldTotalBytes(0)
-    }
-    setCldLoading(false)
-  }
-
-  // Auto-load on mount
-  React.useEffect(() => { loadStorage(); loadCloudinary() }, [])
 
   const cleanSessions = async () => {
     if (!window.confirm('Delete duplicate sessions, keeping only the latest per user?')) return
@@ -3826,10 +3761,10 @@ const { data, error } = (rpc?.data?.length > 0) ? rpc :
   const tableColors = ['#c8102e','#0a1f5d','#00a86b','#f5a623','#0a7abf','#9b59b6','#e67e22','#1abc9c']
 
   // ── Usage bar sub-component ──────────────────────────────────
-  const UsageBar = ({ label, icon, usedBytes, limitBytes, limitLabel, extra }) => {
-    const loaded = usedBytes != null
-    const p     = loaded ? pct(usedBytes, limitBytes) : 0
+  const UsageBar = ({ label, icon, usedBytes, limitBytes, limitLabel }) => {
+    const p     = pct(usedBytes, limitBytes)
     const color = barColor(p)
+    const loaded = usedBytes != null
     return (
       <div style={{ background:'#f8f8f8', borderRadius:8, padding:'12px 14px', marginBottom:10 }}>
         <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:6 }}>
@@ -3847,19 +3782,18 @@ const { data, error } = (rpc?.data?.length > 0) ? rpc :
           }} />
         </div>
         <div style={{ display:'flex', justifyContent:'space-between', marginTop:4 }}>
-          <span style={{ fontSize:9, color:'#aaa' }}>{loaded ? `${p.toFixed(2)}% used` : 'Loading…'}</span>
+          <span style={{ fontSize:9, color:'#aaa' }}>{loaded ? `${p.toFixed(2)}% used` : 'Click Load to refresh'}</span>
           <span style={{ fontSize:9, fontWeight:700, color: loaded ? color : '#aaa' }}>
             {loaded ? (p > 85 ? '⚠ Near limit' : p > 60 ? '• Moderate' : '✓ Safe') : ''}
           </span>
         </div>
-        {extra}
       </div>
     )
   }
 
   return (
     <div style={{ background:'#fff', border:'1px solid #e8e8e8', borderRadius:10, padding:'16px', marginTop:16 }}>
-      {/* ── SUPABASE SECTION ── */}
+      {/* Header */}
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:14 }}>
         <p style={{ fontSize:12, fontWeight:700, textTransform:'uppercase', letterSpacing:'.1em', color:'#888' }}>🗄️ Database Storage</p>
         <div style={{ display:'flex', gap:8 }}>
@@ -3867,19 +3801,27 @@ const { data, error } = (rpc?.data?.length > 0) ? rpc :
             style={{ fontSize:11, fontWeight:700, padding:'5px 10px', borderRadius:4, border:'1px solid #f5a623', color:'#f5a623', background:'none', cursor:'pointer', opacity:cleaning?0.6:1 }}>
             {cleaning ? 'Cleaning…' : '🧹 Clean Sessions'}
           </button>
-          <button onClick={()=>{ loadStorage(); loadCloudinary() }} disabled={loading && cldLoading}
-            style={{ fontSize:11, fontWeight:700, padding:'5px 10px', borderRadius:4, border:'1px solid #0a1f5d', color:'#0a1f5d', background:'none', cursor:'pointer', opacity:(loading&&cldLoading)?0.6:1 }}>
-            {(loading || cldLoading) ? '…' : '↻ Refresh'}
+          <button onClick={loadStorage} disabled={loading}
+            style={{ fontSize:11, fontWeight:700, padding:'5px 10px', borderRadius:4, border:'1px solid #0a1f5d', color:'#0a1f5d', background:'none', cursor:'pointer', opacity:loading?0.6:1 }}>
+            {loading ? '…' : '↻ Refresh'}
           </button>
         </div>
       </div>
 
+      {/* ── Usage bars always visible ── */}
       <UsageBar icon="🗄️" label="Database (PostgreSQL)" usedBytes={totalDbBytes} limitBytes={DB_LIMIT_BYTES}   limitLabel="500 MB" />
       <UsageBar icon="🪣" label="File Storage (Buckets)" usedBytes={fileBytes}    limitBytes={FILE_LIMIT_BYTES} limitLabel="1 GB"   />
 
-      {/* Table breakdown */}
-      {tableData.length > 0 && (
-        <div style={{ marginTop:6, marginBottom:16 }}>
+      {/* ── Load button or table breakdown ── */}
+      {tableData.length === 0 ? (
+        <div style={{ textAlign:'center', padding:'14px 0 4px' }}>
+          <button onClick={loadStorage} disabled={loading}
+            style={{ fontSize:12, padding:'8px 20px', background:'#0a1f5d', color:'#fff', border:'none', borderRadius:6, cursor:'pointer', fontWeight:700, opacity:loading?0.6:1 }}>
+            {loading ? 'Loading…' : 'Load Storage Info'}
+          </button>
+        </div>
+      ) : (
+        <div style={{ marginTop:6 }}>
           <p style={{ fontSize:10, fontWeight:700, letterSpacing:'.12em', textTransform:'uppercase', color:'#aaa', marginBottom:8 }}>Table Breakdown</p>
           {tableData.map((t, i) => (
             <div key={t.table_name} style={{ display:'flex', alignItems:'center', gap:10, marginBottom:7 }}>
@@ -3900,73 +3842,6 @@ const { data, error } = (rpc?.data?.length > 0) ? rpc :
           </div>
         </div>
       )}
-
-      {/* ── CLOUDINARY SECTION ── */}
-      <div style={{ borderTop:'1px solid #f0f0f0', paddingTop:14, marginTop: tableData.length > 0 ? 0 : 6 }}>
-        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:12 }}>
-          <p style={{ fontSize:12, fontWeight:700, textTransform:'uppercase', letterSpacing:'.1em', color:'#888' }}>☁️ Cloudinary Storage</p>
-          <button onClick={loadCloudinary} disabled={cldLoading}
-            style={{ fontSize:11, fontWeight:700, padding:'5px 10px', borderRadius:4, border:'1px solid #7c4dff', color:'#7c4dff', background:'none', cursor:'pointer', opacity:cldLoading?0.6:1 }}>
-            {cldLoading ? '…' : '↻ Refresh'}
-          </button>
-        </div>
-
-        {cldError && (
-          <div style={{ fontSize:11, color:'#c8102e', background:'rgba(200,16,46,.05)', border:'1px solid rgba(200,16,46,.2)', borderRadius:6, padding:'8px 12px', marginBottom:10 }}>
-            ⚠ {cldError}
-            <div style={{ marginTop:4, fontSize:10, color:'#888' }}>
-              Create <code style={{ background:'#f0f0f0', padding:'1px 5px', borderRadius:3 }}>app/api/cloudinary-usage/route.js</code> — see notes below.
-            </div>
-          </div>
-        )}
-
-        {/* Total usage bar (0 / 25 GB) */}
-        <UsageBar
-          icon="📦"
-          label="Total Account Storage"
-          usedBytes={cldTotalBytes}
-          limitBytes={CLD_LIMIT_BYTES}
-          limitLabel="25 GB"
-          extra={cldTotalCount != null && (
-            <div style={{ fontSize:9, color:'#aaa', marginTop:3 }}>{cldTotalCount.toLocaleString()} total files</div>
-          )}
-        />
-
-        {/* App (drynn/) usage bar */}
-        <UsageBar
-          icon="🎨"
-          label="App Uploads (drynn/ folder)"
-          usedBytes={cldAppBytes}
-          limitBytes={CLD_LIMIT_BYTES}
-          limitLabel="25 GB"
-          extra={cldAppCount != null && (
-            <div style={{ fontSize:9, color:'#aaa', marginTop:3 }}>{cldAppCount.toLocaleString()} files in drynn/ folder</div>
-          )}
-        />
-
-        {/* Side-by-side summary */}
-        {(cldAppBytes != null && cldTotalBytes != null) && (
-          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8, marginTop:6 }}>
-            {[
-              { label:'App Usage',   value: fmtBytes(cldAppBytes),   sub:`${pct(cldAppBytes,   CLD_LIMIT_BYTES).toFixed(2)}% of 25 GB`, color:'#7c4dff' },
-              { label:'Total Usage', value: fmtBytes(cldTotalBytes), sub:`${pct(cldTotalBytes, CLD_LIMIT_BYTES).toFixed(2)}% of 25 GB`, color: barColor(pct(cldTotalBytes, CLD_LIMIT_BYTES)) },
-            ].map(s => (
-              <div key={s.label} style={{ background:'#f8f8f8', borderRadius:8, padding:'10px 12px', textAlign:'center' }}>
-                <div style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:22, color:s.color, lineHeight:1 }}>{s.value}</div>
-                <div style={{ fontSize:9, color:'#aaa', fontWeight:700, textTransform:'uppercase', letterSpacing:'.08em', marginTop:3 }}>{s.label}</div>
-                <div style={{ fontSize:9, color:'#bbb', marginTop:2 }}>{s.sub}</div>
-              </div>
-            ))}
-          </div>
-        )}
-
-        <div style={{ marginTop:10, paddingTop:10, borderTop:'1px solid #f0f0f0' }}>
-          <p style={{ fontSize:10, color:'#aaa', lineHeight:1.6 }}>
-            ℹ Cloudinary free tier: <strong>25 GB storage · 25 GB bandwidth/month</strong>.<br/>
-            Requires <code style={{ background:'#f0f0f0', padding:'1px 4px', borderRadius:3, fontSize:9 }}>/api/cloudinary-usage/route.js</code> with your API key &amp; secret (server-side only).
-          </p>
-        </div>
-      </div>
     </div>
   )
 }

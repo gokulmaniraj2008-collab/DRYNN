@@ -3555,7 +3555,7 @@ function AdminOrderPreview({ order }) {
 // ══════════════════════════════════════════════════════════════
 // ADMIN PANEL  -  restricted to ADMIN_EMAIL only
 // ══════════════════════════════════════════════════════════════
-const ADMIN_EMAIL = process.env.NEXT_PUBLIC_ADMIN_EMAIL || 'praneshsrinivasan2007@gmail.com'
+const ADMIN_EMAIL = process.env.NEXT_PUBLIC_ADMIN_EMAIL
 const SUPER_ADMIN_EMAIL = 'gokulmaniraj2008@gmail.com'
 
 function useIsAdmin(user) {

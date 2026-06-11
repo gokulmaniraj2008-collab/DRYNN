@@ -4075,12 +4075,17 @@ function AdminPanel({ onBack }) {
             ['samples',    'Samples'],
             ['uploads',    'Uploads'],
             ['grouporders','👥 Groups'],
-            ['analytics',  '📊 Analytics'],
-            ['visitors',   '👤 Visitors'],
-            ['users',      '🧑 Users'],
-            ['media',      '🎬 Media'],
-            ['colors',     '🎨 Colors'],
-            ...((isSuperAdmin || currentUser?.email === SUPER_ADMIN_EMAIL) ? [['admins','🔑 Admins']] : []),
+            ...((isSuperAdmin || currentUser?.email === SUPER_ADMIN_EMAIL) ? [
+              ['analytics',  '📊 Analytics'],
+              ['visitors',   '👤 Visitors'],
+              ['users',      '🧑 Users'],
+              ['media',      '🎬 Media'],
+              ['colors',     '🎨 Colors'],
+              ['admins',     '🔑 Admins'],
+            ] : [
+              ['media',      '🎬 Media'],
+              ['colors',     '🎨 Colors'],
+            ]),
           ].map(([key, label]) => (
             <button key={key} onClick={()=>{
               setTab(key)
@@ -4510,7 +4515,7 @@ function AdminPanel({ onBack }) {
         )}
 
         {/* ══ ANALYTICS TAB ══ */}
-        {tab==='analytics' && (() => {
+        {tab==='analytics' && (isSuperAdmin || currentUser?.email === SUPER_ADMIN_EMAIL) && (() => {
           const totalOrders   = orders.length
           const paid          = orders.filter(o=>o.payment_status==='Paid').length
           const unpaid        = totalOrders - paid
@@ -4554,7 +4559,7 @@ function AdminPanel({ onBack }) {
         })()}
 
         {/* ══ VISITORS TAB ══ */}
-        {tab==='visitors' && (() => {
+        {tab==='visitors' && (isSuperAdmin || currentUser?.email === SUPER_ADMIN_EMAIL) && (() => {
           const filtered = visitors.filter(v =>
             !visitorSearch || (v.user_email||'').toLowerCase().includes(visitorSearch.toLowerCase()) || (v.user_name||'').toLowerCase().includes(visitorSearch.toLowerCase())
           )
@@ -4602,7 +4607,7 @@ function AdminPanel({ onBack }) {
         })()}
 
         {/* ══ USERS TAB ══ */}
-        {tab==='users' && (
+        {tab==='users' && (isSuperAdmin || currentUser?.email === SUPER_ADMIN_EMAIL) && (
           <div>
             <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:8 }}>
               <div>

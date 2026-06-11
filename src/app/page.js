@@ -5337,6 +5337,7 @@ function JoinGroupOrder({ user }) {
       payment_status: 'pending',
     }).catch(()=>({ error:{message:'Table may not exist'} }))
     setSaving(false)
+    if (error) { alert('Failed to join: ' + error.message); return }
     setJoined(true)
   }
 

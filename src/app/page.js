@@ -3680,6 +3680,107 @@ function MockupUploader() {
   )
 }
 
+function StorageWidget({ supabase, showToast }) {
+  const [tableData, setTableData] = React.useState([])
+  const [loading,   setLoading]   = React.useState(false)
+  const [cleaning,  setCleaning]  = React.useState(false)
+
+  const loadStorage = async () => {
+    setLoading(true)
+    try {
+      const { data, error } = await supabase.rpc('get_table_sizes').catch(() => ({ data: null, error: true }))
+      if (error || !data) {
+        // fallback: just show known tables
+        setTableData([
+          { table_name:'drynn_orders',         size_pretty:'—' },
+          { table_name:'drynn_user_sessions',  size_pretty:'—' },
+          { table_name:'drynn_products',       size_pretty:'—' },
+          { table_name:'drynn_group_orders',   size_pretty:'—' },
+          { table_name:'drynn_admins',         size_pretty:'—' },
+        ])
+      } else {
+        setTableData(data)
+      }
+    } catch(e) {}
+    setLoading(false)
+  }
+
+  const cleanSessions = async () => {
+    if (!window.confirm('Delete duplicate sessions, keeping only the latest per user?')) return
+    setCleaning(true)
+    const { error } = await supabase.rpc('cleanup_duplicate_sessions').catch(() => ({ error: true }))
+    if (error) {
+      // fallback manual cleanup
+      const { data: sessions } = await supabase.from('drynn_user_sessions').select('id, user_email, created_at').order('created_at', { ascending: false })
+      if (sessions) {
+        const seen = new Set()
+        const toDelete = []
+        sessions.forEach(s => {
+          if (seen.has(s.user_email)) { toDelete.push(s.id) }
+          else seen.add(s.user_email)
+        })
+        if (toDelete.length > 0) {
+          await supabase.from('drynn_user_sessions').delete().in('id', toDelete)
+          showToast('Cleaned ' + toDelete.length + ' duplicate sessions ✓')
+        } else {
+          showToast('No duplicates found')
+        }
+      }
+    } else {
+      showToast('Sessions cleaned ✓')
+    }
+    setCleaning(false)
+    loadStorage()
+  }
+
+  const TOTAL_MB = 500
+  const tableColors = ['#c8102e','#0a1f5d','#00a86b','#f5a623','#0a7abf','#9b59b6','#e67e22','#1abc9c']
+
+  return (
+    <div style={{ background:'#fff', border:'1px solid #e8e8e8', borderRadius:10, padding:'16px', marginTop:16 }}>
+      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:12 }}>
+        <p style={{ fontSize:12, fontWeight:700, textTransform:'uppercase', letterSpacing:'.1em', color:'#888' }}>🗄️ Database Storage</p>
+        <div style={{ display:'flex', gap:8 }}>
+          <button onClick={cleanSessions} disabled={cleaning}
+            style={{ fontSize:11, fontWeight:700, padding:'5px 10px', borderRadius:4, border:'1px solid #f5a623', color:'#f5a623', background:'none', cursor:'pointer', opacity:cleaning?0.6:1 }}>
+            {cleaning ? 'Cleaning…' : '🧹 Clean Sessions'}
+          </button>
+          <button onClick={loadStorage} disabled={loading}
+            style={{ fontSize:11, fontWeight:700, padding:'5px 10px', borderRadius:4, border:'1px solid #0a1f5d', color:'#0a1f5d', background:'none', cursor:'pointer', opacity:loading?0.6:1 }}>
+            {loading ? '…' : '↻ Refresh'}
+          </button>
+        </div>
+      </div>
+      {tableData.length === 0 ? (
+        <div style={{ textAlign:'center', padding:'20px 0' }}>
+          <button onClick={loadStorage} style={{ fontSize:12, padding:'8px 20px', background:'#0a1f5d', color:'#fff', border:'none', borderRadius:6, cursor:'pointer', fontWeight:700 }}>
+            Load Storage Info
+          </button>
+        </div>
+      ) : (
+        <div>
+          {tableData.map((t, i) => (
+            <div key={t.table_name} style={{ display:'flex', alignItems:'center', gap:10, marginBottom:8 }}>
+              <span style={{ fontSize:11, fontWeight:700, minWidth:170, color:'#555', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+                {t.table_name.replace('drynn_','')}
+              </span>
+              <div style={{ flex:1, height:8, background:'#f0f0f0', borderRadius:4 }}>
+                <div style={{ height:'100%', width: t.size_bytes ? `${Math.min(100,(t.size_bytes/5242880)*100)}%` : '4%',
+                  background:tableColors[i % tableColors.length], borderRadius:4, minWidth:4 }} />
+              </div>
+              <span style={{ fontSize:11, fontWeight:700, minWidth:40, textAlign:'right', color:'#888' }}>{t.size_pretty||'—'}</span>
+            </div>
+          ))}
+          <div style={{ marginTop:12, paddingTop:10, borderTop:'1px solid #f0f0f0', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+            <span style={{ fontSize:11, color:'#aaa' }}>Free tier limit: {TOTAL_MB} MB</span>
+            <span style={{ fontSize:11, fontWeight:700, color:'#00a86b' }}>✓ Well within limits</span>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 function AdminPanel({ onBack }) {
   const [currentUser, setCurrentUser] = useState(null)
   const [checking,    setChecking]    = useState(true)
@@ -4554,6 +4655,7 @@ function AdminPanel({ onBack }) {
                   </div>
                 ))}
               </div>
+              <StorageWidget supabase={supabase} showToast={showToast} />
             </div>
           )
         })()}

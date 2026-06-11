@@ -3756,19 +3756,23 @@ function StorageWidget({ supabase, showToast }) {
     setLoading(true)
     // ── DB size: try RPC, fall back to row-count estimate ──────
     try {
+      console.log('[StorageWidget] calling get_table_sizes RPC...')
       const { data: rpcData, error: rpcErr } = await supabase
         .rpc('get_table_sizes')
-        .catch(() => ({ data: null, error: true }))
+        .catch((e) => { console.log('[StorageWidget] RPC threw:', e); return { data: null, error: true } })
+
+      console.log('[StorageWidget] RPC result:', { rpcData, rpcErr })
 
       if (!rpcErr && rpcData && rpcData.length > 0) {
         setTableData(rpcData)
         setTotalDbBytes(rpcData.reduce((s, t) => s + (t.size_bytes || 0), 0))
       } else {
-        // RPC not available — fall back to row count × 8 KB estimate per row
+        console.log('[StorageWidget] RPC failed, trying row-count fallback...')
         const tables = ['drynn_orders','drynn_user_sessions','drynn_products','drynn_group_orders','drynn_admins']
         const rows = []; let dbTotal = 0
         for (const tbl of tables) {
-          const { count } = await supabase.from(tbl).select('*', { count:'exact', head:true })
+          const { count, error: cErr } = await supabase.from(tbl).select('*', { count:'exact', head:true })
+          console.log(`[StorageWidget] ${tbl} count:`, count, 'error:', cErr)
           const est = (count || 0) * 8192
           rows.push({ table_name: tbl, size_bytes: est, size_pretty: est > 0 ? `~${fmtBytes(est)}` : '—' })
           dbTotal += est
@@ -3777,6 +3781,7 @@ function StorageWidget({ supabase, showToast }) {
         setTotalDbBytes(dbTotal)
       }
     } catch(e) {
+      console.log('[StorageWidget] caught exception:', e)
       setTableData([])
       setTotalDbBytes(0)
     }

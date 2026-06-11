@@ -4168,7 +4168,7 @@ function AdminPanel({ onBack }) {
 
   // ── Samples actions ──────────────────────────────────────
   const saveSample = async () => {
-    if (!sampleFile && !sampleForm.image_url) { showToast('Upload an image or enter URL'); return }
+    if (!sampleFile) { showToast('Please upload an image'); return }
     if (!sampleForm.name) { showToast('Enter a design name'); return }
     setSampleSaving(true)
     let imageUrl = sampleForm.image_url
@@ -4470,14 +4470,10 @@ function AdminPanel({ onBack }) {
                 </div>
                 <div style={{ marginTop:10 }}>
                   <label style={{ fontSize:11, color:'#888', fontWeight:700, display:'block', marginBottom:4 }}>Product Image</label>
-                  <div style={{ display:'flex', gap:8, alignItems:'center' }}>
-                    <input className="input-field" style={{ fontSize:12, flex:1 }} placeholder="Paste Cloudinary URL, or upload below"
-                      value={newProduct.image_url||''} onChange={e=>setNewProduct(p=>({...p,image_url:e.target.value}))} />
-                    <label style={{ padding:'9px 14px', background:'#0a1f5d', color:'#fff', borderRadius:6, fontSize:12, fontWeight:700, cursor:'pointer', flexShrink:0 }}>
-                      Upload
-                      <input type="file" accept="image/*" style={{ display:'none' }} onChange={e=>{ setProdImgFile(e.target.files[0]); if(e.target.files[0]) setNewProduct(p=>({...p,image_url:'Uploading…'})) }} />
-                    </label>
-                  </div>
+                  <label style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:8, padding:'10px 14px', background:'#0a1f5d', color:'#fff', borderRadius:6, fontSize:12, fontWeight:700, cursor:'pointer', width:'100%' }}>
+                    📁 {prodImgFile ? prodImgFile.name : 'Choose & Upload Image'}
+                    <input type="file" accept="image/*" style={{ display:'none' }} onChange={e=>{ setProdImgFile(e.target.files[0]); if(e.target.files[0]) setNewProduct(p=>({...p,image_url:'Uploading…'})) }} />
+                  </label>
                   {prodImgFile && <div style={{ fontSize:11, color:'#00a86b', marginTop:4 }}>✓ {prodImgFile.name} — will upload on save</div>}
                 </div>
                 <div style={{ marginTop:10 }}>
@@ -4486,13 +4482,10 @@ function AdminPanel({ onBack }) {
                     {[['Front','img_front'],['Back','img_back'],['Left Side','img_left'],['Right Side','img_right']].map(([label,key])=>(
                       <div key={key}>
                         <label style={{ fontSize:10, color:'#888', fontWeight:700, display:'block', marginBottom:3 }}>{label}</label>
-                        <div style={{ display:'flex', gap:4 }}>
-                          <input className="input-field" style={{ fontSize:11, flex:1 }} placeholder="URL or upload"
-                            value={newProduct[key]||''} onChange={e=>setNewProduct(p=>({...p,[key]:e.target.value}))} />
-                          <label style={{ padding:'6px 10px', background:'#0a1f5d', color:'#fff', borderRadius:6, fontSize:11, fontWeight:700, cursor:'pointer', flexShrink:0 }}>
-                            ↑<input type="file" accept="image/*" style={{ display:'none' }} onChange={async e=>{ const f=e.target.files[0]; if(!f) return; try { const url=await uploadToCloudinary(f,()=>{}); setNewProduct(p=>({...p,[key]:url})); showToast(label+' uploaded ✓') } catch(err) { showToast('Upload failed') } }} />
-                          </label>
-                        </div>
+                        <label style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:4, padding:'7px 8px', background: newProduct[key] && newProduct[key]!=='Uploading…' ? '#00a86b' : '#0a1f5d', color:'#fff', borderRadius:6, fontSize:11, fontWeight:700, cursor:'pointer', width:'100%' }}>
+                          {newProduct[key] && newProduct[key]!=='Uploading…' ? '✓ Uploaded' : '📁 Upload'}
+                          <input type="file" accept="image/*" style={{ display:'none' }} onChange={async e=>{ const f=e.target.files[0]; if(!f) return; try { const url=await uploadToCloudinary(f,()=>{}); setNewProduct(p=>({...p,[key]:url})); showToast(label+' uploaded ✓') } catch(err) { showToast('Upload failed') } }} />
+                        </label>
                         {newProduct[key] && newProduct[key]!=='Uploading…' && <img src={newProduct[key]} style={{ width:'100%', height:60, objectFit:'contain', marginTop:4, borderRadius:4, background:'#f8f8f8' }} alt={label} />}
                       </div>
                     ))}
@@ -4527,20 +4520,18 @@ function AdminPanel({ onBack }) {
                           placeholder={field} value={p[field]||''}
                           onChange={e=>setProducts(ps=>ps.map(x=>x.id===p.id?{...x,[field]:e.target.value}:x))} />
                       ))}
-                      <input className="input-field" style={{ marginBottom:6, fontSize:12 }}
-                        placeholder="Main Image URL" value={p.image_url||''}
-                        onChange={e=>setProducts(ps=>ps.map(x=>x.id===p.id?{...x,image_url:e.target.value}:x))} />
+                      <label style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:6, padding:'8px 12px', background: p.image_url ? '#00a86b' : '#0a1f5d', color:'#fff', borderRadius:6, fontSize:12, fontWeight:700, cursor:'pointer', width:'100%', marginBottom:6 }}>
+                        {p.image_url ? '✓ Main Image Uploaded' : '📁 Upload Main Image'}
+                        <input type="file" accept="image/*" style={{ display:'none' }} onChange={async e=>{ const f=e.target.files[0]; if(!f) return; try { const url=await uploadToCloudinary(f,()=>{}); setProducts(ps=>ps.map(x=>x.id===p.id?{...x,image_url:url}:x)); showToast('Main image uploaded ✓') } catch(err) { showToast('Upload failed') } }} />
+                      </label>
                       <div style={{ fontSize:10, fontWeight:700, color:'#888', textTransform:'uppercase', letterSpacing:'.08em', margin:'8px 0 6px' }}>Side Views</div>
                       {[['Front','img_front'],['Back','img_back'],['Left','img_left'],['Right','img_right']].map(([label,key])=>(
                         <div key={key} style={{ marginBottom:6 }}>
                           <div style={{ fontSize:10, color:'#aaa', marginBottom:2 }}>{label}</div>
-                          <div style={{ display:'flex', gap:4 }}>
-                            <input className="input-field" style={{ fontSize:11, flex:1 }} placeholder={label+' image URL'}
-                              value={p[key]||''} onChange={e=>setProducts(ps=>ps.map(x=>x.id===p.id?{...x,[key]:e.target.value}:x))} />
-                            <label style={{ padding:'6px 10px', background:'#0a1f5d', color:'#fff', borderRadius:6, fontSize:11, fontWeight:700, cursor:'pointer', flexShrink:0 }}>
-                              ↑<input type="file" accept="image/*" style={{ display:'none' }} onChange={async e=>{ const f=e.target.files[0]; if(!f) return; try { const url=await uploadToCloudinary(f,()=>{}); setProducts(ps=>ps.map(x=>x.id===p.id?{...x,[key]:url}:x)); showToast(label+' uploaded ✓') } catch(err) { showToast('Upload failed') } }} />
-                            </label>
-                          </div>
+                          <label style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:4, padding:'6px 10px', background: p[key] ? '#00a86b' : '#0a1f5d', color:'#fff', borderRadius:6, fontSize:11, fontWeight:700, cursor:'pointer', width:'100%' }}>
+                            {p[key] ? '✓ Uploaded' : '📁 Upload'}
+                            <input type="file" accept="image/*" style={{ display:'none' }} onChange={async e=>{ const f=e.target.files[0]; if(!f) return; try { const url=await uploadToCloudinary(f,()=>{}); setProducts(ps=>ps.map(x=>x.id===p.id?{...x,[key]:url}:x)); showToast(label+' uploaded ✓') } catch(err) { showToast('Upload failed') } }} />
+                          </label>
                           {p[key] && <img src={p[key]} style={{ width:'100%', height:50, objectFit:'contain', marginTop:3, borderRadius:4, background:'#f8f8f8' }} alt={label} />}
                         </div>
                       ))}
@@ -4632,14 +4623,10 @@ function AdminPanel({ onBack }) {
               </div>
               <div>
                 <label style={{ fontSize:11, color:'#888', fontWeight:700, display:'block', marginBottom:4 }}>Image</label>
-                <div style={{ display:'flex', gap:8, alignItems:'center', flexWrap:'wrap' }}>
-                  <input className="input-field" style={{ fontSize:12, flex:1, minWidth:180 }} placeholder="Paste URL or upload file"
-                    value={sampleForm.image_url} onChange={e=>setSampleForm(f=>({...f,image_url:e.target.value}))} />
-                  <label style={{ padding:'9px 14px', background:'#0a1f5d', color:'#fff', borderRadius:6, fontSize:12, fontWeight:700, cursor:'pointer', flexShrink:0 }}>
-                    📁 Upload
-                    <input type="file" accept="image/*" style={{ display:'none' }} onChange={e=>setSampleFile(e.target.files[0])} />
-                  </label>
-                </div>
+                <label style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:8, padding:'10px 14px', background: sampleFile ? '#00a86b' : '#0a1f5d', color:'#fff', borderRadius:6, fontSize:12, fontWeight:700, cursor:'pointer', width:'100%' }}>
+                  {sampleFile ? `✓ ${sampleFile.name}` : '📁 Choose & Upload Image'}
+                  <input type="file" accept="image/*" style={{ display:'none' }} onChange={e=>setSampleFile(e.target.files[0])} />
+                </label>
                 {sampleFile && (
                   <div style={{ marginTop:8, display:'flex', alignItems:'center', gap:8 }}>
                     <img src={URL.createObjectURL(sampleFile)} alt="" style={{ maxHeight:60, borderRadius:4 }} />

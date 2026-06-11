@@ -3806,10 +3806,6 @@ function StorageWidget({ supabase, showToast }) {
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:14 }}>
         <p style={{ fontSize:12, fontWeight:700, textTransform:'uppercase', letterSpacing:'.1em', color:'#888' }}>📊 App Storage & Usage</p>
         <div style={{ display:'flex', gap:8 }}>
-          <button onClick={cleanSessions} disabled={cleaning}
-            style={{ fontSize:11, fontWeight:700, padding:'5px 10px', borderRadius:4, border:'1px solid #f5a623', color:'#f5a623', background:'none', cursor:'pointer', opacity:cleaning?0.6:1 }}>
-            {cleaning ? 'Cleaning…' : '🧹 Clean Sessions'}
-          </button>
           <button onClick={loadStorage} disabled={loading}
             style={{ fontSize:11, fontWeight:700, padding:'5px 10px', borderRadius:4, border:'1px solid #0a1f5d', color:'#0a1f5d', background:'none', cursor:'pointer', opacity:loading?0.6:1 }}>
             {loading ? '…' : '↻ Refresh'}
@@ -5787,19 +5783,7 @@ function MainSite({ user }) {
     }
   }, [mediaSettings.audio_song])
 
-  useEffect(() => {
-    const audio = audioRef.current
-    if (!audio) return
-    // Auto-play on mount — browsers require a user gesture, so we attempt and handle the rejection gracefully
-    const tryPlay = () => {
-      audio.play().then(() => setPlaying(true)).catch(() => setPlaying(false))
-    }
-    tryPlay()
-    // Fallback: also try on first user interaction anywhere on the page
-    const onInteract = () => { if (!playing) tryPlay(); document.removeEventListener('click', onInteract) }
-    document.addEventListener('click', onInteract)
-    return () => document.removeEventListener('click', onInteract)
-  }, [])
+
 
   const togglePlay = () => {
     const audio = audioRef.current

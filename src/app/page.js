@@ -4995,7 +4995,7 @@ function AdminPanel({ onBack }) {
               <h2 style={{ fontSize:18, fontWeight:700 }}>🎬 Media Manager</h2>
               <button className="btn-secondary" style={{ padding:'7px 14px', fontSize:12 }} onClick={loadMediaUrls}>↻ Load</button>
             </div>
-            <p style={{ fontSize:12, color:'#888', marginBottom:20 }}>Paste a URL or upload a file. Changes go live immediately for all users.</p>
+            <p style={{ fontSize:12, color:'#888', marginBottom:20 }}>Upload a file directly. Changes go live immediately for all users.</p>
             {[
               { key:'video_intro',  label:'🎬 Intro / Splash video',       accept:'video/*' },
               { key:'video_studio', label:'🎬 Studio page header video',   accept:'video/*' },
@@ -5004,21 +5004,14 @@ function AdminPanel({ onBack }) {
             ].map(item => (
               <div key={item.key} style={{ background:'#fff', border:'1px solid #e8e8e8', borderRadius:10, padding:'16px', marginBottom:16 }}>
                 <label style={{ fontSize:11, fontWeight:700, textTransform:'uppercase', letterSpacing:'.1em', color:'#555', display:'block', marginBottom:8 }}>{item.label}</label>
-                <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
-                  <input className="input-field" style={{ fontSize:12, flex:1, minWidth:200 }}
-                    value={mediaUrls[item.key]||''}
-                    onChange={e=>setMediaUrls(m=>({...m,[item.key]:e.target.value}))}
-                    placeholder="https://res.cloudinary.com/…" />
-                  <button className="btn-primary" style={{ padding:'10px 16px', fontSize:12, flexShrink:0 }}
-                    disabled={mediaSaving} onClick={()=>saveMediaUrl(item.key, mediaUrls[item.key])}>
-                    Save URL
-                  </button>
-                  <label style={{ padding:'10px 14px', background:'#0a1f5d', color:'#fff', borderRadius:6, fontSize:12, fontWeight:700, cursor:'pointer', flexShrink:0, display:'flex', alignItems:'center', gap:5 }}>
-                    📁 Upload
-                    <input type="file" accept={item.accept} style={{ display:'none' }}
-                      onChange={e=>{ if(e.target.files[0]) handleMediaFileUpload(item.key, e.target.files[0]) }} />
-                  </label>
-                </div>
+                <label style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:8, padding:'12px 16px', background: mediaSaving ? '#ccc' : '#0a1f5d', color:'#fff', borderRadius:6, fontSize:13, fontWeight:700, cursor: mediaSaving ? 'not-allowed' : 'pointer', width:'100%' }}>
+                  {mediaSaving ? '⏳ Uploading…' : '📁 Choose & Upload File'}
+                  <input type="file" accept={item.accept} style={{ display:'none' }} disabled={mediaSaving}
+                    onChange={e=>{ if(e.target.files[0]) handleMediaFileUpload(item.key, e.target.files[0]) }} />
+                </label>
+                {mediaUrls[item.key] && (
+                  <p style={{ fontSize:11, color:'#00a86b', marginTop:8, wordBreak:'break-all' }}>✓ Uploaded: {mediaUrls[item.key]}</p>
+                )}
                 {mediaUrls[item.key] && item.key.startsWith('video') && (
                   <video src={mediaUrls[item.key]} style={{ width:'100%', maxHeight:140, marginTop:10, borderRadius:6, objectFit:'cover' }} controls muted />
                 )}

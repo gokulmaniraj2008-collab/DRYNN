@@ -659,7 +659,13 @@ function InteractiveMockup({ garmentImgSrc, designImgSrc, color, posX, posY, sca
 // ══════════════════════════════════════════════════════════════
 function ProductImageViewer({ product, fallbackSrc, designImgSrc, sideImgs, sidePos, posX, posY, scale, rotation, textOn, textVal, textFont, textSize, textColor, textPosX=50, textPosY=75, textRot=0, sideText, colorToFilter, color, canvasFilter, garmentEmoji, bgColor='#111' }) {
   // sideImgs/sidePos take priority (Step 5 multi-side); fall back to single designImgSrc
-  const getDesign = key => sideImgs ? sideImgs[key] : (key==='front' ? designImgSrc : null)
+  const getDesign = key => {
+    if (sideImgs) {
+      const v = sideImgs[key]
+      return Array.isArray(v) ? (v[0] || null) : (v || null)
+    }
+    return key === 'front' ? designImgSrc : null
+  }
   const getPos    = key => sidePos  ? sidePos[key]  : { posX, posY, scale, rotation }
   const frames = React.useMemo(() => {
     if (product?.img_front || product?.img_back || product?.img_left || product?.img_right) {
@@ -1008,21 +1014,21 @@ function StudioPage({ user, onNav, onAddToCart }) {
   const SIDES = ['front','back','left','right']
   const SIDE_LABELS = { front:'Front', back:'Back', left:'Left Side', right:'Right Side' }
   const [activeSide,    setActiveSide]    = useState('front')
-  // sideFiles[side] = File object | null
-  const [sideFiles,     setSideFiles]     = useState({ front:null, back:null, left:null, right:null })
+  // sideFiles[side] = array of File/uploaded objects
+  const [sideFiles,     setSideFiles]     = useState({ front:[], back:[], left:[], right:[] })
   // sideSamples[side] = sample object | null
   const [sideSamples,   setSideSamples]   = useState({ front:null, back:null, left:null, right:null })
-  // sideImgs[side] = preview URL | null
-  const [sideImgs,      setSideImgs]      = useState({ front:null, back:null, left:null, right:null })
+  // sideImgs[side] = array of preview URLs
+  const [sideImgs,      setSideImgs]      = useState({ front:[], back:[], left:[], right:[] })
   const [uploadErr,     setUploadErr]     = useState('')
   const [samples,       setSamples]       = useState([])
   const [samplesLoading,setSamplesLoading]= useState(false)
   const [sampleCat,     setSampleCat]     = useState('All')
   const [designTab,     setDesignTab]     = useState('upload')
 
-  // Convenience: current side's values
-  const designImgSrc  = sideImgs[activeSide]
-  const uploadedFile  = sideFiles[activeSide]
+  // Convenience: current side's values (arrays now)
+  const designImgSrc   = sideImgs[activeSide]?.[0] || null   // first image for preview compat
+  const uploadedFile   = sideFiles[activeSide]?.[0] || null
   const selectedSample = sideSamples[activeSide]
 
   const loadSamples = async () => {
@@ -1034,34 +1040,50 @@ function StudioPage({ user, onNav, onAddToCart }) {
   }
 
   const handleFile = e => {
-    const f = e.target.files[0]; if (!f) return
+    const files = Array.from(e.target.files)
+    if (!files.length) return
     const allowed = ['image/png','image/jpeg','image/jpg','image/svg+xml']
-    if (!allowed.includes(f.type)) { setUploadErr('Only PNG, JPG, SVG allowed.'); return }
-    if (f.size > 20*1024*1024) { setUploadErr('Max 20MB.'); return }
+    const valid = files.filter(f => {
+      if (!allowed.includes(f.type)) { setUploadErr('Only PNG, JPG, SVG allowed.'); return false }
+      if (f.size > 20*1024*1024) { setUploadErr('Max 20MB per file.'); return false }
+      return true
+    })
+    if (!valid.length) return
     setUploadErr('')
-    const blobUrl = URL.createObjectURL(f)
-    setSideImgs(prev => ({ ...prev, [activeSide]: blobUrl }))
-    setSideFiles(prev => ({ ...prev, [activeSide]: f }))
     setSideSamples(prev => ({ ...prev, [activeSide]: null }))
-    setStatus('uploading'); setUploadPct(0)
-    uploadToCloudinary(f, pct => setUploadPct(pct))
-      .then(url => {
-        setSideImgs(prev => ({ ...prev, [activeSide]: url }))
-        setSideFiles(prev => ({ ...prev, [activeSide]: { _uploaded: true, _url: url, name: f.name } }))
-        setStatus(''); setUploadPct(0)
-      })
-      .catch(err => {
-        setUploadErr('Upload failed: ' + err.message)
-        setSideImgs(prev => ({ ...prev, [activeSide]: null }))
-        setSideFiles(prev => ({ ...prev, [activeSide]: null }))
-        setStatus('')
-      })
+    valid.forEach(f => {
+      const blobUrl = URL.createObjectURL(f)
+      setSideImgs(prev => ({ ...prev, [activeSide]: [...(prev[activeSide]||[]), blobUrl] }))
+      setSideFiles(prev => ({ ...prev, [activeSide]: [...(prev[activeSide]||[]), { _uploading:true, name:f.name, _blob:blobUrl }] }))
+      setStatus('uploading'); setUploadPct(0)
+      uploadToCloudinary(f, pct => setUploadPct(pct))
+        .then(url => {
+          setSideImgs(prev => {
+            const arr = [...(prev[activeSide]||[])]
+            const idx = arr.indexOf(blobUrl); if (idx > -1) arr[idx] = url
+            return { ...prev, [activeSide]: arr }
+          })
+          setSideFiles(prev => {
+            const arr = [...(prev[activeSide]||[])]
+            const idx = arr.findIndex(x => x._blob === blobUrl)
+            if (idx > -1) arr[idx] = { _uploaded:true, _url:url, name:f.name }
+            return { ...prev, [activeSide]: arr }
+          })
+          setStatus(''); setUploadPct(0)
+        })
+        .catch(err => {
+          setUploadErr('Upload failed: ' + err.message)
+          setSideImgs(prev => ({ ...prev, [activeSide]: (prev[activeSide]||[]).filter(u => u !== blobUrl) }))
+          setSideFiles(prev => ({ ...prev, [activeSide]: (prev[activeSide]||[]).filter(x => x._blob !== blobUrl) }))
+          setStatus('')
+        })
+    })
   }
 
   const pickSample = s => {
     setSideSamples(prev => ({ ...prev, [activeSide]: s }))
-    setSideFiles(prev => ({ ...prev, [activeSide]: null }))
-    setSideImgs(prev => ({ ...prev, [activeSide]: s.image_url }))
+    setSideFiles(prev => ({ ...prev, [activeSide]: [] }))
+    setSideImgs(prev => ({ ...prev, [activeSide]: [s.image_url] }))
   }
 
   // ── Step 4: Customise (per-side) ─────────────────────────
@@ -1202,7 +1224,7 @@ function StudioPage({ user, onNav, onAddToCart }) {
         ctx.fillText(SIDE_LABELS_PRINT[side], baseX + 14, baseY + 23)
 
         // Shade panels with no design
-        if (!sideImgs[side]) {
+        if (!(sideImgs[side]?.length)) {
           ctx.fillStyle = 'rgba(0,0,0,0.04)'
           ctx.fillRect(baseX + 1, baseY + 1, PANEL_W - 2, PANEL_H - 2)
         }
@@ -1245,20 +1267,29 @@ function StudioPage({ user, onNav, onAddToCart }) {
     try {
       const designUrls = {}
       for (const side of SIDES) {
-        if (sideFiles[side]?._uploaded) {
-          designUrls[side] = sideFiles[side]._url
-        } else if (sideFiles[side]) {
-          try { designUrls[side] = await uploadToCloudinary(sideFiles[side], pct=>setUploadPct(pct)) }
-          catch(e) { setStatus(''); alert('Upload failed for '+side+': '+e.message); return }
+        const files = sideFiles[side] || []
+        const imgs  = sideImgs[side]  || []
+        if (files.length > 0) {
+          // Collect already-uploaded URLs first
+          const uploaded = files.filter(f => f._uploaded).map(f => f._url)
+          // Upload any still-pending files
+          const pending  = files.filter(f => f._uploading)
+          for (const pf of pending) {
+            try {
+              const url = await uploadToCloudinary(pf, pct => setUploadPct(pct))
+              uploaded.push(url)
+            } catch(e) { setStatus(''); alert('Upload failed for '+side+': '+e.message); return }
+          }
+          if (uploaded.length) designUrls[side] = uploaded.join(',')
         } else if (sideSamples[side]) {
           designUrls[side] = sideSamples[side].image_url
-        } else if (sideImgs[side]?.startsWith('https://')) {
-          designUrls[side] = sideImgs[side]
+        } else if (imgs[0]?.startsWith('https://')) {
+          designUrls[side] = imgs[0]
         }
       }
       setStatus('saving')
       const garmentLabel = selectedProduct ? selectedProduct.name : 'Custom Garment'
-      const sidesLabel   = SIDES.filter(s=>sideImgs[s]).map(s=>SIDE_LABELS[s]).join(', ')
+      const sidesLabel   = SIDES.filter(s=>sideImgs[s]?.length > 0).map(s=>SIDE_LABELS[s]).join(', ')
 
       // Generate print sheet using the just-uploaded Cloudinary URLs (never blob: URLs)
       setStatus('sheet')
@@ -1348,7 +1379,7 @@ function StudioPage({ user, onNav, onAddToCart }) {
   // ── Live preview panel (shown on steps 3-6) ───────────────
   const LivePreview = ({ previewSide }) => {
     const ps = previewSide || custSide || 'front'
-    const pImg = sideImgs[ps]
+    const pImg = sideImgs[ps]?.[0] || null
     const pp   = sidePos[ps]
     // Resolve the correct garment image for the active side
     const sideGarmentImg = selectedProduct
@@ -1393,11 +1424,11 @@ function StudioPage({ user, onNav, onAddToCart }) {
       </div>
 
       {/* Side dots */}
-      {SIDES.some(s=>sideImgs[s]) && (
+      {SIDES.some(s=>sideImgs[s]?.length > 0) && (
         <div style={{ display:'flex', gap:6, justifyContent:'center' }}>
           {SIDES.map(s=>(
             <div key={s} style={{ width:8, height:8, borderRadius:'50%',
-              background: sideImgs[s] ? '#00a86b' : 'rgba(255,255,255,.12)',
+              background: (sideImgs[s]?.length > 0) ? '#00a86b' : 'rgba(255,255,255,.12)',
               transition:'background .2s' }} title={SIDE_LABELS[s]} />
           ))}
         </div>
@@ -1411,13 +1442,13 @@ function StudioPage({ user, onNav, onAddToCart }) {
   const drawerRef = React.useRef(null)
 
   const TOOLS = [
-    { key:'garment',  icon:'1️⃣', label:'Garment' },
-    { key:'colour',   icon:'2️⃣', label:'Colour'  },
-    { key:'design',   icon:'3️⃣',  label:'Design'  },
-    { key:'position', icon:'4️⃣',  label:'Position'},
-    { key:'text',     icon:'5️⃣',  label:'Text'    },
-    { key:'effects',  icon:'6️⃣',  label:'Effects' },
-    { key:'order',    icon:'7️⃣', label:'Order'   },
+    { key:'garment',  icon:'👕', label:'Garment' },
+    { key:'colour',   icon:'🎨', label:'Colour'  },
+    { key:'design',   icon:'⬆',  label:'Design'  },
+    { key:'position', icon:'↔',  label:'Position'},
+    { key:'text',     icon:'T',  label:'Text'    },
+    { key:'effects',  icon:'✦',  label:'Effects' },
+    { key:'order',    icon:'🛒', label:'Order'   },
   ]
 
   // keep activeSide and custSide in sync when switching design/position
@@ -1462,15 +1493,15 @@ function StudioPage({ user, onNav, onAddToCart }) {
           {SIDES.map(s => (
             <button key={s} onClick={()=>setActiveSideSync(s)}
               style={{ flex:1, maxWidth:72, padding:'6px 4px', borderRadius:7,
-                border:`1.5px solid ${activeSide===s?'#c8102e':sideImgs[s]?'#00a86b':'rgba(255,255,255,.1)'}`,
-                background: activeSide===s?'rgba(200,16,46,.18)':sideImgs[s]?'rgba(0,168,107,.07)':'rgba(255,255,255,.03)',
+                border:`1.5px solid ${activeSide===s?'#c8102e':(sideImgs[s]?.length>0)?'#00a86b':'rgba(255,255,255,.1)'}`,
+                background: activeSide===s?'rgba(200,16,46,.18)':(sideImgs[s]?.length>0)?'rgba(0,168,107,.07)':'rgba(255,255,255,.03)',
                 cursor:'pointer', display:'flex', flexDirection:'column', alignItems:'center', gap:1 }}>
               <span style={{ fontSize:11 }}>{s==='front'?'▲':s==='back'?'▼':s==='left'?'◀':'▶'}</span>
               <span style={{ fontSize:7, fontWeight:700, letterSpacing:'.05em', textTransform:'uppercase',
-                color: activeSide===s?'#fff':sideImgs[s]?'#00a86b':'rgba(255,255,255,.3)' }}>
+                color: activeSide===s?'#fff':(sideImgs[s]?.length>0)?'#00a86b':'rgba(255,255,255,.3)' }}>
                 {SIDE_LABELS[s]}
               </span>
-              {sideImgs[s] && <span style={{ width:4, height:4, borderRadius:'50%', background:'#00a86b', display:'block' }} />}
+              {(sideImgs[s]?.length>0) && <span style={{ width:4, height:4, borderRadius:'50%', background:'#00a86b', display:'block' }} />}
             </button>
           ))}
         </div>
@@ -1486,9 +1517,9 @@ function StudioPage({ user, onNav, onAddToCart }) {
               style={{ width:'100%', display:'block', filter:colorToFilter(color), minHeight:200, objectFit:'contain' }}
               onError={e=>{ e.target.src='https://placehold.co/400x400/f0f0f0/cccccc?text=No+Image' }} />
           })()}
-          {sideImgs[activeSide] && (() => {
+          {(sideImgs[activeSide]?.length > 0) && (() => {
             const pp = sidePos[activeSide]
-            return <img src={sideImgs[activeSide]} alt="design"
+            return <img src={sideImgs[activeSide][0]} alt="design"
               style={{ position:'absolute', top:`${pp.posY}%`, left:`${pp.posX}%`,
                 transform:`translate(-50%,-50%) rotate(${pp.rotation}deg)`,
                 width:`${pp.scale}%`, objectFit:'contain', pointerEvents:'none' }} />
@@ -1502,7 +1533,7 @@ function StudioPage({ user, onNav, onAddToCart }) {
               {st.val}
             </div>
           })()}
-          {!sideImgs[activeSide] && (
+          {!(sideImgs[activeSide]?.length > 0) && (
             <div style={{ position:'absolute', inset:0, display:'flex', alignItems:'center', justifyContent:'center', pointerEvents:'none' }}>
               <div style={{ background:'rgba(0,0,0,.45)', borderRadius:6, padding:'5px 10px' }}>
                 <span style={{ fontSize:9, color:'rgba(255,255,255,.5)', fontWeight:700, letterSpacing:'.06em', textTransform:'uppercase' }}>No design</span>
@@ -1625,9 +1656,9 @@ function StudioPage({ user, onNav, onAddToCart }) {
               <span style={{ fontSize:11, fontWeight:700, color:'rgba(255,255,255,.5)' }}>
                 Side: <span style={{ color:'#c8102e' }}>{SIDE_LABELS[activeSide]}</span>
               </span>
-              {sideImgs[activeSide] && (
-                <button onClick={()=>{ setSideImgs(p=>({...p,[activeSide]:null})); setSideFiles(p=>({...p,[activeSide]:null})); setSideSamples(p=>({...p,[activeSide]:null})) }}
-                  style={{ fontSize:10, color:'rgba(255,255,255,.4)', background:'none', border:'1px solid rgba(255,255,255,.12)', borderRadius:4, padding:'3px 8px', cursor:'pointer' }}>✕ Clear</button>
+              {(sideImgs[activeSide]?.length > 0) && (
+                <button onClick={()=>{ setSideImgs(p=>({...p,[activeSide]:[]})); setSideFiles(p=>({...p,[activeSide]:[]})); setSideSamples(p=>({...p,[activeSide]:null})) }}
+                  style={{ fontSize:10, color:'rgba(255,255,255,.4)', background:'none', border:'1px solid rgba(255,255,255,.12)', borderRadius:4, padding:'3px 8px', cursor:'pointer' }}>✕ Clear All</button>
               )}
             </div>
             {/* Upload / Samples toggle */}
@@ -1641,27 +1672,42 @@ function StudioPage({ user, onNav, onAddToCart }) {
               ))}
             </div>
             {designTab==='upload' && (
-              <div onClick={()=>document.getElementById(`studioFile_${activeSide}`).click()}
-                style={{ border:`2px dashed ${sideFiles[activeSide]?'rgba(0,168,107,.5)':'rgba(255,255,255,.15)'}`, borderRadius:10, padding:'20px 12px', textAlign:'center', cursor:'pointer', background:'rgba(255,255,255,.02)' }}>
-                <input id={`studioFile_${activeSide}`} type="file" accept=".png,.jpg,.jpeg,.svg" style={{ display:'none' }} onChange={handleFile} />
-                {sideFiles[activeSide] ? (
-                  <div>
-                    <img src={sideImgs[activeSide]} alt="" style={{ maxHeight:80, maxWidth:'100%', borderRadius:6, marginBottom:6, objectFit:'contain' }} />
-                    <div style={{ fontSize:11, color:'#00a86b', fontWeight:700 }}>✓ {sideFiles[activeSide].name.slice(0,26)}</div>
-                    <div style={{ fontSize:9, color:'rgba(255,255,255,.3)', marginTop:2 }}>Tap to change</div>
-                  </div>
-                ) : sideImgs[activeSide] ? (
-                  <div>
-                    <img src={sideImgs[activeSide]} alt="" style={{ maxHeight:80, maxWidth:'100%', borderRadius:6, marginBottom:6, objectFit:'contain' }} />
-                    <div style={{ fontSize:10, color:'#00a86b', fontWeight:700 }}>✓ Sample · Tap to replace</div>
-                  </div>
-                ) : (
-                  <div>
-                    <div style={{ fontSize:36, marginBottom:8 }}>📁</div>
-                    <div style={{ fontSize:13, color:'rgba(255,255,255,.7)', fontWeight:700, marginBottom:4 }}>Tap to upload</div>
-                    <div style={{ fontSize:10, color:'rgba(255,255,255,.3)' }}>PNG · JPG · SVG · Max 20MB</div>
+              <div>
+                {/* Uploaded images grid */}
+                {sideImgs[activeSide]?.length > 0 && (
+                  <div style={{ display:'flex', gap:6, flexWrap:'wrap', marginBottom:10 }}>
+                    {sideImgs[activeSide].map((src, i) => (
+                      <div key={i} style={{ position:'relative' }}>
+                        <img src={src} alt="" style={{ width:64, height:64, objectFit:'contain', borderRadius:7,
+                          border:'1.5px solid rgba(0,168,107,.5)', background:'rgba(255,255,255,.05)' }} />
+                        {sideFiles[activeSide]?.[i]?._uploading && (
+                          <div style={{ position:'absolute', inset:0, borderRadius:7, background:'rgba(0,0,0,.5)', display:'flex', alignItems:'center', justifyContent:'center' }}>
+                            <div style={{ width:14, height:14, border:'2px solid rgba(255,255,255,.3)', borderTopColor:'#fff', borderRadius:'50%', animation:'drynn-spin .7s linear infinite' }} />
+                          </div>
+                        )}
+                        <button onClick={()=>{
+                          setSideImgs(p=>({ ...p, [activeSide]: p[activeSide].filter((_,j)=>j!==i) }))
+                          setSideFiles(p=>({ ...p, [activeSide]: p[activeSide].filter((_,j)=>j!==i) }))
+                        }} style={{ position:'absolute', top:-5, right:-5, width:17, height:17, borderRadius:'50%',
+                          background:'#c8102e', color:'#fff', border:'none', fontSize:10, cursor:'pointer',
+                          display:'flex', alignItems:'center', justifyContent:'center', lineHeight:1 }}>×</button>
+                      </div>
+                    ))}
                   </div>
                 )}
+                {/* Add more / first upload tap zone */}
+                <div onClick={()=>document.getElementById(`studioFile_${activeSide}`).click()}
+                  style={{ border:`2px dashed rgba(255,255,255,.15)`, borderRadius:10, padding:'16px 12px', textAlign:'center', cursor:'pointer', background:'rgba(255,255,255,.02)' }}>
+                  <input id={`studioFile_${activeSide}`} type="file" accept=".png,.jpg,.jpeg,.svg" multiple
+                    style={{ display:'none' }}
+                    onClick={e=>{ e.target.value = null }}
+                    onChange={handleFile} />
+                  <div style={{ fontSize:28, marginBottom:4 }}>＋</div>
+                  <div style={{ fontSize:12, color:'rgba(255,255,255,.6)', fontWeight:700, marginBottom:2 }}>
+                    {sideImgs[activeSide]?.length > 0 ? 'Add more designs' : 'Tap to upload design(s)'}
+                  </div>
+                  <div style={{ fontSize:10, color:'rgba(255,255,255,.25)' }}>PNG · JPG · SVG · Multi-select OK · Max 20MB</div>
+                </div>
               </div>
             )}
             {designTab==='samples' && (
@@ -1833,7 +1879,7 @@ function StudioPage({ user, onNav, onAddToCart }) {
                   {[
                     ['Garment', selectedProduct?.name || garmentType],
                     ['Colour',  color],
-                    ['Designs', SIDES.filter(s=>sideImgs[s]).map(s=>SIDE_LABELS[s]).join(', ') || '—'],
+                    ['Designs', SIDES.filter(s=>sideImgs[s]?.length > 0).map(s=>SIDE_LABELS[s]).join(', ') || '—'],
                     ['Size',    size],
                   ].map(([k,v])=>(
                     <div key={k}>
@@ -4005,10 +4051,37 @@ function AdminPanel({ onBack }) {
   // Samples
   const [samples,        setSamples]        = useState([])
   const [samplesLoading, setSamplesLoading] = useState(false)
-  const [sampleForm,     setSampleForm]     = useState({ name:'', category:'', image_url:'' })
-  const [sampleFile,     setSampleFile]     = useState(null)
+  const [sampleForm,     setSampleForm]     = useState({ category:'' })
+  const [sampleFiles,    setSampleFiles]    = useState([])   // multi-file array
   const [samplePct,      setSamplePct]      = useState(0)
   const [sampleSaving,   setSampleSaving]   = useState(false)
+  const [sampleCategories, setSampleCategories] = useState([])
+  const [newCatInput,    setNewCatInput]    = useState('')
+  const [catSaving,      setCatSaving]      = useState(false)
+
+  // Load saved sample categories
+  React.useEffect(() => {
+    supabase.from('drynn_settings').select('value').eq('key','sample_categories').single()
+      .then(({ data }) => {
+        if (data?.value) try { setSampleCategories(JSON.parse(data.value)) } catch {}
+      })
+  }, [])
+
+  const persistCategories = async (cats) => {
+    setCatSaving(true)
+    await supabase.from('drynn_settings').upsert({ key:'sample_categories', value:JSON.stringify(cats) }, { onConflict:'key' })
+    setCatSaving(false)
+  }
+  const addSampleCategory = () => {
+    const v = newCatInput.trim()
+    if (!v || sampleCategories.includes(v)) return
+    const updated = [...sampleCategories, v]
+    setSampleCategories(updated); setNewCatInput(''); persistCategories(updated); showToast('Category added ✓')
+  }
+  const removeSampleCategory = (cat) => {
+    const updated = sampleCategories.filter(c => c !== cat)
+    setSampleCategories(updated); persistCategories(updated)
+  }
 
   // Group orders
   const [groupOrders,        setGroupOrders]        = useState([])
@@ -4237,18 +4310,26 @@ function AdminPanel({ onBack }) {
 
   // ── Samples actions ──────────────────────────────────────
   const saveSample = async () => {
-    if (!sampleFile) { showToast('Please upload an image'); return }
-    if (!sampleForm.name) { showToast('Enter a design name'); return }
+    if (!sampleFiles.length) { showToast('Please select at least one image'); return }
     setSampleSaving(true)
-    let imageUrl = sampleForm.image_url
-    if (sampleFile) {
-      try { imageUrl = await uploadToCloudinary(sampleFile, pct=>setSamplePct(pct)) }
-      catch(e) { showToast('Upload failed: ' + e.message); setSampleSaving(false); return }
+    let saved = 0
+    for (let i = 0; i < sampleFiles.length; i++) {
+      const f = sampleFiles[i]
+      const name = f.name.replace(/\.[^.]+$/, '').replace(/[-_]/g, ' ')
+      try {
+        setSamplePct(Math.round((i / sampleFiles.length) * 100))
+        const imageUrl = await uploadToCloudinary(f, () => {})
+        const { error } = await supabase.from('drynn_samples').insert({
+          name,
+          category: sampleForm.category || null,
+          image_url: imageUrl,
+        })
+        if (error) { showToast('Save failed: ' + error.message) } else { saved++ }
+      } catch(e) { showToast('Upload failed: ' + f.name) }
     }
-    const { error } = await supabase.from('drynn_samples').insert({ name:sampleForm.name, category:sampleForm.category||null, image_url:imageUrl })
-    if (error) { showToast('Save failed: ' + error.message); setSampleSaving(false); return }
-    showToast('Sample added ✓')
-    setSampleForm({ name:'', category:'', image_url:'' }); setSampleFile(null); setSamplePct(0)
+    setSamplePct(100)
+    showToast(`${saved} sample${saved !== 1 ? 's' : ''} added ✓`)
+    setSampleForm({ category:'' }); setSampleFiles([]); setSamplePct(0)
     loadSamples()
     setSampleSaving(false)
   }
@@ -4682,44 +4763,93 @@ function AdminPanel({ onBack }) {
               <h2 style={{ fontSize:18, fontWeight:700 }}>Sample Designs ({samples.length})</h2>
               <button className="btn-secondary" style={{ padding:'7px 14px', fontSize:12 }} onClick={loadSamples}>↻ Refresh</button>
             </div>
-            {/* Add sample form */}
-            <div style={{ background:'#fff', border:'1px solid #e8e8e8', borderRadius:12, padding:'20px', marginBottom:20 }}>
-              <p style={{ fontSize:12, fontWeight:700, textTransform:'uppercase', letterSpacing:'.1em', color:'#888', marginBottom:12 }}>Add New Sample</p>
-              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10, marginBottom:10 }}>
-                <div>
-                  <label style={{ fontSize:11, color:'#888', fontWeight:700, display:'block', marginBottom:4 }}>Design Name *</label>
-                  <input className="input-field" style={{ fontSize:13 }} placeholder="e.g. Dragon Fire"
-                    value={sampleForm.name} onChange={e=>setSampleForm(f=>({...f,name:e.target.value}))} />
+            {/* ── Category manager ── */}
+            <div style={{ background:'#fff', border:'1px solid #e8e8e8', borderRadius:12, padding:'20px', marginBottom:16 }}>
+              <p style={{ fontSize:12, fontWeight:700, textTransform:'uppercase', letterSpacing:'.1em', color:'#888', marginBottom:10 }}>Manage Categories</p>
+              {/* Existing chips */}
+              {sampleCategories.length > 0 && (
+                <div style={{ display:'flex', gap:6, flexWrap:'wrap', marginBottom:12 }}>
+                  {sampleCategories.map(cat => (
+                    <span key={cat} style={{ display:'inline-flex', alignItems:'center', gap:4, background:'#f0f0f0', borderRadius:20, padding:'4px 12px', fontSize:12, fontWeight:700 }}>
+                      {cat}
+                      <button onClick={()=>removeSampleCategory(cat)}
+                        style={{ background:'none', border:'none', cursor:'pointer', color:'#c8102e', fontSize:16, lineHeight:1, padding:0, marginLeft:2 }}>×</button>
+                    </span>
+                  ))}
                 </div>
-                <div>
-                  <label style={{ fontSize:11, color:'#888', fontWeight:700, display:'block', marginBottom:4 }}>Category</label>
-                  <input className="input-field" style={{ fontSize:13 }} placeholder="e.g. Anime, Sports"
-                    value={sampleForm.category} onChange={e=>setSampleForm(f=>({...f,category:e.target.value}))} />
-                </div>
+              )}
+              <div style={{ display:'flex', gap:8 }}>
+                <input className="input-field" style={{ fontSize:13 }} placeholder="New category (e.g. Sports)"
+                  value={newCatInput} onChange={e=>setNewCatInput(e.target.value)}
+                  onKeyDown={e=>e.key==='Enter'&&addSampleCategory()} />
+                <button className="btn-primary" style={{ padding:'10px 16px', fontSize:12, whiteSpace:'nowrap', opacity:catSaving?.6:1 }}
+                  onClick={addSampleCategory} disabled={catSaving}>+ Add</button>
               </div>
-              <div>
-                <label style={{ fontSize:11, color:'#888', fontWeight:700, display:'block', marginBottom:4 }}>Image</label>
-                <label style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:8, padding:'10px 14px', background: sampleFile ? '#00a86b' : '#0a1f5d', color:'#fff', borderRadius:6, fontSize:12, fontWeight:700, cursor:'pointer', width:'100%' }}>
-                  {sampleFile ? `✓ ${sampleFile.name}` : '📁 Choose & Upload Image'}
-                  <input type="file" accept="image/*" style={{ display:'none' }} onChange={e=>setSampleFile(e.target.files[0])} />
-                </label>
-                {sampleFile && (
-                  <div style={{ marginTop:8, display:'flex', alignItems:'center', gap:8 }}>
-                    <img src={URL.createObjectURL(sampleFile)} alt="" style={{ maxHeight:60, borderRadius:4 }} />
-                    <div>
-                      <div style={{ fontSize:11, color:'#00a86b', fontWeight:700 }}>✓ {sampleFile.name}</div>
-                      {samplePct > 0 && samplePct < 100 && (
-                        <div style={{ height:3, width:100, background:'#e0e0e0', borderRadius:2, marginTop:4 }}>
-                          <div style={{ height:'100%', width:`${samplePct}%`, background:'#c8102e', borderRadius:2 }} />
-                        </div>
-                      )}
-                    </div>
+            </div>
+
+            {/* ── Bulk upload form ── */}
+            <div style={{ background:'#fff', border:'1px solid #e8e8e8', borderRadius:12, padding:'20px', marginBottom:20 }}>
+              <p style={{ fontSize:12, fontWeight:700, textTransform:'uppercase', letterSpacing:'.1em', color:'#888', marginBottom:12 }}>Bulk Upload Samples</p>
+
+              {/* Category chip selector */}
+              <div style={{ marginBottom:14 }}>
+                <label style={{ fontSize:11, color:'#888', fontWeight:700, display:'block', marginBottom:7 }}>Category (click to select)</label>
+                {sampleCategories.length === 0 ? (
+                  <p style={{ fontSize:12, color:'#bbb' }}>No categories yet — add one above first.</p>
+                ) : (
+                  <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
+                    {sampleCategories.map(cat => (
+                      <button key={cat} onClick={()=>setSampleForm(f=>({...f, category: f.category===cat ? '' : cat}))}
+                        style={{ padding:'6px 16px', borderRadius:20, fontSize:12, fontWeight:700, cursor:'pointer',
+                          border:`1.5px solid ${sampleForm.category===cat?'#c8102e':'#e0e0e0'}`,
+                          background: sampleForm.category===cat ? '#c8102e' : '#fff',
+                          color:       sampleForm.category===cat ? '#fff'    : '#555',
+                          transition:'all .12s' }}>
+                        {cat}
+                      </button>
+                    ))}
                   </div>
                 )}
               </div>
-              <button className="btn-primary" style={{ marginTop:14, padding:'10px 24px', fontSize:13, opacity:sampleSaving?.6:1 }}
-                onClick={saveSample} disabled={sampleSaving}>
-                {sampleSaving ? 'Saving…' : '+ Add Sample'}
+
+              {/* Multi-file picker */}
+              <label style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:8, padding:'11px 14px',
+                background: sampleFiles.length ? '#00a86b' : '#0a1f5d',
+                color:'#fff', borderRadius:6, fontSize:12, fontWeight:700, cursor:'pointer', width:'100%', marginBottom: sampleFiles.length ? 10 : 0 }}>
+                {sampleFiles.length ? `✓ ${sampleFiles.length} image${sampleFiles.length>1?'s':''} selected` : '📁 Choose Images (you can select many)'}
+                <input type="file" accept="image/*" multiple style={{ display:'none' }}
+                  onClick={e=>{ e.target.value = null }}
+                  onChange={e=>setSampleFiles(Array.from(e.target.files))} />
+              </label>
+
+              {/* Thumbnail preview grid */}
+              {sampleFiles.length > 0 && (
+                <div style={{ display:'flex', gap:6, flexWrap:'wrap', marginBottom:12 }}>
+                  {sampleFiles.map((f, i) => (
+                    <div key={i} style={{ position:'relative' }}>
+                      <img src={URL.createObjectURL(f)} alt="" style={{ width:58, height:58, objectFit:'cover', borderRadius:7, border:'1px solid #e0e0e0', display:'block' }} />
+                      <button onClick={()=>setSampleFiles(fs=>fs.filter((_,j)=>j!==i))}
+                        style={{ position:'absolute', top:-5, right:-5, width:17, height:17, borderRadius:'50%',
+                          background:'#c8102e', color:'#fff', border:'none', fontSize:10, cursor:'pointer',
+                          display:'flex', alignItems:'center', justifyContent:'center', lineHeight:1 }}>×</button>
+                      <div style={{ fontSize:9, color:'#888', marginTop:2, maxWidth:58, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+                        {f.name.replace(/\.[^.]+$/,'').replace(/[-_]/g,' ')}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Progress bar */}
+              {samplePct > 0 && samplePct < 100 && (
+                <div style={{ height:4, background:'#e0e0e0', borderRadius:2, marginBottom:10 }}>
+                  <div style={{ height:'100%', width:`${samplePct}%`, background:'#c8102e', borderRadius:2, transition:'width .2s' }} />
+                </div>
+              )}
+
+              <button className="btn-primary" style={{ marginTop:4, padding:'10px 24px', fontSize:13, opacity:sampleSaving?.6:1 }}
+                onClick={saveSample} disabled={sampleSaving || !sampleFiles.length}>
+                {sampleSaving ? `Uploading… ${samplePct}%` : `⬆ Upload ${sampleFiles.length > 0 ? sampleFiles.length+' ' : ''}Sample${sampleFiles.length !== 1 ? 's' : ''}`}
               </button>
             </div>
             {/* Samples grid */}
@@ -5414,13 +5544,13 @@ function CreateGroupOrder({ user, selectedProduct, onChangeProduct }) {
   const SIDES = ['front','back','left','right']
   const SIDE_LABELS_MAP = { front:'Front', back:'Back', left:'Left', right:'Right' }
   const [activeSide,   setActiveSide]   = useState('front')
-  const [sideFiles,    setSideFiles]    = useState({ front:null, back:null, left:null, right:null })
-  const [sideImgs,     setSideImgs]     = useState({ front:null, back:null, left:null, right:null })
+  const [sideFiles,    setSideFiles]    = useState({ front:[], back:[], left:[], right:[] })
+  const [sideImgs,     setSideImgs]     = useState({ front:[], back:[], left:[], right:[] })
   const [uploadPct,    setUploadPct]    = useState(0)
   const [uploadErr,    setUploadErr]    = useState('')
   // Keep backward compat aliases for preview
-  const designFile = sideFiles[activeSide]
-  const designImg  = sideImgs[activeSide]
+  const designFile = sideFiles[activeSide]?.[0] || null
+  const designImg  = sideImgs[activeSide]?.[0] || null
 
   const GARMENT_DEFAULTS = {
     'T-Shirts': 'https://res.cloudinary.com/dfhdyp4oq/image/upload/drynn/products/tshirt_white.png',
@@ -5437,13 +5567,21 @@ function CreateGroupOrder({ user, selectedProduct, onChangeProduct }) {
   const garmentLabel = selectedProduct ? selectedProduct.name : 'No product selected'
 
   const handleDesignFile = e => {
-    const f = e.target.files[0]; if (!f) return
+    const files = Array.from(e.target.files)
+    if (!files.length) return
     const allowed = ['image/png','image/jpeg','image/jpg','image/svg+xml']
-    if (!allowed.includes(f.type)) { setUploadErr('Only PNG, JPG, SVG allowed.'); return }
-    if (f.size > 20*1024*1024) { setUploadErr('Max 20MB.'); return }
+    const valid = files.filter(f => {
+      if (!allowed.includes(f.type)) { setUploadErr('Only PNG, JPG, SVG allowed.'); return false }
+      if (f.size > 20*1024*1024) { setUploadErr('Max 20MB.'); return false }
+      return true
+    })
+    if (!valid.length) return
     setUploadErr('')
-    setSideFiles(prev => ({ ...prev, [activeSide]: f }))
-    setSideImgs(prev => ({ ...prev, [activeSide]: URL.createObjectURL(f) }))
+    valid.forEach(f => {
+      const blobUrl = URL.createObjectURL(f)
+      setSideFiles(prev => ({ ...prev, [activeSide]: [...(prev[activeSide]||[]), f] }))
+      setSideImgs(prev => ({ ...prev, [activeSide]: [...(prev[activeSide]||[]), blobUrl] }))
+    })
   }
 
   const create = async () => {
@@ -5452,17 +5590,23 @@ function CreateGroupOrder({ user, selectedProduct, onChangeProduct }) {
     // Upload all sides that have files
     const designUrls = {}
     for (const side of SIDES) {
-      if (sideFiles[side]) {
-        try {
-          designUrls[side] = await uploadToCloudinary(sideFiles[side], pct => setUploadPct(pct))
-        } catch(e) {
-          setSaving(false)
-          alert('Design upload failed for ' + side + ': ' + e.message)
-          return
+      const files = sideFiles[side] || []
+      if (files.length) {
+        const urls = []
+        for (const f of files) {
+          try {
+            const url = await uploadToCloudinary(f, pct => setUploadPct(pct))
+            urls.push(url)
+          } catch(e) {
+            setSaving(false)
+            alert('Design upload failed for ' + side + ': ' + e.message)
+            return
+          }
         }
+        if (urls.length) designUrls[side] = urls.join(',')
       }
     }
-    const designUrl = designUrls.front || null
+    const designUrl = designUrls.front?.split(',')[0] || null
     const id   = crypto.randomUUID()
     const code = Math.random().toString(36).slice(2,8).toUpperCase()
     const groupData = {
@@ -5596,20 +5740,41 @@ function CreateGroupOrder({ user, selectedProduct, onChangeProduct }) {
                     color: activeSide===s ? '#fff' : '#555',
                     position:'relative' }}>
                   {SIDE_LABELS_MAP[s]}
-                  {sideImgs[s] && <span style={{ position:'absolute', top:-4, right:-4, width:8, height:8, borderRadius:'50%', background:'#00a86b', border:'1px solid #fff' }} />}
+                  {(sideImgs[s]?.length > 0) && <span style={{ position:'absolute', top:-4, right:-4, width:8, height:8, borderRadius:'50%', background:'#00a86b', border:'1px solid #fff' }} />}
                 </button>
               ))}
             </div>
             <div style={{ display:'flex', gap:16, alignItems:'flex-start', flexWrap:'wrap' }}>
               {/* Upload zone */}
-              <label style={{ flex:'1 1 140px', cursor:'pointer' }}>
-                <input type="file" accept=".png,.jpg,.jpeg,.svg" style={{ display:'none' }} onChange={handleDesignFile} />
-                <div className="upload-zone" style={{ minHeight:80, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:6 }}>
-                  {designImg
-                    ? <img src={designImg} alt="design" style={{ maxHeight:60, maxWidth:'100%', objectFit:'contain', borderRadius:4 }} />
-                    : <><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#aaa" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg><span style={{ fontSize:11, color:'#aaa' }}>Upload PNG / JPG / SVG</span></>}
-                </div>
-              </label>
+              <div style={{ flex:'1 1 140px' }}>
+                {/* Thumbnail grid */}
+                {(sideImgs[activeSide]?.length > 0) && (
+                  <div style={{ display:'flex', gap:5, flexWrap:'wrap', marginBottom:8 }}>
+                    {sideImgs[activeSide].map((src, i) => (
+                      <div key={i} style={{ position:'relative' }}>
+                        <img src={src} alt="" style={{ width:54, height:54, objectFit:'cover', borderRadius:6, border:'1px solid #e0e0e0' }} />
+                        <button onClick={()=>{
+                          setSideImgs(p=>({ ...p, [activeSide]: p[activeSide].filter((_,j)=>j!==i) }))
+                          setSideFiles(p=>({ ...p, [activeSide]: p[activeSide].filter((_,j)=>j!==i) }))
+                        }} style={{ position:'absolute', top:-4, right:-4, width:16, height:16, borderRadius:'50%',
+                          background:'#c8102e', color:'#fff', border:'none', fontSize:10, cursor:'pointer',
+                          display:'flex', alignItems:'center', justifyContent:'center', lineHeight:1 }}>×</button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <label style={{ cursor:'pointer', display:'block' }}>
+                  <input type="file" accept=".png,.jpg,.jpeg,.svg" multiple style={{ display:'none' }}
+                    onClick={e=>{ e.target.value = null }}
+                    onChange={handleDesignFile} />
+                  <div className="upload-zone" style={{ minHeight:60, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:5 }}>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#aaa" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                    <span style={{ fontSize:11, color:'#aaa' }}>{(sideImgs[activeSide]?.length > 0) ? '+ Add more' : 'Upload PNG / JPG / SVG'}</span>
+                    <span style={{ fontSize:9, color:'#ccc' }}>Multi-select OK</span>
+                  </div>
+                </label>
+                {uploadErr && <p style={{ fontSize:10, color:'#c8102e', marginTop:4 }}>{uploadErr}</p>}
+              </div>
               {/* Live garment + design preview */}
               <div style={{ flex:'0 0 150px', textAlign:'center' }}>
                 <div style={{ fontSize:9, fontWeight:700, letterSpacing:'.1em', textTransform:'uppercase', color:'#aaa', marginBottom:4 }}>Preview</div>
@@ -5626,8 +5791,8 @@ function CreateGroupOrder({ user, selectedProduct, onChangeProduct }) {
                 </div>
                 {selectedProduct && <div style={{ fontSize:10, color:'#888', marginTop:4, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{selectedProduct.name}</div>}
                 {designImg && (
-                  <button onClick={()=>{setDesignFile(null);setDesignImg(null)}}
-                    style={{ marginTop:4, fontSize:10, color:'#c8102e', background:'none', border:'none', cursor:'pointer', textDecoration:'underline' }}>Remove design</button>
+                  <button onClick={()=>{ setSideImgs(p=>({...p,[activeSide]:[]})); setSideFiles(p=>({...p,[activeSide]:[]})) }}
+                    style={{ marginTop:4, fontSize:10, color:'#c8102e', background:'none', border:'none', cursor:'pointer', textDecoration:'underline' }}>Remove designs</button>
                 )}
               </div>
             </div>

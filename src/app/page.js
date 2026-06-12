@@ -3113,26 +3113,11 @@ function OrdersPage({ user, onBack, onNav }) {
             <span style={{ fontSize:12, fontWeight:700, padding:'5px 14px', borderRadius:20, background:sc.bg, color:sc.color, border:`1px solid ${sc.border}` }}>{selected.status || 'Received'}</span>
           </div>
 
-          {/* 4-side design preview */}
-          {(() => {
-            const designs = parseDesignUrls(selected.design_file)
-            const sides = ['front','back','left','right'].filter(s => designs[s])
-            if (!sides.length) return null
-            return (
-              <div style={{ border:'1px solid #f0f0f0', borderRadius:12, padding:'18px', marginBottom:24 }}>
-                <p style={{ fontSize:11, fontWeight:700, letterSpacing:'.12em', textTransform:'uppercase', color:'#aaa', marginBottom:14 }}>Your Design</p>
-                <div style={{ display:'flex', gap:10, flexWrap:'wrap' }}>
-                  {sides.map(s => (
-                    <div key={s} style={{ textAlign:'center' }}>
-                      <img src={designs[s]} alt={s} style={{ width:80, height:80, objectFit:'contain', borderRadius:8, border:'1.5px solid #e0e0e0', background:'#f8f8f8' }}
-                        onError={e=>e.target.style.display='none'} />
-                      <div style={{ fontSize:10, color:'#888', marginTop:4, fontWeight:600, textTransform:'capitalize' }}>{s}</div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )
-          })()}
+          {/* Studio design preview — same view as admin */}
+          {selected.order_type === 'custom' || (selected.design_file && selected.design_file !== 'catalog-order' && selected.design_file !== '{}')
+            ? <div style={{ marginBottom:24 }}><AdminOrderPreview order={selected} /></div>
+            : null
+          }
 
           {/* Order info card */}
           <div style={{ border:'1px solid #f0f0f0', borderRadius:12, padding:'18px', marginBottom:24 }}>
@@ -3559,10 +3544,10 @@ function TermsPage({ onBack }) {
 }
 
 // ══════════════════════════════════════════════════════════════
-// ADMIN ORDER PREVIEW — replicates Studio Step 5 view for admin
+// ORDER PREVIEW — replicates Studio view for both customer + admin
 // Shows garment + design composited at exact saved position/scale/rotation/colour
 // ══════════════════════════════════════════════════════════════
-function AdminOrderPreview({ order }) {
+function AdminOrderPreview({ order, label }) {
   const o = order
   const GARMENT_DEFAULTS = {
     'T-Shirt': 'https://res.cloudinary.com/dfhdyp4oq/image/upload/drynn/products/tshirt_white.png',
@@ -3668,7 +3653,7 @@ function AdminOrderPreview({ order }) {
   return (
     <div style={{ marginBottom:16 }}>
       <div style={{ fontSize:9, fontWeight:700, letterSpacing:'.12em', textTransform:'uppercase', color:'#c8102e', marginBottom:8 }}>
-        🎨 Customer Design Preview
+        🎨 {label || 'Your Design Preview'}
       </div>
 
       {/* ── Main viewer ── */}
@@ -4645,7 +4630,7 @@ function AdminPanel({ onBack }) {
 
                   <div style={{ padding:'14px 16px' }}>
                     {/* Studio preview */}
-                    {isCustom && <AdminOrderPreview order={o} />}
+                    {isCustom && <AdminOrderPreview order={o} label="Customer Design Preview" />}
 
                     {/* Design images — all URLs per side */}
                     {isCustom && designSides.length > 0 && (

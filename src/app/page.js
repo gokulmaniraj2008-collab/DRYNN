@@ -662,9 +662,10 @@ function ProductImageViewer({ product, fallbackSrc, designImgSrc, sideImgs, side
   const getDesign = key => {
     if (sideImgs) {
       const v = sideImgs[key]
-      return Array.isArray(v) ? (v[0] || null) : (v || null)
+      if (Array.isArray(v)) return v.filter(Boolean)
+      return v ? [v] : []
     }
-    return key === 'front' ? designImgSrc : null
+    return key === 'front' && designImgSrc ? [designImgSrc] : []
   }
   const getPos    = key => sidePos  ? sidePos[key]  : { posX, posY, scale, rotation }
   const frames = React.useMemo(() => {
@@ -749,11 +750,11 @@ function ProductImageViewer({ product, fallbackSrc, designImgSrc, sideImgs, side
       if (gImg) ctx.drawImage(gImg, 0, 50, 800, 800)
 
       // Get design and position for the CURRENT side (not always front)
-      const currentDesign = getDesign(current.key)
-      const currentP      = getPos(current.key)
+      const currentDesigns = getDesign(current.key)
+      const currentP        = getPos(current.key)
 
-      if (currentDesign) {
-        const dImg = await loadImg(currentDesign)
+      for (const dSrc of currentDesigns) {
+        const dImg = await loadImg(dSrc)
         if (dImg) {
           const dw = (currentP.scale/100) * 800
           const dx = (currentP.posX/100) * 800 - dw/2
@@ -811,17 +812,17 @@ function ProductImageViewer({ product, fallbackSrc, designImgSrc, sideImgs, side
               style={{ width:'100%', display:'block', filter:colorToFilter(color), minHeight:260, objectFit:'contain' }}
               onError={e=>{ e.target.src='https://placehold.co/400x400/f0f0f0/cccccc?text=No+Image' }}
             />
-            {/* Design overlay — per side */}
+            {/* Design overlay — per side, all images */}
             {(() => {
-              const d = getDesign(f.key)
-              const p = getPos(f.key)
-              if (!d) return null
-              return (
-                <img src={d} alt="design"
+              const ds = getDesign(f.key)
+              const p  = getPos(f.key)
+              if (!ds.length) return null
+              return ds.map((src, di) => (
+                <img key={di} src={src} alt={'design-'+di}
                   style={{ position:'absolute', top:`${p.posY}%`, left:`${p.posX}%`,
                     transform:`translate(-50%,-50%) rotate(${p.rotation}deg)`,
                     width:`${p.scale}%`, objectFit:'contain', pointerEvents:'none' }} />
-              )
+              ))
             })()}
             {/* Text overlay — per side */}
             {(() => {
@@ -1189,20 +1190,23 @@ function StudioPage({ user, onNav, onAddToCart }) {
           if (gImg) ctx.drawImage(gImg, baseX + 40, baseY + 40, PANEL_W - 80, PANEL_H - 80)
         }
 
-        // Design overlay for this side — use resolved HTTPS URLs only
-        const designUrl = resolvedDesignUrls[side]
-        if (designUrl) {
-          const dImg = await loadImg(designUrl)
-          if (dImg) {
-            const pos   = sidePos[side]
-            const dw    = (pos.scale / 100) * (PANEL_W - 80)
-            const dx    = baseX + 40 + (pos.posX / 100) * (PANEL_W - 80) - dw / 2
-            const dy    = baseY + 40 + (pos.posY / 100) * (PANEL_H - 80) - dw / 2
-            ctx.save()
-            ctx.translate(dx + dw / 2, dy + dw / 2)
-            ctx.rotate((pos.rotation || 0) * Math.PI / 180)
-            ctx.drawImage(dImg, -dw / 2, -dw / 2, dw, dw)
-            ctx.restore()
+        // Design overlay for this side — draw ALL uploaded designs (comma-separated URLs)
+        const designUrlRaw = resolvedDesignUrls[side]
+        if (designUrlRaw) {
+          const designUrlList = designUrlRaw.split(',').map(u => u.trim()).filter(Boolean)
+          for (const designUrl of designUrlList) {
+            const dImg = await loadImg(designUrl)
+            if (dImg) {
+              const pos   = sidePos[side]
+              const dw    = (pos.scale / 100) * (PANEL_W - 80)
+              const dx    = baseX + 40 + (pos.posX / 100) * (PANEL_W - 80) - dw / 2
+              const dy    = baseY + 40 + (pos.posY / 100) * (PANEL_H - 80) - dw / 2
+              ctx.save()
+              ctx.translate(dx + dw / 2, dy + dw / 2)
+              ctx.rotate((pos.rotation || 0) * Math.PI / 180)
+              ctx.drawImage(dImg, -dw / 2, -dw / 2, dw, dw)
+              ctx.restore()
+            }
           }
         }
 
@@ -1379,7 +1383,7 @@ function StudioPage({ user, onNav, onAddToCart }) {
   // ── Live preview panel (shown on steps 3-6) ───────────────
   const LivePreview = ({ previewSide }) => {
     const ps = previewSide || custSide || 'front'
-    const pImg = sideImgs[ps]?.[0] || null
+    const pImgs = sideImgs[ps] || []
     const pp   = sidePos[ps]
     // Resolve the correct garment image for the active side
     const sideGarmentImg = selectedProduct
@@ -1396,13 +1400,13 @@ function StudioPage({ user, onNav, onAddToCart }) {
         <div style={{ position:'absolute', inset:0, display:'flex', alignItems:'center', justifyContent:'center', fontSize:80, opacity:0.04, pointerEvents:'none' }}>
           {GARMENT_EMOJI[garmentType]}
         </div>
-        {/* Design overlay */}
-        {pImg && (
-          <img src={pImg} alt="design"
+        {/* Design overlay - all uploaded images */}
+        {pImgs.map((src, i) => (
+          <img key={i} src={src} alt={'design-'+i}
             style={{ position:'absolute', top:`${pp.posY}%`, left:`${pp.posX}%`,
               transform:`translate(-50%,-50%) rotate(${pp.rotation}deg)`,
               width:`${pp.scale}%`, objectFit:'contain', pointerEvents:'none' }} />
-        )}
+        ))}
         {/* Text overlay */}
         {sideText[ps]?.on && sideText[ps]?.val && (
           <div style={{ position:'absolute', top:`${sideText[ps].posY}%`, left:`${sideText[ps].posX}%`,
@@ -1413,7 +1417,7 @@ function StudioPage({ user, onNav, onAddToCart }) {
           </div>
         )}
         {/* No design hint */}
-        {!pImg && (
+        {pImgs.length === 0 && (
           <div style={{ position:'absolute', inset:0, display:'flex', alignItems:'center', justifyContent:'center' }}>
             <div style={{ background:'rgba(0,0,0,.55)', borderRadius:8, padding:'10px 14px', textAlign:'center' }}>
               <div style={{ fontSize:22, marginBottom:2 }}>⋆</div>
@@ -1519,10 +1523,12 @@ function StudioPage({ user, onNav, onAddToCart }) {
           })()}
           {(sideImgs[activeSide]?.length > 0) && (() => {
             const pp = sidePos[activeSide]
-            return <img src={sideImgs[activeSide][0]} alt="design"
-              style={{ position:'absolute', top:`${pp.posY}%`, left:`${pp.posX}%`,
-                transform:`translate(-50%,-50%) rotate(${pp.rotation}deg)`,
-                width:`${pp.scale}%`, objectFit:'contain', pointerEvents:'none' }} />
+            return sideImgs[activeSide].map((src, i) => (
+              <img key={i} src={src} alt={'design-'+i}
+                style={{ position:'absolute', top:`${pp.posY}%`, left:`${pp.posX}%`,
+                  transform:`translate(-50%,-50%) rotate(${pp.rotation}deg)`,
+                  width:`${pp.scale}%`, objectFit:'contain', pointerEvents:'none' }} />
+            ))
           })()}
           {sideText[activeSide]?.on && sideText[activeSide]?.val && (() => {
             const st = sideText[activeSide]

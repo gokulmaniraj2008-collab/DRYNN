@@ -1763,25 +1763,23 @@ function StudioPage({ user, onNav, onAddToCart }) {
                   : samples.length===0
                     ? <div style={{ textAlign:'center', padding:20, color:'rgba(255,255,255,.3)', fontSize:12 }}>No samples yet.</div>
                     : <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:6 }}>
-                        {samples.filter(s=>sampleCat==='All'||s.category===sampleCat).map(s=>(
-                          {(() => {
-                            const isSelected = (sideImgs[activeSide]||[]).includes(s.image_url)
-                            return (
-                              <div key={s.id} onClick={()=>pickSample(s)}
-                                style={{ borderRadius:7, overflow:'hidden', cursor:'pointer', position:'relative',
-                                  border:`1.5px solid ${isSelected?'#c8102e':'rgba(255,255,255,.08)'}`,
-                                  opacity: isSelected ? 1 : 0.85, transition:'border .12s,opacity .12s' }}>
-                                <img src={s.image_url} alt={s.name} style={{ width:'100%', aspectRatio:'1', objectFit:'cover', display:'block' }} />
-                                {isSelected && (
-                                  <div style={{ position:'absolute', top:2, right:2, width:16, height:16, borderRadius:'50%', background:'#c8102e', display:'flex', alignItems:'center', justifyContent:'center', fontSize:9, color:'#fff', fontWeight:700 }}>✓</div>
-                                )}
-                                {isSelected && (
-                                  <div style={{ position:'absolute', bottom:0, left:0, right:0, background:'rgba(200,16,46,.55)', fontSize:8, color:'#fff', fontWeight:700, textAlign:'center', padding:'2px 0', letterSpacing:'.04em' }}>TAP TO REMOVE</div>
-                                )}
-                              </div>
-                            )
-                          })()}
-                        ))}
+                        {samples.filter(s=>sampleCat==='All'||s.category===sampleCat).map(s=>{
+                          const isSelected = (sideImgs[activeSide]||[]).includes(s.image_url)
+                          return (
+                            <div key={s.id} onClick={()=>pickSample(s)}
+                              style={{ borderRadius:7, overflow:'hidden', cursor:'pointer', position:'relative',
+                                border:`1.5px solid ${isSelected?'#c8102e':'rgba(255,255,255,.08)'}`,
+                                opacity: isSelected ? 1 : 0.85, transition:'border .12s,opacity .12s' }}>
+                              <img src={s.image_url} alt={s.name} style={{ width:'100%', aspectRatio:'1', objectFit:'cover', display:'block' }} />
+                              {isSelected && (
+                                <div style={{ position:'absolute', top:2, right:2, width:16, height:16, borderRadius:'50%', background:'#c8102e', display:'flex', alignItems:'center', justifyContent:'center', fontSize:9, color:'#fff', fontWeight:700 }}>✓</div>
+                              )}
+                              {isSelected && (
+                                <div style={{ position:'absolute', bottom:0, left:0, right:0, background:'rgba(200,16,46,.55)', fontSize:8, color:'#fff', fontWeight:700, textAlign:'center', padding:'2px 0', letterSpacing:'.04em' }}>TAP TO REMOVE</div>
+                              )}
+                            </div>
+                          )
+                        })}
                       </div>}
               </div>
             )}

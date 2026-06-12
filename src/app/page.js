@@ -1051,7 +1051,6 @@ function StudioPage({ user, onNav, onAddToCart }) {
     })
     if (!valid.length) return
     setUploadErr('')
-    setSideSamples(prev => ({ ...prev, [activeSide]: null }))
     valid.forEach(f => {
       const blobUrl = URL.createObjectURL(f)
       setSideImgs(prev => ({ ...prev, [activeSide]: [...(prev[activeSide]||[]), blobUrl] }))
@@ -1082,9 +1081,17 @@ function StudioPage({ user, onNav, onAddToCart }) {
   }
 
   const pickSample = s => {
-    setSideSamples(prev => ({ ...prev, [activeSide]: s }))
-    setSideFiles(prev => ({ ...prev, [activeSide]: [] }))
-    setSideImgs(prev => ({ ...prev, [activeSide]: [s.image_url] }))
+    // Toggle: if already selected, remove it; otherwise append to existing designs
+    const alreadyIdx = (sideImgs[activeSide]||[]).indexOf(s.image_url)
+    if (alreadyIdx > -1) {
+      // Deselect — remove this sample's URL from the array
+      setSideImgs(prev => ({ ...prev, [activeSide]: prev[activeSide].filter(u => u !== s.image_url) }))
+      setSideSamples(prev => ({ ...prev, [activeSide]: null }))
+    } else {
+      // Append sample URL alongside any existing uploads
+      setSideImgs(prev => ({ ...prev, [activeSide]: [...(prev[activeSide]||[]), s.image_url] }))
+      setSideSamples(prev => ({ ...prev, [activeSide]: s }))
+    }
   }
 
   // ── Step 4: Customise (per-side) ─────────────────────────
@@ -1273,23 +1280,27 @@ function StudioPage({ user, onNav, onAddToCart }) {
       for (const side of SIDES) {
         const files = sideFiles[side] || []
         const imgs  = sideImgs[side]  || []
-        if (files.length > 0) {
-          // Collect already-uploaded URLs first
-          const uploaded = files.filter(f => f._uploaded).map(f => f._url)
-          // Upload any still-pending files
-          const pending  = files.filter(f => f._uploading)
-          for (const pf of pending) {
-            try {
-              const url = await uploadToCloudinary(pf, pct => setUploadPct(pct))
-              uploaded.push(url)
-            } catch(e) { setStatus(''); alert('Upload failed for '+side+': '+e.message); return }
-          }
-          if (uploaded.length) designUrls[side] = uploaded.join(',')
-        } else if (sideSamples[side]) {
-          designUrls[side] = sideSamples[side].image_url
-        } else if (imgs[0]?.startsWith('https://')) {
-          designUrls[side] = imgs[0]
+        // Upload any still-pending blob files first
+        const pending = files.filter(f => f._uploading)
+        for (const pf of pending) {
+          try {
+            const url = await uploadToCloudinary(pf, pct => setUploadPct(pct))
+            // Replace blob URL with real URL in sideImgs
+            setSideImgs(prev => {
+              const arr = [...(prev[side]||[])]
+              const idx = arr.findIndex(u => u === pf._blob)
+              if (idx > -1) arr[idx] = url
+              return { ...prev, [side]: arr }
+            })
+          } catch(e) { setStatus(''); alert('Upload failed for '+side+': '+e.message); return }
         }
+        // Collect all real https URLs from sideImgs (covers both uploads + samples)
+        // Re-read after any pending uploads resolved
+        const allUrls = (sideImgs[side]||[]).filter(u => u?.startsWith('https://'))
+        // Also pick up newly uploaded ones from sideFiles
+        const freshUploaded = files.filter(f => f._uploaded).map(f => f._url)
+        const combined = [...new Set([...allUrls, ...freshUploaded])]
+        if (combined.length) designUrls[side] = combined.join(',')
       }
       setStatus('saving')
       const garmentLabel = selectedProduct ? selectedProduct.name : 'Custom Garment'
@@ -1659,8 +1670,13 @@ function StudioPage({ user, onNav, onAddToCart }) {
         {activeTool==='design' && (
           <div>
             <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:10 }}>
-              <span style={{ fontSize:11, fontWeight:700, color:'rgba(255,255,255,.5)' }}>
+              <span style={{ fontSize:11, fontWeight:700, color:'rgba(255,255,255,.5)', display:'flex', alignItems:'center', gap:6 }}>
                 Side: <span style={{ color:'#c8102e' }}>{SIDE_LABELS[activeSide]}</span>
+                {sideImgs[activeSide]?.length > 0 && (
+                  <span style={{ background:'rgba(0,168,107,.2)', color:'#00a86b', fontSize:9, fontWeight:800, borderRadius:10, padding:'1px 7px', letterSpacing:'.04em' }}>
+                    {sideImgs[activeSide].length} design{sideImgs[activeSide].length>1?'s':''}
+                  </span>
+                )}
               </span>
               {(sideImgs[activeSide]?.length > 0) && (
                 <button onClick={()=>{ setSideImgs(p=>({...p,[activeSide]:[]})); setSideFiles(p=>({...p,[activeSide]:[]})); setSideSamples(p=>({...p,[activeSide]:null})) }}
@@ -1679,26 +1695,37 @@ function StudioPage({ user, onNav, onAddToCart }) {
             </div>
             {designTab==='upload' && (
               <div>
-                {/* Uploaded images grid */}
+                {/* All designs grid — uploads + samples combined */}
                 {sideImgs[activeSide]?.length > 0 && (
                   <div style={{ display:'flex', gap:6, flexWrap:'wrap', marginBottom:10 }}>
-                    {sideImgs[activeSide].map((src, i) => (
-                      <div key={i} style={{ position:'relative' }}>
-                        <img src={src} alt="" style={{ width:64, height:64, objectFit:'contain', borderRadius:7,
-                          border:'1.5px solid rgba(0,168,107,.5)', background:'rgba(255,255,255,.05)' }} />
-                        {sideFiles[activeSide]?.[i]?._uploading && (
-                          <div style={{ position:'absolute', inset:0, borderRadius:7, background:'rgba(0,0,0,.5)', display:'flex', alignItems:'center', justifyContent:'center' }}>
-                            <div style={{ width:14, height:14, border:'2px solid rgba(255,255,255,.3)', borderTopColor:'#fff', borderRadius:'50%', animation:'drynn-spin .7s linear infinite' }} />
-                          </div>
-                        )}
-                        <button onClick={()=>{
-                          setSideImgs(p=>({ ...p, [activeSide]: p[activeSide].filter((_,j)=>j!==i) }))
-                          setSideFiles(p=>({ ...p, [activeSide]: p[activeSide].filter((_,j)=>j!==i) }))
-                        }} style={{ position:'absolute', top:-5, right:-5, width:17, height:17, borderRadius:'50%',
-                          background:'#c8102e', color:'#fff', border:'none', fontSize:10, cursor:'pointer',
-                          display:'flex', alignItems:'center', justifyContent:'center', lineHeight:1 }}>×</button>
-                      </div>
-                    ))}
+                    {sideImgs[activeSide].map((src, i) => {
+                      const fileEntry = sideFiles[activeSide]?.[i]
+                      const isSample  = !fileEntry && src?.startsWith('https://')
+                      const isUploading = fileEntry?._uploading
+                      return (
+                        <div key={i} style={{ position:'relative' }}>
+                          <img src={src} alt="" style={{ width:64, height:64, objectFit:'contain', borderRadius:7,
+                            border: isSample ? '1.5px solid rgba(200,16,46,.5)' : '1.5px solid rgba(0,168,107,.5)',
+                            background:'rgba(255,255,255,.05)' }} />
+                          {isUploading && (
+                            <div style={{ position:'absolute', inset:0, borderRadius:7, background:'rgba(0,0,0,.5)', display:'flex', alignItems:'center', justifyContent:'center' }}>
+                              <div style={{ width:14, height:14, border:'2px solid rgba(255,255,255,.3)', borderTopColor:'#fff', borderRadius:'50%', animation:'drynn-spin .7s linear infinite' }} />
+                            </div>
+                          )}
+                          {isSample && (
+                            <div style={{ position:'absolute', bottom:2, left:2, background:'rgba(200,16,46,.85)', borderRadius:3, padding:'1px 4px', fontSize:7, color:'#fff', fontWeight:800, letterSpacing:'.04em' }}>SAMPLE</div>
+                          )}
+                          <button onClick={()=>{
+                            const url = src
+                            setSideImgs(p=>({ ...p, [activeSide]: p[activeSide].filter(u => u !== url) }))
+                            setSideFiles(p=>({ ...p, [activeSide]: (p[activeSide]||[]).filter(x => x._blob !== url && x._url !== url) }))
+                            if (isSample) setSideSamples(p=>({ ...p, [activeSide]: null }))
+                          }} style={{ position:'absolute', top:-5, right:-5, width:17, height:17, borderRadius:'50%',
+                            background:'#c8102e', color:'#fff', border:'none', fontSize:10, cursor:'pointer',
+                            display:'flex', alignItems:'center', justifyContent:'center', lineHeight:1 }}>×</button>
+                        </div>
+                      )
+                    })}
                   </div>
                 )}
                 {/* Add more / first upload tap zone */}
@@ -1737,14 +1764,23 @@ function StudioPage({ user, onNav, onAddToCart }) {
                     ? <div style={{ textAlign:'center', padding:20, color:'rgba(255,255,255,.3)', fontSize:12 }}>No samples yet.</div>
                     : <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:6 }}>
                         {samples.filter(s=>sampleCat==='All'||s.category===sampleCat).map(s=>(
-                          <div key={s.id} onClick={()=>pickSample(s)}
-                            style={{ borderRadius:7, overflow:'hidden', cursor:'pointer', position:'relative',
-                              border:`1.5px solid ${sideSamples[activeSide]?.id===s.id?'#c8102e':'rgba(255,255,255,.08)'}` }}>
-                            <img src={s.image_url} alt={s.name} style={{ width:'100%', aspectRatio:'1', objectFit:'cover', display:'block' }} />
-                            {sideSamples[activeSide]?.id===s.id && (
-                              <div style={{ position:'absolute', top:2, right:2, width:14, height:14, borderRadius:'50%', background:'#c8102e', display:'flex', alignItems:'center', justifyContent:'center', fontSize:8, color:'#fff', fontWeight:700 }}>✓</div>
-                            )}
-                          </div>
+                          {(() => {
+                            const isSelected = (sideImgs[activeSide]||[]).includes(s.image_url)
+                            return (
+                              <div key={s.id} onClick={()=>pickSample(s)}
+                                style={{ borderRadius:7, overflow:'hidden', cursor:'pointer', position:'relative',
+                                  border:`1.5px solid ${isSelected?'#c8102e':'rgba(255,255,255,.08)'}`,
+                                  opacity: isSelected ? 1 : 0.85, transition:'border .12s,opacity .12s' }}>
+                                <img src={s.image_url} alt={s.name} style={{ width:'100%', aspectRatio:'1', objectFit:'cover', display:'block' }} />
+                                {isSelected && (
+                                  <div style={{ position:'absolute', top:2, right:2, width:16, height:16, borderRadius:'50%', background:'#c8102e', display:'flex', alignItems:'center', justifyContent:'center', fontSize:9, color:'#fff', fontWeight:700 }}>✓</div>
+                                )}
+                                {isSelected && (
+                                  <div style={{ position:'absolute', bottom:0, left:0, right:0, background:'rgba(200,16,46,.55)', fontSize:8, color:'#fff', fontWeight:700, textAlign:'center', padding:'2px 0', letterSpacing:'.04em' }}>TAP TO REMOVE</div>
+                                )}
+                              </div>
+                            )
+                          })()}
                         ))}
                       </div>}
               </div>

@@ -1411,13 +1411,13 @@ function StudioPage({ user, onNav, onAddToCart }) {
   const drawerRef = React.useRef(null)
 
   const TOOLS = [
-    { key:'garment',  icon:'👕', label:'Garment' },
-    { key:'colour',   icon:'🎨', label:'Colour'  },
-    { key:'design',   icon:'⬆',  label:'Design'  },
-    { key:'position', icon:'↔',  label:'Position'},
-    { key:'text',     icon:'T',  label:'Text'    },
-    { key:'effects',  icon:'✦',  label:'Effects' },
-    { key:'order',    icon:'🛒', label:'Order'   },
+    { key:'garment',  icon:'1.', label:'Garment' },
+    { key:'colour',   icon:'2.', label:'Colour'  },
+    { key:'design',   icon:'3.',  label:'Design'  },
+    { key:'position', icon:'4.',  label:'Position'},
+    { key:'text',     icon:'5.',  label:'Text'    },
+    { key:'effects',  icon:'6.',  label:'Effects' },
+    { key:'order',    icon:'7.', label:'Order'   },
   ]
 
   // keep activeSide and custSide in sync when switching design/position

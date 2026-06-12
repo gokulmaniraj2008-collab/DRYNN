@@ -89,6 +89,22 @@ const DEFAULT_MEDIA = {
   video_home:   'https://res.cloudinary.com/dfhdyp4oq/video/upload/v1781005895/%E1%BA%A2nh_b%C3%ACa___%E1%BA%A2nh_%C4%91%E1%BB%99ng__H%C3%ACnh_gif__Ngh%E1%BB%87_thu%E1%BA%ADt_MP4_gm3r0e.mp4',
   audio_song:   '',
 }
+// Push a history entry when a full-screen overlay (e.g. product detail) opens,
+// so the phone/browser back button closes the overlay instead of exiting the app.
+function useOverlayHistory(active, onClose) {
+  const onCloseRef = useRef(onClose)
+  onCloseRef.current = onClose
+  useEffect(() => {
+    if (!active) return
+    window.history.pushState({ overlay: true }, '')
+    const handler = (e) => {
+      if (!e.state?.overlay) onCloseRef.current()
+    }
+    window.addEventListener('popstate', handler)
+    return () => window.removeEventListener('popstate', handler)
+  }, [active])
+}
+
 function useMediaSettings() {
   const [media, setMedia] = React.useState(DEFAULT_MEDIA)
   React.useEffect(() => {
@@ -1927,12 +1943,13 @@ function HomePage({ user, onNav, cart, onAddToCart }) {
   const mediaSettings = useMediaSettings()
   const products = usePublicProducts()
   const [selectedProduct, setSelectedProduct] = React.useState(null)
+  useOverlayHistory(!!selectedProduct, () => setSelectedProduct(null))
 
   if (selectedProduct) return (
     <ProductDetailPage
       product={selectedProduct}
-      onBack={()=>setSelectedProduct(null)}
-      onAddToCart={(p)=>{ onAddToCart(p); setSelectedProduct(null) }}
+      onBack={()=>window.history.back()}
+      onAddToCart={(p)=>{ onAddToCart(p); window.history.back() }}
     />
   )
   return (
@@ -2244,6 +2261,7 @@ function ProductsPage({ onAddToCart, onNav }) {
   const [sort,         setSort]         = useState('popular')
   const [search,       setSearch]       = useState('')
   const [selectedProduct, setSelectedProduct] = useState(null)
+  useOverlayHistory(!!selectedProduct, () => setSelectedProduct(null))
 
   const categories = ['All', ...new Set(products.map(p => p.category).filter(Boolean))]
 
@@ -2260,8 +2278,8 @@ function ProductsPage({ onAddToCart, onNav }) {
   if (selectedProduct) return (
     <ProductDetailPage
       product={selectedProduct}
-      onBack={()=>setSelectedProduct(null)}
-      onAddToCart={(p)=>{ onAddToCart(p); setSelectedProduct(null) }}
+      onBack={()=>window.history.back()}
+      onAddToCart={(p)=>{ onAddToCart(p); window.history.back() }}
     />
   )
 

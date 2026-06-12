@@ -1065,7 +1065,7 @@ function StudioPage({ user, onNav, onAddToCart }) {
     valid.forEach(f => {
       const blobUrl = URL.createObjectURL(f)
       setSideImgs(prev => ({ ...prev, [activeSide]: [...(prev[activeSide]||[]), blobUrl] }))
-      setSideFiles(prev => ({ ...prev, [activeSide]: [...(prev[activeSide]||[]), { _uploading:true, name:f.name, _blob:blobUrl }] }))
+      setSideFiles(prev => ({ ...prev, [activeSide]: [...(prev[activeSide]||[]), { _uploading:true, name:f.name, _blob:blobUrl, _raw:f }] }))
       setStatus('uploading'); setUploadPct(0)
       uploadToCloudinary(f, pct => setUploadPct(pct))
         .then(url => {
@@ -1310,27 +1310,33 @@ function StudioPage({ user, onNav, onAddToCart }) {
       for (const side of SIDES) {
         const files = sideFiles[side] || []
         const imgs  = sideImgs[side]  || []
-        // Upload any still-pending blob files first
-        const pending = files.filter(f => f._uploading)
-        for (const pf of pending) {
-          try {
-            const url = await uploadToCloudinary(pf, pct => setUploadPct(pct))
-            // Replace blob URL with real URL in sideImgs
-            setSideImgs(prev => {
-              const arr = [...(prev[side]||[])]
-              const idx = arr.findIndex(u => u === pf._blob)
-              if (idx > -1) arr[idx] = url
-              return { ...prev, [side]: arr }
-            })
-          } catch(e) { setStatus(''); alert('Upload failed for '+side+': '+e.message); return }
+        // Build a local resolved URL list — don't rely on async state updates
+        const resolvedUrls = []
+
+        for (const img of imgs) {
+          if (img?.startsWith('https://')) {
+            // Already a real URL (sample or previously uploaded)
+            resolvedUrls.push(img)
+          } else if (img?.startsWith('blob:')) {
+            // Find matching file entry and upload it now
+            const fileEntry = files.find(f => f._blob === img)
+            const rawFile   = fileEntry?._raw || null
+            if (rawFile) {
+              try {
+                const url = await uploadToCloudinary(rawFile, pct => setUploadPct(pct))
+                resolvedUrls.push(url)
+                // Also update state so thumbnails show real URL
+                setSideImgs(prev => {
+                  const arr = [...(prev[side]||[])]
+                  const idx = arr.indexOf(img)
+                  if (idx > -1) arr[idx] = url
+                  return { ...prev, [side]: arr }
+                })
+              } catch(e) { setStatus(''); alert('Upload failed for '+side+': '+e.message); return }
+            }
+          }
         }
-        // Collect all real https URLs from sideImgs (covers both uploads + samples)
-        // Re-read after any pending uploads resolved
-        const allUrls = (sideImgs[side]||[]).filter(u => u?.startsWith('https://'))
-        // Also pick up newly uploaded ones from sideFiles
-        const freshUploaded = files.filter(f => f._uploaded).map(f => f._url)
-        const combined = [...new Set([...allUrls, ...freshUploaded])]
-        if (combined.length) designUrls[side] = combined.join(',')
+        if (resolvedUrls.length) designUrls[side] = resolvedUrls.join(',')
       }
       setStatus('saving')
       const garmentLabel = selectedProduct ? selectedProduct.name : 'Custom Garment'
@@ -4616,14 +4622,18 @@ function AdminPanel({ onBack }) {
                 if (!df || df === 'catalog-order' || df === '{}') return {}
                 try {
                   const p = JSON.parse(df)
-                  if (typeof p !== 'object') return df.startsWith('https://') ? { front:df } : {}
+                  if (typeof p !== 'object') return df.startsWith('https://') ? { front:[df] } : {}
                   const cleaned = {}
-                  Object.entries(p).forEach(([k,v]) => { if (v && typeof v==='string' && v.startsWith('https://')) cleaned[k]=v })
+                  Object.entries(p).forEach(([k,v]) => {
+                    if (v && typeof v==='string' && v.startsWith('https://')) {
+                      cleaned[k] = v.split(',').map(u=>u.trim()).filter(u=>u.startsWith('https://'))
+                    }
+                  })
                   return cleaned
-                } catch { return df.startsWith('https://') ? { front:df } : {} }
+                } catch { return df.startsWith('https://') ? { front:[df] } : {} }
               }
               const parsedDesigns = parseDesigns(o.design_file)
-              const designSides   = ['front','back','left','right'].filter(s => parsedDesigns[s])
+              const designSides   = ['front','back','left','right'].filter(s => parsedDesigns[s]?.length > 0)
 
               return (
                 <div key={o.id} style={{ background:'#fff', borderRadius:10, border:'1px solid #e8e8e8', overflow:'hidden', marginBottom:12 }}>
@@ -4639,16 +4649,18 @@ function AdminPanel({ onBack }) {
                     {/* Studio preview */}
                     {isCustom && <AdminOrderPreview order={o} />}
 
-                    {/* Design images */}
+                    {/* Design images — all URLs per side */}
                     {isCustom && designSides.length > 0 && (
                       <div style={{ display:'flex', gap:6, flexWrap:'wrap', marginBottom:10 }}>
-                        {designSides.map(s => (
-                          <a key={s} href={parsedDesigns[s]} target="_blank" rel="noreferrer" title={s}>
-                            <img src={parsedDesigns[s]} alt={s}
-                              style={{ width:56, height:56, objectFit:'contain', borderRadius:6, border:'1px solid #e0e0e0', background:'#f8f8f8' }}
-                              onError={e=>e.target.style.display='none'} />
-                          </a>
-                        ))}
+                        {designSides.flatMap(s =>
+                          parsedDesigns[s].map((url, di) => (
+                            <a key={s+'-'+di} href={url} target="_blank" rel="noreferrer" title={s+' #'+(di+1)}>
+                              <img src={url} alt={s}
+                                style={{ width:56, height:56, objectFit:'contain', borderRadius:6, border:'1px solid #e0e0e0', background:'#f8f8f8' }}
+                                onError={e=>e.target.style.display='none'} />
+                            </a>
+                          ))
+                        )}
                         {o.print_sheet_url && (
                           <a href={o.print_sheet_url} target="_blank" rel="noreferrer" title="Print Sheet">
                             <div style={{ width:56, height:56, borderRadius:6, border:'1.5px solid rgba(200,16,46,.3)', background:'rgba(200,16,46,.05)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:20 }}>🖨</div>

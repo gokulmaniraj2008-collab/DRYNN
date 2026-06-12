@@ -4575,7 +4575,6 @@ function AdminPanel({ onBack }) {
             ['orders',     'Orders'],
             ['products',   '🎨 Products & Colors'],
             ['samples',    'Samples'],
-            ['uploads',    'Uploads'],
             ['grouporders','👥 Groups'],
             ...((isSuperAdmin || currentUser?.email === SUPER_ADMIN_EMAIL) ? [
               ['analytics',  '📊 Analytics'],
@@ -4591,7 +4590,6 @@ function AdminPanel({ onBack }) {
               if(key==='orders')      loadOrders()
               if(key==='products')    { loadProducts(); loadAdminColors() }
               if(key==='samples')     loadSamples()
-              if(key==='uploads')     loadOrders()
               if(key==='grouporders') loadGroupOrders()
               if(key==='analytics')   loadOrders()
               if(key==='people')      { loadVisitors(); loadAllUsers() }
@@ -5000,45 +4998,6 @@ function AdminPanel({ onBack }) {
         )}
 
         {/* ══ UPLOADS TAB ══ */}
-        {tab==='uploads' && (
-          <div>
-            <h2 style={{ fontSize:18, fontWeight:700, marginBottom:16 }}>📎 Design Uploads</h2>
-            {loading ? <div style={{ textAlign:'center', padding:40, color:'#888' }}>Loading…</div>
-            : (
-              <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
-                {orders.filter(o => {
-                  if (!o.design_file || o.design_file==='catalog-order' || o.design_file==='{}') return false
-                  try { const p=JSON.parse(o.design_file); return Object.values(p).some(v=>v&&v.startsWith('https://')) } catch { return o.design_file.startsWith('https://') }
-                }).map(o => {
-                  let designs = {}
-                  try { const p=JSON.parse(o.design_file); Object.entries(p).forEach(([k,v])=>{ if(v&&v.startsWith('https://')) designs[k]=v }) } catch { if(o.design_file.startsWith('https://')) designs.front=o.design_file }
-                  return (
-                    <div key={o.id} style={{ background:'#fff', border:'1px solid #e8e8e8', borderRadius:10, padding:'14px 16px', display:'flex', gap:12, flexWrap:'wrap', alignItems:'center' }}>
-                      <div style={{ flex:1, minWidth:140 }}>
-                        <div style={{ fontWeight:700, fontSize:13 }}>{o.name}</div>
-                        <div style={{ fontSize:11, color:'#888' }}>{o.garment} · {new Date(o.placed_at||o.created_at).toLocaleDateString('en-IN')}</div>
-                      </div>
-                      <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
-                        {Object.entries(designs).map(([side,url])=>(
-                          <a key={side} href={url} target="_blank" rel="noreferrer">
-                            <img src={url} alt={side} style={{ width:60, height:60, objectFit:'contain', borderRadius:6, border:'1px solid #e0e0e0', background:'#f8f8f8' }}
-                              onError={e=>e.target.style.display='none'} />
-                          </a>
-                        ))}
-                        {o.print_sheet_url && (
-                          <a href={o.print_sheet_url} target="_blank" rel="noreferrer">
-                            <div style={{ width:60, height:60, borderRadius:6, border:'1.5px solid rgba(200,16,46,.3)', background:'rgba(200,16,46,.05)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:24 }}>🖨</div>
-                          </a>
-                        )}
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-            )}
-          </div>
-        )}
-
         {/* ══ GROUP ORDERS TAB ══ */}
         {tab==='grouporders' && (
           <div>

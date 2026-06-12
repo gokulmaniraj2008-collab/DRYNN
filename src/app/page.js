@@ -1909,12 +1909,6 @@ function InstagramFeedSection({ products, onSelect }) {
                   ? <img src={img} alt={p.name} style={{ width:'100%', height:'100%', objectFit:'cover' }} />
                   : <div style={{ width:'100%', height:'100%', display:'flex', alignItems:'center', justifyContent:'center', fontSize:40, color:'#ccc' }}>{p.emoji||'.'}</div>
                 }
-                <div style={{ position:'absolute', inset:0, background:'linear-gradient(180deg, rgba(0,0,0,0) 55%, rgba(0,0,0,.55) 100%)', display:'flex', alignItems:'flex-end', justifyContent:'center', padding:'0 6px 6px' }}>
-                  <div style={{ display:'flex', gap:10 }}>
-                    <span style={{ color:'#fff', fontSize:11, fontWeight:700, display:'flex', alignItems:'center', gap:3 }}>♥ {formatCount(p.likes)}</span>
-                    <span style={{ color:'#fff', fontSize:11, fontWeight:700, display:'flex', alignItems:'center', gap:3 }}>💬 {formatCount(p.comments)}</span>
-                  </div>
-                </div>
               </div>
             )
           })}
@@ -1922,8 +1916,8 @@ function InstagramFeedSection({ products, onSelect }) {
       </div>
       <style>{`
         @keyframes insta-scroll {
-          from { transform: translateX(0); }
-          to   { transform: translateX(-50%); }
+          from { transform: translateX(-50%); }
+          to   { transform: translateX(0); }
         }
       `}</style>
     </div>
@@ -1972,6 +1966,8 @@ function HomePage({ user, onNav, cart, onAddToCart }) {
         </div>
       </div>
 
+      <InstagramFeedSection products={products} onSelect={setSelectedProduct} />
+
       {/* Feature bar */}
       <div style={{ background:'#fff', borderBottom:'1px solid #f0f0f0' }}>
         <div className="feature-bar" style={{ maxWidth:1100, margin:'0 auto', display:'grid', gridTemplateColumns:'repeat(4,1fr)', padding:'0 16px' }}>
@@ -2008,8 +2004,6 @@ function HomePage({ user, onNav, cart, onAddToCart }) {
           </div>
         </div>
       </div>
-
-      <InstagramFeedSection products={products} onSelect={setSelectedProduct} />
 
       {/* How It Works */}
       <div style={{ background:'#f8f8f8', padding:'40px 20px' }}>

@@ -4516,18 +4516,6 @@ function AdminPanel({ onBack }) {
                       placeholder="e.g. T-Shirts" className="input-field" style={{ fontSize:13 }} />
                   </div>
                 </div>
-                <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10, marginTop:10 }}>
-                  <div>
-                    <label style={{ fontSize:11, color:'#888', fontWeight:700, display:'block', marginBottom:4 }}>Likes (Instagram grid)</label>
-                    <input type="number" value={newProduct.likes} onChange={e=>setNewProduct(p=>({...p,likes:e.target.value}))}
-                      className="input-field" style={{ fontSize:13 }} />
-                  </div>
-                  <div>
-                    <label style={{ fontSize:11, color:'#888', fontWeight:700, display:'block', marginBottom:4 }}>Comments (Instagram grid)</label>
-                    <input type="number" value={newProduct.comments} onChange={e=>setNewProduct(p=>({...p,comments:e.target.value}))}
-                      className="input-field" style={{ fontSize:13 }} />
-                  </div>
-                </div>
                 <div style={{ marginTop:10 }}>
                   <label style={{ fontSize:11, color:'#888', fontWeight:700, display:'block', marginBottom:4 }}>Product Image</label>
                   <label style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:8, padding:'10px 14px', background:'#0a1f5d', color:'#fff', borderRadius:6, fontSize:12, fontWeight:700, cursor:'pointer', width:'100%' }}>
@@ -4580,14 +4568,6 @@ function AdminPanel({ onBack }) {
                           placeholder={field} value={p[field]||''}
                           onChange={e=>setProducts(ps=>ps.map(x=>x.id===p.id?{...x,[field]:e.target.value}:x))} />
                       ))}
-                      <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:6, marginBottom:6 }}>
-                        <input type="number" className="input-field" style={{ fontSize:12 }}
-                          placeholder="Likes" value={p.likes||0}
-                          onChange={e=>setProducts(ps=>ps.map(x=>x.id===p.id?{...x,likes:e.target.value}:x))} />
-                        <input type="number" className="input-field" style={{ fontSize:12 }}
-                          placeholder="Comments" value={p.comments||0}
-                          onChange={e=>setProducts(ps=>ps.map(x=>x.id===p.id?{...x,comments:e.target.value}:x))} />
-                      </div>
                       <label style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:6, padding:'8px 12px', background: p.image_url ? '#00a86b' : '#0a1f5d', color:'#fff', borderRadius:6, fontSize:12, fontWeight:700, cursor:'pointer', width:'100%', marginBottom:6 }}>
                         {p.image_url ? '✓ Main Image Uploaded' : '📁 Upload Main Image'}
                         <input type="file" accept="image/*" style={{ display:'none' }} onChange={async e=>{ const f=e.target.files[0]; if(!f) return; try { const url=await uploadToCloudinary(f,()=>{}); setProducts(ps=>ps.map(x=>x.id===p.id?{...x,image_url:url}:x)); showToast('Main image uploaded ✓') } catch(err) { showToast('Upload failed') } }} />

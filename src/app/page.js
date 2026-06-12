@@ -667,7 +667,15 @@ function ProductImageViewer({ product, fallbackSrc, designImgSrc, sideImgs, side
     }
     return key === 'front' && designImgSrc ? [designImgSrc] : []
   }
-  const getPos    = key => sidePos  ? sidePos[key]  : { posX, posY, scale, rotation }
+  // getPos returns pos for design index di (default 0) — supports per-design positions
+  const getPos = (key, di=0) => {
+    if (sidePos) {
+      const arr = sidePos[key]
+      if (Array.isArray(arr)) return arr[di] || { posX:50, posY:38, scale:38, rotation:0 }
+      return arr || { posX:50, posY:38, scale:38, rotation:0 }
+    }
+    return { posX, posY, scale, rotation }
+  }
   const frames = React.useMemo(() => {
     if (product?.img_front || product?.img_back || product?.img_left || product?.img_right) {
       return [
@@ -751,9 +759,10 @@ function ProductImageViewer({ product, fallbackSrc, designImgSrc, sideImgs, side
 
       // Get design and position for the CURRENT side (not always front)
       const currentDesigns = getDesign(current.key)
-      const currentP        = getPos(current.key)
 
-      for (const dSrc of currentDesigns) {
+      for (let di = 0; di < currentDesigns.length; di++) {
+        const dSrc   = currentDesigns[di]
+        const currentP = getPos(current.key, di)
         const dImg = await loadImg(dSrc)
         if (dImg) {
           const dw = (currentP.scale/100) * 800
@@ -812,17 +821,19 @@ function ProductImageViewer({ product, fallbackSrc, designImgSrc, sideImgs, side
               style={{ width:'100%', display:'block', filter:colorToFilter(color), minHeight:260, objectFit:'contain' }}
               onError={e=>{ e.target.src='https://placehold.co/400x400/f0f0f0/cccccc?text=No+Image' }}
             />
-            {/* Design overlay — per side, all images */}
+            {/* Design overlay — per side, each at its own position */}
             {(() => {
               const ds = getDesign(f.key)
-              const p  = getPos(f.key)
               if (!ds.length) return null
-              return ds.map((src, di) => (
-                <img key={di} src={src} alt={'design-'+di}
-                  style={{ position:'absolute', top:`${p.posY}%`, left:`${p.posX}%`,
-                    transform:`translate(-50%,-50%) rotate(${p.rotation}deg)`,
-                    width:`${p.scale}%`, objectFit:'contain', pointerEvents:'none' }} />
-              ))
+              return ds.map((src, di) => {
+                const p = getPos(f.key, di)
+                return (
+                  <img key={di} src={src} alt={'design-'+di}
+                    style={{ position:'absolute', top:`${p.posY}%`, left:`${p.posX}%`,
+                      transform:`translate(-50%,-50%) rotate(${p.rotation}deg)`,
+                      width:`${p.scale}%`, objectFit:'contain', pointerEvents:'none' }} />
+                )
+              })
             })()}
             {/* Text overlay — per side */}
             {(() => {
@@ -1096,14 +1107,32 @@ function StudioPage({ user, onNav, onAddToCart }) {
 
   // ── Step 4: Customise (per-side) ─────────────────────────
   const DEFAULT_POS = { posY:38, posX:50, scale:38, rotation:0 }
-  const [sidePos,    setSidePos]    = useState({ front:{...DEFAULT_POS}, back:{...DEFAULT_POS}, left:{...DEFAULT_POS}, right:{...DEFAULT_POS} })
-  const [custSide,   setCustSide]   = useState('front')
-  const custPos = sidePos[custSide]
-  const posY = custPos.posY, posX = custPos.posX, scale = custPos.scale, rotation = custPos.rotation
-  const setPosY     = v => setSidePos(p => ({ ...p, [custSide]: { ...p[custSide], posY: v } }))
-  const setPosX     = v => setSidePos(p => ({ ...p, [custSide]: { ...p[custSide], posX: v } }))
-  const setScale    = v => setSidePos(p => ({ ...p, [custSide]: { ...p[custSide], scale: v } }))
-  const setRotation = v => setSidePos(p => ({ ...p, [custSide]: { ...p[custSide], rotation: v } }))
+  // sidePos[side] = array of positions, one per design image
+  const [sidePos,        setSidePos]        = useState({ front:[], back:[], left:[], right:[] })
+  const [custSide,       setCustSide]       = useState('front')
+  const [activeDesignIdx, setActiveDesignIdx] = useState(0)
+
+  // Helper: get pos for a specific side+index
+  const getPosFor = (side, idx) => (sidePos[side]?.[idx]) || { ...DEFAULT_POS }
+
+  // Active design pos (for POSITION sliders)
+  const custPos  = getPosFor(custSide, activeDesignIdx)
+  const posY     = custPos.posY
+  const posX     = custPos.posX
+  const scale    = custPos.scale
+  const rotation = custPos.rotation
+
+  // Update a single field for the active design
+  const updatePos = (field, val) => setSidePos(p => {
+    const arr = [...(p[custSide] || [])]
+    const cur = arr[activeDesignIdx] || { ...DEFAULT_POS }
+    arr[activeDesignIdx] = { ...cur, [field]: val }
+    return { ...p, [custSide]: arr }
+  })
+  const setPosY     = v => updatePos('posY', v)
+  const setPosX     = v => updatePos('posX', v)
+  const setScale    = v => updatePos('scale', v)
+  const setRotation = v => updatePos('rotation', v)
 
   const DEFAULT_TEXT = { on:false, val:'YOUR TEXT', font:'Bebas Neue', color:'#ffffff', size:24, posY:75, posX:50, rot:0 }
   const [sideText, setSideText] = useState({ front:{...DEFAULT_TEXT}, back:{...DEFAULT_TEXT}, left:{...DEFAULT_TEXT}, right:{...DEFAULT_TEXT} })
@@ -1197,14 +1226,15 @@ function StudioPage({ user, onNav, onAddToCart }) {
           if (gImg) ctx.drawImage(gImg, baseX + 40, baseY + 40, PANEL_W - 80, PANEL_H - 80)
         }
 
-        // Design overlay for this side — draw ALL uploaded designs (comma-separated URLs)
+        // Design overlay for this side — each design at its own position
         const designUrlRaw = resolvedDesignUrls[side]
         if (designUrlRaw) {
           const designUrlList = designUrlRaw.split(',').map(u => u.trim()).filter(Boolean)
-          for (const designUrl of designUrlList) {
-            const dImg = await loadImg(designUrl)
+          for (let di = 0; di < designUrlList.length; di++) {
+            const dImg = await loadImg(designUrlList[di])
             if (dImg) {
-              const pos   = sidePos[side]
+              const posArr = sidePos[side]
+              const pos    = (Array.isArray(posArr) ? posArr[di] : posArr) || { posX:50, posY:38, scale:38, rotation:0 }
               const dw    = (pos.scale / 100) * (PANEL_W - 80)
               const dx    = baseX + 40 + (pos.posX / 100) * (PANEL_W - 80) - dw / 2
               const dy    = baseY + 40 + (pos.posY / 100) * (PANEL_H - 80) - dw / 2
@@ -1395,7 +1425,6 @@ function StudioPage({ user, onNav, onAddToCart }) {
   const LivePreview = ({ previewSide }) => {
     const ps = previewSide || custSide || 'front'
     const pImgs = sideImgs[ps] || []
-    const pp   = sidePos[ps]
     // Resolve the correct garment image for the active side
     const sideGarmentImg = selectedProduct
       ? (selectedProduct[`img_${ps}`] || selectedProduct.image_url || GARMENT_DEFAULTS[garmentType])
@@ -1411,13 +1440,16 @@ function StudioPage({ user, onNav, onAddToCart }) {
         <div style={{ position:'absolute', inset:0, display:'flex', alignItems:'center', justifyContent:'center', fontSize:80, opacity:0.04, pointerEvents:'none' }}>
           {GARMENT_EMOJI[garmentType]}
         </div>
-        {/* Design overlay - all uploaded images */}
-        {pImgs.map((src, i) => (
-          <img key={i} src={src} alt={'design-'+i}
-            style={{ position:'absolute', top:`${pp.posY}%`, left:`${pp.posX}%`,
-              transform:`translate(-50%,-50%) rotate(${pp.rotation}deg)`,
-              width:`${pp.scale}%`, objectFit:'contain', pointerEvents:'none' }} />
-        ))}
+        {/* Design overlay - each image at its own position */}
+        {pImgs.map((src, i) => {
+          const ip = getPosFor(ps, i)
+          return (
+            <img key={i} src={src} alt={'design-'+i}
+              style={{ position:'absolute', top:`${ip.posY}%`, left:`${ip.posX}%`,
+                transform:`translate(-50%,-50%) rotate(${ip.rotation}deg)`,
+                width:`${ip.scale}%`, objectFit:'contain', pointerEvents:'none' }} />
+          )
+        })}
         {/* Text overlay */}
         {sideText[ps]?.on && sideText[ps]?.val && (
           <div style={{ position:'absolute', top:`${sideText[ps].posY}%`, left:`${sideText[ps].posX}%`,
@@ -1474,7 +1506,7 @@ function StudioPage({ user, onNav, onAddToCart }) {
     }
   }
 
-  const setActiveSideSync = (s) => { setActiveSide(s); setCustSide(s) }
+  const setActiveSideSync = (s) => { setActiveSide(s); setCustSide(s); setActiveDesignIdx(0) }
 
   return (
     <div style={{ background:'#111', minHeight:'100vh', display:'flex', flexDirection:'column', maxWidth:'100vw', overflow:'hidden' }}>
@@ -1532,15 +1564,18 @@ function StudioPage({ user, onNav, onAddToCart }) {
               style={{ width:'100%', display:'block', filter:colorToFilter(color), minHeight:200, objectFit:'contain' }}
               onError={e=>{ e.target.src='https://placehold.co/400x400/f0f0f0/cccccc?text=No+Image' }} />
           })()}
-          {(sideImgs[activeSide]?.length > 0) && (() => {
-            const pp = sidePos[activeSide]
-            return sideImgs[activeSide].map((src, i) => (
+          {(sideImgs[activeSide]?.length > 0) && sideImgs[activeSide].map((src, i) => {
+            const pp = getPosFor(activeSide, i)
+            const isActive = activeTool==='position' && i===activeDesignIdx
+            return (
               <img key={i} src={src} alt={'design-'+i}
                 style={{ position:'absolute', top:`${pp.posY}%`, left:`${pp.posX}%`,
                   transform:`translate(-50%,-50%) rotate(${pp.rotation}deg)`,
-                  width:`${pp.scale}%`, objectFit:'contain', pointerEvents:'none' }} />
-            ))
-          })()}
+                  width:`${pp.scale}%`, objectFit:'contain', pointerEvents:'none',
+                  outline: isActive ? '2px dashed rgba(200,16,46,.7)' : 'none',
+                  outlineOffset:'2px' }} />
+            )
+          })}
           {sideText[activeSide]?.on && sideText[activeSide]?.val && (() => {
             const st = sideText[activeSide]
             return <div style={{ position:'absolute', top:`${st.posY}%`, left:`${st.posX}%`,
@@ -1790,9 +1825,35 @@ function StudioPage({ user, onNav, onAddToCart }) {
         {/* ══ POSITION ══ */}
         {activeTool==='position' && (
           <div>
-            <p style={{ fontSize:9, fontWeight:700, letterSpacing:'.14em', textTransform:'uppercase', color:'rgba(255,255,255,.35)', marginBottom:14 }}>
+            <p style={{ fontSize:9, fontWeight:700, letterSpacing:'.14em', textTransform:'uppercase', color:'rgba(255,255,255,.35)', marginBottom:10 }}>
               Design Position — <span style={{ color:'#c8102e' }}>{SIDE_LABELS[activeSide]}</span>
             </p>
+
+            {/* Design selector — pick which design to position */}
+            {sideImgs[activeSide]?.length > 1 && (
+              <div style={{ marginBottom:14 }}>
+                <div style={{ fontSize:9, fontWeight:700, letterSpacing:'.1em', textTransform:'uppercase', color:'rgba(255,255,255,.3)', marginBottom:6 }}>Select Design to Position</div>
+                <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
+                  {sideImgs[activeSide].map((src, i) => (
+                    <div key={i} onClick={()=>setActiveDesignIdx(i)}
+                      style={{ position:'relative', cursor:'pointer', borderRadius:6, overflow:'hidden',
+                        border: i===activeDesignIdx ? '2px solid #c8102e' : '2px solid rgba(255,255,255,.1)',
+                        opacity: i===activeDesignIdx ? 1 : 0.55, transition:'all .12s' }}>
+                      <img src={src} alt={''} style={{ width:44, height:44, objectFit:'contain', background:'rgba(255,255,255,.06)', display:'block' }} />
+                      <div style={{ position:'absolute', bottom:0, left:0, right:0, textAlign:'center', fontSize:8, fontWeight:800,
+                        background: i===activeDesignIdx ? 'rgba(200,16,46,.8)' : 'rgba(0,0,0,.5)', color:'#fff', padding:'1px 0' }}>
+                        #{i+1}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {sideImgs[activeSide]?.length === 0 && (
+              <p style={{ fontSize:11, color:'rgba(255,255,255,.3)', marginBottom:14 }}>Upload a design first to adjust position.</p>
+            )}
+
             {[
               ['Up / Down',    posY,     setPosY,     15, 75],
               ['Left / Right', posX,     setPosX,     15, 85],
@@ -1809,7 +1870,7 @@ function StudioPage({ user, onNav, onAddToCart }) {
             ))}
             <button onClick={()=>{setPosY(38);setPosX(50);setScale(38);setRotation(0)}}
               style={{ width:'100%', padding:'9px', background:'rgba(255,255,255,.05)', border:'1px solid rgba(255,255,255,.1)', borderRadius:6, color:'rgba(255,255,255,.35)', fontSize:11, fontWeight:700, cursor:'pointer' }}>
-              ↺ Reset
+              ↺ Reset Design #{activeDesignIdx+1}
             </button>
           </div>
         )}
@@ -3535,29 +3596,40 @@ function AdminOrderPreview({ order }) {
       })
   }, [o.garment])
 
-  // Parse design_file — JSON {front,back,left,right} or plain URL
-  let designs = { front:null, back:null, left:null, right:null }
+  // Parse design_file — JSON {front,back,left,right} with comma-joined multi-design URLs
+  // designs[side] = array of URLs
+  let designs = { front:[], back:[], left:[], right:[] }
   if (o.design_file) {
     try {
       const parsed = JSON.parse(o.design_file)
       if (typeof parsed === 'object') {
-        designs = {
-          front: parsed.front?.startsWith('http') ? parsed.front : null,
-          back:  parsed.back?.startsWith('http')  ? parsed.back  : null,
-          left:  parsed.left?.startsWith('http')  ? parsed.left  : null,
-          right: parsed.right?.startsWith('http') ? parsed.right : null,
+        for (const side of ['front','back','left','right']) {
+          const raw = parsed[side]
+          if (raw?.startsWith('http')) {
+            designs[side] = raw.split(',').map(u=>u.trim()).filter(u=>u.startsWith('http'))
+          }
         }
       }
     } catch(e) {
-      if (o.design_file.startsWith('http')) designs.front = o.design_file
+      if (o.design_file.startsWith('http')) {
+        designs.front = o.design_file.split(',').map(u=>u.trim()).filter(u=>u.startsWith('http'))
+      }
     }
   }
 
-  // Parse saved position data — exact customer positions or default
+  // Parse saved position data — new format: {side:[{...},{...}]}, old: {side:{...}}
   const DEFAULT_POS = { posX:50, posY:38, scale:38, rotation:0 }
-  let sidePos = { front:DEFAULT_POS, back:DEFAULT_POS, left:DEFAULT_POS, right:DEFAULT_POS }
+  let sidePos = { front:[DEFAULT_POS], back:[DEFAULT_POS], left:[DEFAULT_POS], right:[DEFAULT_POS] }
   if (o.side_pos) {
-    try { const p = JSON.parse(o.side_pos); if (typeof p === 'object') sidePos = { ...sidePos, ...p } } catch(e) {}
+    try {
+      const p = JSON.parse(o.side_pos)
+      if (typeof p === 'object') {
+        for (const side of ['front','back','left','right']) {
+          if (Array.isArray(p[side])) sidePos[side] = p[side]
+          else if (p[side] && typeof p[side]==='object') sidePos[side] = [p[side]]
+        }
+      }
+    } catch(e) {}
   }
 
   // Text config from order — prefer side_text (all sides), fallback to legacy front-only fields
@@ -3582,7 +3654,7 @@ function AdminOrderPreview({ order }) {
     dragX.current = null
   }
 
-  if (!designs.front && !designs.back && !designs.left && !designs.right) return null
+  if (!designs.front?.length && !designs.back?.length && !designs.left?.length && !designs.right?.length) return null
 
   const activeSide = SIDES[activeIdx]
   const color = o.color || '#ffffff'
@@ -3606,16 +3678,16 @@ function AdminOrderPreview({ order }) {
             <img src={garmentImgs[side]} alt={side}
               style={{ width:'100%', display:'block', filter:colorToFilter(color), minHeight:200, objectFit:'contain' }}
               onError={e=>{ e.target.src = GARMENT_DEFAULTS[garmentKey] }} />
-            {designs[side] && (() => {
-              const p = sidePos[side] || DEFAULT_POS
+            {designs[side]?.length > 0 && designs[side].map((dUrl, di) => {
+              const p = sidePos[side]?.[di] || DEFAULT_POS
               return (
-                <img src={designs[side]} alt="design"
+                <img key={di} src={dUrl} alt={'design-'+di}
                   style={{ position:'absolute', top:`${p.posY}%`, left:`${p.posX}%`,
                     transform:`translate(-50%,-50%) rotate(${p.rotation||0}deg)`,
                     width:`${p.scale}%`, objectFit:'contain', pointerEvents:'none' }}
                   onError={e=>e.target.style.display='none'} />
               )
-            })()}
+            })}
             {/* Text overlay — per side */}
             {sideText[side]?.on && sideText[side]?.val && (
               <div style={{ position:'absolute', top:`${sideText[side].posY}%`, left:`${sideText[side].posX}%`,
@@ -3665,16 +3737,16 @@ function AdminOrderPreview({ order }) {
             <img src={garmentImgs[side]} alt={side}
               style={{ width:'100%', height:'100%', objectFit:'contain', filter:colorToFilter(color) }}
               onError={e=>e.target.src=GARMENT_DEFAULTS[garmentKey]} />
-            {designs[side] && (() => {
-              const p = sidePos[side] || DEFAULT_POS
+            {designs[side]?.length > 0 && designs[side].map((dUrl, di) => {
+              const p = sidePos[side]?.[di] || DEFAULT_POS
               return (
-                <img src={designs[side]} alt="d"
+                <img key={di} src={dUrl} alt={'d'+di}
                   style={{ position:'absolute', top:`${p.posY}%`, left:`${p.posX}%`,
                     transform:`translate(-50%,-50%) rotate(${p.rotation||0}deg)`,
                     width:`${p.scale}%`, objectFit:'contain', pointerEvents:'none' }}
                   onError={e=>e.target.style.display='none'} />
               )
-            })()}
+            })}
             {sideText[side]?.on && sideText[side]?.val && (
               <div style={{ position:'absolute', top:`${sideText[side].posY}%`, left:`${sideText[side].posX}%`,
                 transform:`translate(-50%,-50%) rotate(${sideText[side].rot}deg)`,

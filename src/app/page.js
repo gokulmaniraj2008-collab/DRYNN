@@ -1931,6 +1931,7 @@ function InstagramFeedSection({ products, onSelect }) {
 }
 
 
+function HomePage({ user, onNav, cart, onAddToCart }) {
   const mediaSettings = useMediaSettings()
   const products = usePublicProducts()
   const [selectedProduct, setSelectedProduct] = React.useState(null)

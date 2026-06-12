@@ -58,8 +58,6 @@ function useProducts() {
             reviews:   Number(p.reviews)  || 0,
             tagColor:  p.tagColor || p.tag_color || '#c8102e',
             tag_color: p.tag_color || p.tagColor || '#c8102e',
-            likes:     Number(p.likes)    || 0,
-            comments:  Number(p.comments) || 0,
             emoji:     p.emoji || '.',
             tag:       p.tag || 'New',
             img_front: p.img_front || null,
@@ -2247,7 +2245,7 @@ function ProductsPage({ onAddToCart, onNav }) {
   const [search,       setSearch]       = useState('')
   const [selectedProduct, setSelectedProduct] = useState(null)
 
-  const categories = ['All','T-Shirts','Hoodies','Polos','Joggers']
+  const categories = ['All', ...new Set(products.map(p => p.category).filter(Boolean))]
 
   const filtered = products
     .filter(p => activeTab === 'All' || p.category === activeTab)
@@ -3981,7 +3979,7 @@ function AdminPanel({ onBack }) {
   const [products,       setProducts]       = useState(PRODUCTS.map(p=>({...p})))
   const [editProd,       setEditProd]       = useState(null)
   const [showAddProduct, setShowAddProduct] = useState(false)
-  const [newProduct,     setNewProduct]     = useState({ name:'', price:'', mrp:'', tag:'', category:'T-Shirts', emoji:'.', rating:'4.5', reviews:'0', likes:'0', comments:'0', studio_only:false, image_url:'', img_front:'', img_back:'', img_left:'', img_right:'' })
+  const [newProduct,     setNewProduct]     = useState({ name:'', price:'', mrp:'', tag:'', category:'T-Shirts', emoji:'.', rating:'4.5', reviews:'0', studio_only:false, image_url:'', img_front:'', img_back:'', img_left:'', img_right:'' })
   const [addingProduct,  setAddingProduct]  = useState(false)
   const [prodImgFile,    setProdImgFile]    = useState(null)
   const [prodImgUploading, setProdImgUploading] = useState(false)
@@ -4173,7 +4171,6 @@ function AdminPanel({ onBack }) {
       id:p.id, name:p.name, price:Number(p.price), mrp:Number(p.mrp),
       tag:p.tag, tag_color:p.tagColor||p.tag_color, category:p.category,
       emoji:p.emoji, rating:Number(p.rating), reviews:Number(p.reviews),
-      likes:Number(p.likes)||0, comments:Number(p.comments)||0,
       image_url:p.image_url||null, studio_only:p.studio_only||false,
       img_front:p.img_front||null, img_back:p.img_back||null,
       img_left:p.img_left||null, img_right:p.img_right||null,
@@ -4198,7 +4195,6 @@ function AdminPanel({ onBack }) {
       tag:newProduct.tag||'New', tag_color:'#0a1f5d', category:newProduct.category,
       emoji:newProduct.emoji, rating:Number(newProduct.rating)||4.5,
       reviews:Number(newProduct.reviews)||0, image_url:imageUrl,
-      likes:Number(newProduct.likes)||0, comments:Number(newProduct.comments)||0,
       img_front:newProduct.img_front||imageUrl||null, img_back:newProduct.img_back||null,
       img_left:newProduct.img_left||null, img_right:newProduct.img_right||null,
       studio_only:newProduct.studio_only||false,
@@ -4206,7 +4202,7 @@ function AdminPanel({ onBack }) {
     const { error } = await supabase.from('drynn_products').insert(product)
     if (error) { showToast('Add failed: ' + error.message); setAddingProduct(false); return }
     setProducts(ps => [...ps, product])
-    setNewProduct({ name:'', price:'', mrp:'', tag:'', category:'T-Shirts', emoji:'.', rating:'4.5', reviews:'0', likes:'0', comments:'0', studio_only:false })
+    setNewProduct({ name:'', price:'', mrp:'', tag:'', category:'T-Shirts', emoji:'.', rating:'4.5', reviews:'0', studio_only:false })
     setProdImgFile(null)
     setShowAddProduct(false)
     setAddingProduct(false)

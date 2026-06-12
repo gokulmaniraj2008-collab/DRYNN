@@ -1903,7 +1903,7 @@ function InstagramFeedSection({ products, onSelect }) {
   const [paused, setPaused] = useState(false)
   if (!products.length) return null
   const loop = [...products, ...products] // duplicated for seamless infinite loop
-  const speed = Math.max(products.length * 4, 12) // seconds for one full pass
+  const speed = Math.max(products.length * 8, 24) // seconds for one full pass
   return (
     <div style={{ padding:'32px 0' }}>
       <div style={{ maxWidth:1100, margin:'0 auto', padding:'0 20px', marginBottom:20 }}>

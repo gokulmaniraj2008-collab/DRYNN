@@ -4982,7 +4982,12 @@ function AdminPanel({ onBack }) {
                             <div style={{ fontSize:11, color:'#888', display:'flex', gap:10, flexWrap:'wrap' }}>
                               {u.email && <span>✉ {u.email}</span>}
                               {u.phone && <span>📞 {u.phone}</span>}
-                              {u.sessions.length>0 && <span>👁 {u.sessions.length} session{u.sessions.length!==1?'s':''}</span>}
+                              {u.sessions.length>0 && (() => {
+                                const totalSec = u.sessions.reduce((a,s)=>a+Number(s.duration_sec||0),0)
+                                const h=Math.floor(totalSec/3600),m=Math.floor((totalSec%3600)/60),sc=totalSec%60
+                                const durStr = totalSec>0 ? (h>0?`${h}h ${m}m`:m>0?`${m}m ${sc}s`:`${sc}s`) : null
+                                return <span>👁 {u.sessions.length} session{u.sessions.length!==1?'s':''}{durStr ? ` · ⏱ ${durStr}` : ''}</span>
+                              })()}
                             </div>
                           </div>
                           <div style={{ display:'flex', gap:6, alignItems:'center', flexWrap:'wrap' }}>
@@ -5030,18 +5035,43 @@ function AdminPanel({ onBack }) {
                         )}
 
                         {/* Session history (latest 3) */}
-                        {u.sessions.length>0 && (
-                          <div style={{ borderTop:'1px solid #f5f5f5', paddingTop:6, marginTop:4 }}>
-                            <div style={{ fontSize:10, fontWeight:700, textTransform:'uppercase', color:'#bbb', marginBottom:4 }}>Recent Sessions</div>
-                            {u.sessions.slice(0,3).map((s,si)=>(
-                              <div key={si} style={{ fontSize:11, color:'#aaa', display:'flex', gap:8, flexWrap:'wrap' }}>
-                                {s.started_at && <span>{new Date(s.started_at).toLocaleString('en-IN')}</span>}
-                                {s.page_views  && <span>· {s.page_views} pages</span>}
+                        {u.sessions.length>0 && (() => {
+                          const fmtDur = (sec) => {
+                            if (!sec || sec<=0) return null
+                            const h = Math.floor(sec/3600), m = Math.floor((sec%3600)/60), s = sec%60
+                            if (h>0) return `${h}h ${m}m`
+                            if (m>0) return `${m}m ${s}s`
+                            return `${s}s`
+                          }
+                          const totalSec = u.sessions.reduce((a,s)=>a+Number(s.duration_sec||0),0)
+                          const totalFmt = fmtDur(totalSec)
+                          return (
+                            <div style={{ borderTop:'1px solid #f5f5f5', paddingTop:6, marginTop:4 }}>
+                              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:5 }}>
+                                <div style={{ fontSize:10, fontWeight:700, textTransform:'uppercase', color:'#bbb' }}>Recent Sessions</div>
+                                {totalFmt && (
+                                  <div style={{ display:'flex', alignItems:'center', gap:4, background:'rgba(10,31,93,.07)', borderRadius:20, padding:'2px 8px' }}>
+                                    <span style={{ fontSize:11 }}>⏱</span>
+                                    <span style={{ fontSize:11, fontWeight:700, color:'#0a1f5d' }}>{totalFmt} total</span>
+                                  </div>
+                                )}
                               </div>
-                            ))}
-                            {u.sessions.length>3 && <div style={{ fontSize:10, color:'#ccc' }}>+{u.sessions.length-3} more</div>}
-                          </div>
-                        )}
+                              {u.sessions.slice(0,3).map((s,si)=>{
+                                const dur = fmtDur(Number(s.duration_sec||0))
+                                const pages = s.pages_visited?.length || s.page_views || null
+                                return (
+                                  <div key={si} style={{ fontSize:11, color:'#aaa', display:'flex', gap:6, flexWrap:'wrap', alignItems:'center', padding:'3px 0', borderBottom:si<Math.min(u.sessions.length,3)-1?'1px dashed #f5f5f5':'none' }}>
+                                    {s.started_at && <span style={{ color:'#999' }}>{new Date(s.started_at).toLocaleString('en-IN',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit',hour12:true})}</span>}
+                                    {dur && <span style={{ background:'#f0f3ff', color:'#0a1f5d', fontWeight:700, borderRadius:10, padding:'1px 7px', fontSize:10 }}>⏱ {dur}</span>}
+                                    {pages && <span style={{ color:'#bbb' }}>· {pages} page{pages!==1?'s':''}</span>}
+                                    {s.device_info?.mobile && <span style={{ color:'#ccc', fontSize:9 }}>📱</span>}
+                                  </div>
+                                )
+                              })}
+                              {u.sessions.length>3 && <div style={{ fontSize:10, color:'#ccc', marginTop:3 }}>+{u.sessions.length-3} more sessions</div>}
+                            </div>
+                          )
+                        })()}
                       </div>
                     )
                   })}

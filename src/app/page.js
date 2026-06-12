@@ -5798,7 +5798,28 @@ function JoinGroupOrder({ user }) {
 // ══════════════════════════════════════════════════════════════
 function MainSite({ user }) {
   const mediaSettings = useMediaSettings()
-  const [page, setPage]     = useState('home')
+  const [page, setPageRaw]     = useState('home')
+
+  // Navigate to a page AND push a browser history entry, so the
+  // hardware/gesture back button steps back through in-app pages
+  // instead of closing the tab/app.
+  const setPage = useCallback((newPage) => {
+    setPageRaw(prev => {
+      if (prev === newPage) return prev
+      window.history.pushState({ page: newPage }, '', '#' + newPage)
+      return newPage
+    })
+  }, [])
+
+  // Set up initial history entry + listen for back/forward navigation
+  useEffect(() => {
+    window.history.replaceState({ page: 'home' }, '', window.location.pathname)
+    const handlePopState = (e) => {
+      setPageRaw(e.state?.page || 'home')
+    }
+    window.addEventListener('popstate', handlePopState)
+    return () => window.removeEventListener('popstate', handlePopState)
+  }, [])
   const [cart, setCart]     = useState([])
   const [toast, setToast]   = useState('')
   const [playing, setPlaying] = useState(false)

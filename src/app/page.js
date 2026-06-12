@@ -1886,28 +1886,33 @@ function formatCount(n) {
 }
 
 function InstagramFeedSection({ products, onSelect }) {
+  const [paused, setPaused] = useState(false)
   if (!products.length) return null
+  const loop = [...products, ...products] // duplicated for seamless infinite loop
+  const speed = Math.max(products.length * 4, 12) // seconds for one full pass
   return (
-    <div style={{ padding:'32px 20px' }}>
-      <div style={{ maxWidth:1100, margin:'0 auto' }}>
-        <div style={{ marginBottom:20 }}>
-          <span className="sec-label">Shop The Feed</span>
-          <h2 className="sec-title">FROM OUR GALLERY</h2>
-        </div>
-        <div className="insta-grid" style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:4 }}>
-          {products.map(p => {
+    <div style={{ padding:'32px 0' }}>
+      <div style={{ maxWidth:1100, margin:'0 auto', padding:'0 20px', marginBottom:20 }}>
+        <span className="sec-label">Shop The Feed</span>
+        <h2 className="sec-title">FROM OUR GALLERY</h2>
+      </div>
+      <div style={{ overflow:'hidden', width:'100%' }}
+        onTouchStart={()=>setPaused(true)} onTouchEnd={()=>setPaused(false)}
+        onMouseEnter={()=>setPaused(true)} onMouseLeave={()=>setPaused(false)}>
+        <div className="insta-scroll-track" style={{ display:'flex', gap:6, width:'max-content', animation:`insta-scroll ${speed}s linear infinite`, animationPlayState: paused ? 'paused' : 'running' }}>
+          {loop.map((p,i) => {
             const img = p.img_front || p.image_url
             return (
-              <div key={p.id} onClick={()=>onSelect(p)}
-                style={{ position:'relative', width:'100%', aspectRatio:'1/1', overflow:'hidden', background:'#f0f0f0', cursor:'pointer' }}>
+              <div key={p.id+'-'+i} onClick={()=>onSelect(p)}
+                style={{ position:'relative', width:140, height:140, flexShrink:0, overflow:'hidden', background:'#f0f0f0', cursor:'pointer', borderRadius:6 }}>
                 {img
                   ? <img src={img} alt={p.name} style={{ width:'100%', height:'100%', objectFit:'cover' }} />
                   : <div style={{ width:'100%', height:'100%', display:'flex', alignItems:'center', justifyContent:'center', fontSize:40, color:'#ccc' }}>{p.emoji||'.'}</div>
                 }
-                <div style={{ position:'absolute', inset:0, background:'linear-gradient(180deg, rgba(0,0,0,0) 55%, rgba(0,0,0,.55) 100%)', display:'flex', alignItems:'flex-end', justifyContent:'center', padding:'0 8px 8px', opacity:1, transition:'opacity .15s' }}>
-                  <div style={{ display:'flex', gap:14 }}>
-                    <span style={{ color:'#fff', fontSize:12, fontWeight:700, display:'flex', alignItems:'center', gap:4 }}>♥ {formatCount(p.likes)}</span>
-                    <span style={{ color:'#fff', fontSize:12, fontWeight:700, display:'flex', alignItems:'center', gap:4 }}>💬 {formatCount(p.comments)}</span>
+                <div style={{ position:'absolute', inset:0, background:'linear-gradient(180deg, rgba(0,0,0,0) 55%, rgba(0,0,0,.55) 100%)', display:'flex', alignItems:'flex-end', justifyContent:'center', padding:'0 6px 6px' }}>
+                  <div style={{ display:'flex', gap:10 }}>
+                    <span style={{ color:'#fff', fontSize:11, fontWeight:700, display:'flex', alignItems:'center', gap:3 }}>♥ {formatCount(p.likes)}</span>
+                    <span style={{ color:'#fff', fontSize:11, fontWeight:700, display:'flex', alignItems:'center', gap:3 }}>💬 {formatCount(p.comments)}</span>
                   </div>
                 </div>
               </div>
@@ -1915,6 +1920,12 @@ function InstagramFeedSection({ products, onSelect }) {
           })}
         </div>
       </div>
+      <style>{`
+        @keyframes insta-scroll {
+          from { transform: translateX(0); }
+          to   { transform: translateX(-50%); }
+        }
+      `}</style>
     </div>
   )
 }
@@ -1997,7 +2008,7 @@ function InstagramFeedSection({ products, onSelect }) {
         </div>
       </div>
 
-      <InstagramFeedSection products={products.slice(0,9)} onSelect={setSelectedProduct} />
+      <InstagramFeedSection products={products} onSelect={setSelectedProduct} />
 
       {/* How It Works */}
       <div style={{ background:'#f8f8f8', padding:'40px 20px' }}>

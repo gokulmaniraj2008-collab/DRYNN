@@ -4517,15 +4517,8 @@ function AdminPanel({ onBack }) {
                   ))}
                   <div>
                     <label style={{ fontSize:11, color:'#888', fontWeight:700, display:'block', marginBottom:4 }}>Category</label>
-                    <select value={newProduct.category} onChange={e=>setNewProduct(p=>({...p,category:e.target.value}))}
-                      className="input-field" style={{ fontSize:13 }}>
-                      {['T-Shirts','Hoodies','Polo','Joggers','Caps','Jackets','Others'].map(c=><option key={c}>{c}</option>)}
-                    </select>
-                  </div>
-                  <div>
-                    <label style={{ fontSize:11, color:'#888', fontWeight:700, display:'block', marginBottom:4 }}>Emoji</label>
-                    <input value={newProduct.emoji} onChange={e=>setNewProduct(p=>({...p,emoji:e.target.value}))}
-                      className="input-field" style={{ fontSize:13 }} />
+                    <input value={newProduct.category} onChange={e=>setNewProduct(p=>({...p,category:e.target.value}))}
+                      placeholder="e.g. T-Shirts" className="input-field" style={{ fontSize:13 }} />
                   </div>
                 </div>
                 <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10, marginTop:10 }}>

@@ -58,6 +58,8 @@ function useProducts() {
             reviews:   Number(p.reviews)  || 0,
             tagColor:  p.tagColor || p.tag_color || '#c8102e',
             tag_color: p.tag_color || p.tagColor || '#c8102e',
+            likes:     Number(p.likes)    || 0,
+            comments:  Number(p.comments) || 0,
             emoji:     p.emoji || '.',
             tag:       p.tag || 'New',
             img_front: p.img_front || null,
@@ -1875,7 +1877,49 @@ function StudioPage({ user, onNav, onAddToCart }) {
 }
 
 
-function HomePage({ user, onNav, cart, onAddToCart }) {
+// ── Instagram-style square feed grid ─────────────────────────
+function formatCount(n) {
+  n = Number(n) || 0
+  if (n >= 1000000) return (n/1000000).toFixed(1).replace(/\.0$/,'') + 'M'
+  if (n >= 1000) return (n/1000).toFixed(1).replace(/\.0$/,'') + 'K'
+  return String(n)
+}
+
+function InstagramFeedSection({ products, onSelect }) {
+  if (!products.length) return null
+  return (
+    <div style={{ padding:'32px 20px' }}>
+      <div style={{ maxWidth:1100, margin:'0 auto' }}>
+        <div style={{ marginBottom:20 }}>
+          <span className="sec-label">Shop The Feed</span>
+          <h2 className="sec-title">FROM OUR GALLERY</h2>
+        </div>
+        <div className="insta-grid" style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:4 }}>
+          {products.map(p => {
+            const img = p.img_front || p.image_url
+            return (
+              <div key={p.id} onClick={()=>onSelect(p)}
+                style={{ position:'relative', width:'100%', aspectRatio:'1/1', overflow:'hidden', background:'#f0f0f0', cursor:'pointer' }}>
+                {img
+                  ? <img src={img} alt={p.name} style={{ width:'100%', height:'100%', objectFit:'cover' }} />
+                  : <div style={{ width:'100%', height:'100%', display:'flex', alignItems:'center', justifyContent:'center', fontSize:40, color:'#ccc' }}>{p.emoji||'.'}</div>
+                }
+                <div style={{ position:'absolute', inset:0, background:'linear-gradient(180deg, rgba(0,0,0,0) 55%, rgba(0,0,0,.55) 100%)', display:'flex', alignItems:'flex-end', justifyContent:'center', padding:'0 8px 8px', opacity:1, transition:'opacity .15s' }}>
+                  <div style={{ display:'flex', gap:14 }}>
+                    <span style={{ color:'#fff', fontSize:12, fontWeight:700, display:'flex', alignItems:'center', gap:4 }}>♥ {formatCount(p.likes)}</span>
+                    <span style={{ color:'#fff', fontSize:12, fontWeight:700, display:'flex', alignItems:'center', gap:4 }}>💬 {formatCount(p.comments)}</span>
+                  </div>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+
   const mediaSettings = useMediaSettings()
   const products = usePublicProducts()
   const [selectedProduct, setSelectedProduct] = React.useState(null)
@@ -1952,6 +1996,8 @@ function HomePage({ user, onNav, cart, onAddToCart }) {
           </div>
         </div>
       </div>
+
+      <InstagramFeedSection products={products.slice(0,9)} onSelect={setSelectedProduct} />
 
       {/* How It Works */}
       <div style={{ background:'#f8f8f8', padding:'40px 20px' }}>
@@ -3929,7 +3975,7 @@ function AdminPanel({ onBack }) {
   const [products,       setProducts]       = useState(PRODUCTS.map(p=>({...p})))
   const [editProd,       setEditProd]       = useState(null)
   const [showAddProduct, setShowAddProduct] = useState(false)
-  const [newProduct,     setNewProduct]     = useState({ name:'', price:'', mrp:'', tag:'', category:'T-Shirts', emoji:'.', rating:'4.5', reviews:'0', studio_only:false, image_url:'', img_front:'', img_back:'', img_left:'', img_right:'' })
+  const [newProduct,     setNewProduct]     = useState({ name:'', price:'', mrp:'', tag:'', category:'T-Shirts', emoji:'.', rating:'4.5', reviews:'0', likes:'0', comments:'0', studio_only:false, image_url:'', img_front:'', img_back:'', img_left:'', img_right:'' })
   const [addingProduct,  setAddingProduct]  = useState(false)
   const [prodImgFile,    setProdImgFile]    = useState(null)
   const [prodImgUploading, setProdImgUploading] = useState(false)
@@ -4121,6 +4167,7 @@ function AdminPanel({ onBack }) {
       id:p.id, name:p.name, price:Number(p.price), mrp:Number(p.mrp),
       tag:p.tag, tag_color:p.tagColor||p.tag_color, category:p.category,
       emoji:p.emoji, rating:Number(p.rating), reviews:Number(p.reviews),
+      likes:Number(p.likes)||0, comments:Number(p.comments)||0,
       image_url:p.image_url||null, studio_only:p.studio_only||false,
       img_front:p.img_front||null, img_back:p.img_back||null,
       img_left:p.img_left||null, img_right:p.img_right||null,
@@ -4145,6 +4192,7 @@ function AdminPanel({ onBack }) {
       tag:newProduct.tag||'New', tag_color:'#0a1f5d', category:newProduct.category,
       emoji:newProduct.emoji, rating:Number(newProduct.rating)||4.5,
       reviews:Number(newProduct.reviews)||0, image_url:imageUrl,
+      likes:Number(newProduct.likes)||0, comments:Number(newProduct.comments)||0,
       img_front:newProduct.img_front||imageUrl||null, img_back:newProduct.img_back||null,
       img_left:newProduct.img_left||null, img_right:newProduct.img_right||null,
       studio_only:newProduct.studio_only||false,
@@ -4152,7 +4200,7 @@ function AdminPanel({ onBack }) {
     const { error } = await supabase.from('drynn_products').insert(product)
     if (error) { showToast('Add failed: ' + error.message); setAddingProduct(false); return }
     setProducts(ps => [...ps, product])
-    setNewProduct({ name:'', price:'', mrp:'', tag:'', category:'T-Shirts', emoji:'.', rating:'4.5', reviews:'0', studio_only:false })
+    setNewProduct({ name:'', price:'', mrp:'', tag:'', category:'T-Shirts', emoji:'.', rating:'4.5', reviews:'0', likes:'0', comments:'0', studio_only:false })
     setProdImgFile(null)
     setShowAddProduct(false)
     setAddingProduct(false)
@@ -4469,6 +4517,18 @@ function AdminPanel({ onBack }) {
                       className="input-field" style={{ fontSize:13 }} />
                   </div>
                 </div>
+                <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10, marginTop:10 }}>
+                  <div>
+                    <label style={{ fontSize:11, color:'#888', fontWeight:700, display:'block', marginBottom:4 }}>Likes (Instagram grid)</label>
+                    <input type="number" value={newProduct.likes} onChange={e=>setNewProduct(p=>({...p,likes:e.target.value}))}
+                      className="input-field" style={{ fontSize:13 }} />
+                  </div>
+                  <div>
+                    <label style={{ fontSize:11, color:'#888', fontWeight:700, display:'block', marginBottom:4 }}>Comments (Instagram grid)</label>
+                    <input type="number" value={newProduct.comments} onChange={e=>setNewProduct(p=>({...p,comments:e.target.value}))}
+                      className="input-field" style={{ fontSize:13 }} />
+                  </div>
+                </div>
                 <div style={{ marginTop:10 }}>
                   <label style={{ fontSize:11, color:'#888', fontWeight:700, display:'block', marginBottom:4 }}>Product Image</label>
                   <label style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:8, padding:'10px 14px', background:'#0a1f5d', color:'#fff', borderRadius:6, fontSize:12, fontWeight:700, cursor:'pointer', width:'100%' }}>
@@ -4521,6 +4581,14 @@ function AdminPanel({ onBack }) {
                           placeholder={field} value={p[field]||''}
                           onChange={e=>setProducts(ps=>ps.map(x=>x.id===p.id?{...x,[field]:e.target.value}:x))} />
                       ))}
+                      <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:6, marginBottom:6 }}>
+                        <input type="number" className="input-field" style={{ fontSize:12 }}
+                          placeholder="Likes" value={p.likes||0}
+                          onChange={e=>setProducts(ps=>ps.map(x=>x.id===p.id?{...x,likes:e.target.value}:x))} />
+                        <input type="number" className="input-field" style={{ fontSize:12 }}
+                          placeholder="Comments" value={p.comments||0}
+                          onChange={e=>setProducts(ps=>ps.map(x=>x.id===p.id?{...x,comments:e.target.value}:x))} />
+                      </div>
                       <label style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:6, padding:'8px 12px', background: p.image_url ? '#00a86b' : '#0a1f5d', color:'#fff', borderRadius:6, fontSize:12, fontWeight:700, cursor:'pointer', width:'100%', marginBottom:6 }}>
                         {p.image_url ? '✓ Main Image Uploaded' : '📁 Upload Main Image'}
                         <input type="file" accept="image/*" style={{ display:'none' }} onChange={async e=>{ const f=e.target.files[0]; if(!f) return; try { const url=await uploadToCloudinary(f,()=>{}); setProducts(ps=>ps.map(x=>x.id===p.id?{...x,image_url:url}:x)); showToast('Main image uploaded ✓') } catch(err) { showToast('Upload failed') } }} />

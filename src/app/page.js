@@ -4443,6 +4443,17 @@ function AdminPanel({ onBack }) {
                       </div>
                     )}
 
+                    {/* Catalog product image */}
+                    {!isCustom && o.product_image && (
+                      <div style={{ marginBottom:10 }}>
+                        <a href={o.product_image} target="_blank" rel="noreferrer" title="Product Image">
+                          <img src={o.product_image} alt={o.garment||'Product'}
+                            style={{ width:56, height:56, objectFit:'contain', borderRadius:6, border:'1px solid #e0e0e0', background:'#f8f8f8' }}
+                            onError={e=>e.target.style.display='none'} />
+                        </a>
+                      </div>
+                    )}
+
                     <div style={{ display:'flex', gap:14, flexWrap:'wrap', alignItems:'flex-start' }}>
                       <div style={{ flex:1, minWidth:180 }}>
                         <div style={{ fontWeight:700, fontSize:14, marginBottom:3 }}>{o.name}</div>

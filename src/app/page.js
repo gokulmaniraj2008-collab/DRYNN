@@ -411,18 +411,16 @@ function BirdScreen({ onDone }) {
         ></model-viewer>
       </div>
 
-      {/* ── LOGO zone: bottom 58% — extends up to meet the bird, no gap ── */}
+      {/* ── CENTRE block: DRYNN + subtitle + button sit in true screen centre ── */}
       <div style={{
-        position:'absolute', bottom:0, left:0, right:0,
-        height:'58vh',
+        position:'absolute', inset:0,
         display:'flex', flexDirection:'column',
         alignItems:'center', justifyContent:'center',
         zIndex:3, pointerEvents:'none',
-        background:'#fff',
       }}>
-        {/* Touch hint near top of logo zone, just below bird */}
+        {/* Touch hint just above the logo block */}
         <div style={{
-          position:'absolute', top:12, left:0, right:0,
+          position:'absolute', top:'52%', left:0, right:0,
           textAlign:'center',
           fontSize:9, fontWeight:700, letterSpacing:'.18em',
           color:'#ccc', textTransform:'uppercase',

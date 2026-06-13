@@ -163,6 +163,15 @@ const GLOBAL_CSS = `
   a { text-decoration: none; color: inherit; }
   img { max-width: 100%; display: block; }
 
+  @keyframes phoenix-fly {
+    0%   { transform: translate(0,0) scale(1); }
+    20%  { transform: translate(40px,-30px) scale(1.05); }
+    40%  { transform: translate(-35px,-55px) scale(0.95); }
+    60%  { transform: translate(-55px,15px) scale(1.05); }
+    80%  { transform: translate(25px,45px) scale(0.97); }
+    100% { transform: translate(0,0) scale(1); }
+  }
+  .phoenix-fly { animation: phoenix-fly 14s ease-in-out infinite; }
   @keyframes drynn-dot   { 0%,100%{opacity:.2;transform:scale(.75)} 50%{opacity:1;transform:scale(1.25)} }
   @keyframes drynn-spin  { to{transform:rotate(360deg)} }
   @keyframes drynn-fade  { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
@@ -289,6 +298,7 @@ function SplashScreen({ onDone }) {
           camera-controls={false}
           disable-zoom
           interaction-prompt="none"
+          className="phoenix-fly"
           style={{ width: '220px', height: '220px', margin: '0 auto', display: 'block' }}
         ></model-viewer>
         <div style={{ display:'flex', justifyContent:'center', gap:4, marginBottom:16, marginTop:8 }}>

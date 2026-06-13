@@ -164,43 +164,38 @@ const GLOBAL_CSS = `
   img { max-width: 100%; display: block; }
 
   @keyframes phoenix-fly {
-    /* ENTRY 1: top-left → center */
-    0%   { top:-30vh; left:-30vw;  opacity:0;  transform:rotate(-25deg); }
-    2%   { top:-30vh; left:-30vw;  opacity:0;  transform:rotate(-25deg); }
-    16%  { top:25vh;  left:25vw;   opacity:1;  transform:rotate(0deg); }
-    22%  { top:25vh;  left:25vw;   opacity:1;  transform:rotate(0deg); }
-    /* exit off top-right */
-    27%  { top:-30vh; left:105vw;  opacity:0;  transform:rotate(25deg); }
-    27.1%{ top:-30vh; left:105vw;  opacity:0;  transform:rotate(25deg); }
+    /* PASS 1: LEFT edge — flies in from left, swoops to center, exits back left */
+    0%   { top:35vh;  left:-60vw;  opacity:0;  transform:rotate(-10deg); }
+    2%   { top:35vh;  left:-60vw;  opacity:0;  transform:rotate(-10deg); }
+    14%  { top:30vh;  left:25vw;   opacity:1;  transform:rotate(0deg); }
+    20%  { top:30vh;  left:25vw;   opacity:1;  transform:rotate(0deg); }
+    30%  { top:35vh;  left:-60vw;  opacity:0;  transform:rotate(10deg); }
+    33%  { top:35vh;  left:-60vw;  opacity:0;  transform:rotate(10deg); }
 
-    /* ENTRY 2: bottom-right → center */
-    28%  { top:105vh; left:105vw;  opacity:0;  transform:rotate(35deg); }
-    44%  { top:25vh;  left:25vw;   opacity:1;  transform:rotate(0deg); }
-    50%  { top:25vh;  left:25vw;   opacity:1;  transform:rotate(0deg); }
-    /* exit off bottom-left */
-    55%  { top:105vh; left:-30vw;  opacity:0;  transform:rotate(-35deg); }
-    55.1%{ top:105vh; left:-30vw;  opacity:0;  transform:rotate(-35deg); }
+    /* PASS 2: TOP edge — flies in from top, swoops to center, exits back top */
+    34%  { top:-60vh; left:30vw;   opacity:0;  transform:rotate(-15deg); }
+    46%  { top:30vh;  left:25vw;   opacity:1;  transform:rotate(0deg); }
+    52%  { top:30vh;  left:25vw;   opacity:1;  transform:rotate(0deg); }
+    62%  { top:-60vh; left:30vw;   opacity:0;  transform:rotate(15deg); }
+    65%  { top:-60vh; left:30vw;   opacity:0;  transform:rotate(15deg); }
 
-    /* ENTRY 3: right edge mid → center */
-    56%  { top:35vh;  left:110vw;  opacity:0;  transform:rotate(15deg); }
-    72%  { top:25vh;  left:25vw;   opacity:1;  transform:rotate(0deg); }
-    78%  { top:25vh;  left:25vw;   opacity:1;  transform:rotate(0deg); }
-    /* exit off top */
-    83%  { top:-30vh; left:35vw;   opacity:0;  transform:rotate(-15deg); }
-    83.1%{ top:-30vh; left:35vw;   opacity:0;  transform:rotate(-15deg); }
+    /* PASS 3: RIGHT edge — flies in from right, swoops to center, exits back right */
+    66%  { top:35vh;  left:110vw;  opacity:0;  transform:rotate(10deg); }
+    78%  { top:30vh;  left:25vw;   opacity:1;  transform:rotate(0deg); }
+    84%  { top:30vh;  left:25vw;   opacity:1;  transform:rotate(0deg); }
+    94%  { top:35vh;  left:110vw;  opacity:0;  transform:rotate(-10deg); }
+    97%  { top:35vh;  left:110vw;  opacity:0;  transform:rotate(-10deg); }
 
-    /* ENTRY 4: bottom-center → center → loop */
-    84%  { top:110vh; left:35vw;   opacity:0;  transform:rotate(10deg); }
-    98%  { top:25vh;  left:25vw;   opacity:1;  transform:rotate(0deg); }
-    100% { top:25vh;  left:25vw;   opacity:1;  transform:rotate(0deg); }
+    /* brief pause before loop */
+    100% { top:35vh;  left:110vw;  opacity:0;  transform:rotate(-10deg); }
   }
   .phoenix-wrap {
-    animation: phoenix-fly 32s ease-in-out infinite;
+    animation: phoenix-fly 36s ease-in-out infinite;
     position: absolute;
     width: 50vmin;
     height: 50vmin;
-    top: -30vh;
-    left: -30vw;
+    top: 35vh;
+    left: -60vw;
     z-index: 0;
     pointer-events: none;
   }

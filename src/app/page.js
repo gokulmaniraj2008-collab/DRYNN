@@ -310,10 +310,93 @@ const GLOBAL_CSS = `
 // SPLASH
 // ══════════════════════════════════════════════════════════════
 function SplashScreen({ onDone }) {
+  const wrapRef   = useRef(null)
+  const animRef   = useRef(null)
+  const posRef    = useRef({ x: window.innerWidth * 0.35, y: window.innerHeight * 0.32 })
+  const targetRef = useRef(null)   // null = auto-fly mode
+  const isDragging = useRef(false)
+
+  // Smoothly animate bird toward target using rAF
+  useEffect(() => {
+    let autoAngle = 0
+    const SIZE = Math.min(window.innerWidth, window.innerHeight) * 0.5
+
+    function tick() {
+      const el = wrapRef.current
+      if (!el) { animRef.current = requestAnimationFrame(tick); return }
+
+      if (targetRef.current) {
+        // Chase finger/cursor
+        const dx = targetRef.current.x - posRef.current.x
+        const dy = targetRef.current.y - posRef.current.y
+        const speed = isDragging.current ? 0.18 : 0.07
+        posRef.current.x += dx * speed
+        posRef.current.y += dy * speed
+      } else {
+        // Auto-fly: slow figure-8 path across full screen
+        autoAngle += 0.008
+        const cx = window.innerWidth  * 0.5
+        const cy = window.innerHeight * 0.38
+        const rx = window.innerWidth  * 0.38
+        const ry = window.innerHeight * 0.28
+        posRef.current.x = cx + rx * Math.sin(autoAngle)
+        posRef.current.y = cy + ry * Math.sin(autoAngle * 2) * 0.5
+      }
+
+      el.style.left    = (posRef.current.x - SIZE / 2) + 'px'
+      el.style.top     = (posRef.current.y - SIZE / 2) + 'px'
+      animRef.current  = requestAnimationFrame(tick)
+    }
+
+    animRef.current = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(animRef.current)
+  }, [])
+
+  const getPos = (e) => {
+    if (e.touches) return { x: e.touches[0].clientX, y: e.touches[0].clientY }
+    return { x: e.clientX, y: e.clientY }
+  }
+
+  const handleDown = (e) => {
+    isDragging.current  = true
+    targetRef.current   = getPos(e)
+  }
+  const handleMove = (e) => {
+    if (!isDragging.current) return
+    e.preventDefault()
+    targetRef.current = getPos(e)
+  }
+  const handleUp = () => {
+    isDragging.current = false
+    // Hold at last touch position for 1.5s, then resume auto-fly
+    setTimeout(() => { targetRef.current = null }, 1500)
+  }
+  const handleTap = (e) => {
+    // Single tap anywhere → bird flies there
+    if (!isDragging.current) targetRef.current = getPos(e)
+    setTimeout(() => { targetRef.current = null }, 2000)
+  }
+
   return (
-    <div style={{ minHeight:'100vh', background:'#fff', position:'relative', overflow:'hidden', display:'flex', alignItems:'center', justifyContent:'center', flexDirection:'column' }}>
+    <div
+      onMouseDown={handleDown}  onMouseMove={handleMove}  onMouseUp={handleUp}
+      onTouchStart={handleDown} onTouchMove={handleMove}  onTouchEnd={handleUp}
+      onClick={handleTap}
+      style={{ minHeight:'100vh', background:'#fff', position:'relative', overflow:'hidden',
+               display:'flex', alignItems:'center', justifyContent:'center', flexDirection:'column',
+               cursor:'crosshair', userSelect:'none' }}
+    >
       <Script type="module" src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js" strategy="afterInteractive" />
-      <div className="phoenix-wrap">
+
+      {/* Bird — position driven by rAF, no CSS animation */}
+      <div ref={wrapRef} style={{
+        position: 'absolute',
+        width:  `${Math.min(window.innerWidth, window.innerHeight) * 0.5}px`,
+        height: `${Math.min(window.innerWidth, window.innerHeight) * 0.5}px`,
+        top: '0px', left: '0px',
+        zIndex: 0, pointerEvents: 'none',
+        transition: 'opacity .3s',
+      }}>
         <model-viewer
           src="/phoenix_bird.glb"
           autoplay
@@ -324,7 +407,16 @@ function SplashScreen({ onDone }) {
           interaction-prompt="none"
           style={{ width:'100%', height:'100%', display:'block', pointerEvents:'none' }}
         ></model-viewer>
-      </div>      <div style={{ textAlign:'center', position:'relative', zIndex:1 }} className="fade-in">
+      </div>
+
+      {/* Hint label */}
+      <div style={{ position:'absolute', bottom:100, left:0, right:0, textAlign:'center',
+                    fontSize:10, fontWeight:700, letterSpacing:'.18em', color:'#bbb',
+                    textTransform:'uppercase', zIndex:2, pointerEvents:'none' }}>
+        Touch anywhere to guide the bird
+      </div>
+
+      <div style={{ textAlign:'center', position:'relative', zIndex:1, pointerEvents:'none' }} className="fade-in">
         <div style={{ height:220 }} />
         <div style={{ display:'flex', justifyContent:'center', gap:4, marginBottom:16, marginTop:8 }}>
           <div style={{ width:36, height:4, background:'#c8102e', borderRadius:2 }} />
@@ -336,7 +428,9 @@ function SplashScreen({ onDone }) {
           <span style={{ fontSize:9, fontWeight:700, letterSpacing:'.28em', textTransform:'uppercase', color:'#aaa' }}>Custom Print · Tamil Nadu</span>
           <div style={{ width:20, height:1.5, background:'#0a1f5d' }} />
         </div>
-        <button onClick={onDone} className="btn-primary" style={{ marginTop:48, padding:'14px 48px', fontSize:13, letterSpacing:'.1em', textTransform:'uppercase' }}>
+        <button onClick={onDone} className="btn-primary"
+          style={{ marginTop:48, padding:'14px 48px', fontSize:13, letterSpacing:'.1em',
+                   textTransform:'uppercase', pointerEvents:'all', cursor:'pointer' }}>
           Start
         </button>
       </div>

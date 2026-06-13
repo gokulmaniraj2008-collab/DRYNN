@@ -164,50 +164,44 @@ const GLOBAL_CSS = `
   img { max-width: 100%; display: block; }
 
   @keyframes phoenix-fly {
-    /* Start: center screen */
-    0%   { top:35vh;  left:35vw;  width:30vw; height:30vw; opacity:1;   transform:rotate(0deg) scaleX(1); }
-    /* Sweep up toward top-right */
-    8%   { top:-5vh;  left:70vw;  width:22vw; height:22vw; opacity:0.7; transform:rotate(20deg) scaleX(1); }
-    /* Exit off top-right edge — fully invisible */
-    14%  { top:-30vh; left:110vw; width:16vw; height:16vw; opacity:0;   transform:rotate(35deg) scaleX(1); }
-    /* Teleport: appear off bottom-left while still invisible */
-    15%  { top:110vh; left:-30vw; width:16vw; height:16vw; opacity:0;   transform:rotate(-35deg) scaleX(-1); }
-    /* Fly in from bottom-left toward center */
-    23%  { top:60vh;  left:5vw;   width:22vw; height:22vw; opacity:0.7; transform:rotate(-15deg) scaleX(-1); }
-    /* Return to center */
-    33%  { top:35vh;  left:35vw;  width:30vw; height:30vw; opacity:1;   transform:rotate(0deg) scaleX(1); }
-    /* Hover at center briefly */
-    40%  { top:35vh;  left:35vw;  width:30vw; height:30vw; opacity:1;   transform:rotate(0deg) scaleX(1); }
-    /* Dive down toward bottom-right */
-    48%  { top:75vh;  left:68vw;  width:22vw; height:22vw; opacity:0.7; transform:rotate(25deg) scaleX(1); }
-    /* Exit off bottom-right */
-    54%  { top:115vh; left:105vw; width:16vw; height:16vw; opacity:0;   transform:rotate(40deg) scaleX(1); }
-    /* Teleport: appear off top-left while invisible */
-    55%  { top:-25vh; left:-25vw; width:16vw; height:16vw; opacity:0;   transform:rotate(-40deg) scaleX(-1); }
-    /* Swoop in from top-left */
-    63%  { top:5vh;   left:10vw;  width:22vw; height:22vw; opacity:0.7; transform:rotate(-20deg) scaleX(-1); }
-    /* Return to center */
-    73%  { top:35vh;  left:35vw;  width:30vw; height:30vw; opacity:1;   transform:rotate(0deg) scaleX(1); }
-    /* Hover briefly */
-    78%  { top:35vh;  left:35vw;  width:30vw; height:30vw; opacity:1;   transform:rotate(0deg) scaleX(1); }
-    /* Arc across left side */
-    86%  { top:20vh;  left:-5vw;  width:22vw; height:22vw; opacity:0.6; transform:rotate(-10deg) scaleX(-1); }
-    /* Exit left */
-    91%  { top:50vh;  left:-30vw; width:16vw; height:16vw; opacity:0;   transform:rotate(-25deg) scaleX(-1); }
-    /* Teleport: appear off right */
-    92%  { top:50vh;  left:110vw; width:16vw; height:16vw; opacity:0;   transform:rotate(25deg) scaleX(1); }
-    /* Fly back to center from right */
-    98%  { top:38vh;  left:60vw;  width:24vw; height:24vw; opacity:0.8; transform:rotate(8deg) scaleX(1); }
-    /* End: center (loop) */
-    100% { top:35vh;  left:35vw;  width:30vw; height:30vw; opacity:1;   transform:rotate(0deg) scaleX(1); }
+    /* ── ENTRY 1: from top-left corner → center ── */
+    0%   { top:-25vh; left:-25vw; width:18vw; height:18vw; opacity:0;   transform:rotate(-30deg) scaleX(1); }
+    2%   { top:-25vh; left:-25vw; width:18vw; height:18vw; opacity:0;   transform:rotate(-30deg) scaleX(1); }
+    18%  { top:30vh;  left:30vw;  width:32vw; height:32vw; opacity:1;   transform:rotate(0deg)   scaleX(1); }
+    /* hold at center */
+    22%  { top:30vh;  left:30vw;  width:32vw; height:32vw; opacity:1;   transform:rotate(0deg)   scaleX(1); }
+    /* exit toward top-right */
+    27%  { top:-25vh; left:108vw; width:18vw; height:18vw; opacity:0;   transform:rotate(30deg)  scaleX(1); }
+
+    /* ── ENTRY 2: from bottom-right → center ── */
+    28%  { top:108vh; left:108vw; width:18vw; height:18vw; opacity:0;   transform:rotate(40deg)  scaleX(-1); }
+    44%  { top:30vh;  left:30vw;  width:32vw; height:32vw; opacity:1;   transform:rotate(0deg)   scaleX(1); }
+    /* hold at center */
+    48%  { top:30vh;  left:30vw;  width:32vw; height:32vw; opacity:1;   transform:rotate(0deg)   scaleX(1); }
+    /* exit toward bottom-left */
+    53%  { top:108vh; left:-25vw; width:18vw; height:18vw; opacity:0;   transform:rotate(-30deg) scaleX(-1); }
+
+    /* ── ENTRY 3: from right edge → center ── */
+    54%  { top:40vh;  left:115vw; width:18vw; height:18vw; opacity:0;   transform:rotate(15deg)  scaleX(-1); }
+    70%  { top:30vh;  left:30vw;  width:32vw; height:32vw; opacity:1;   transform:rotate(0deg)   scaleX(1); }
+    /* hold at center */
+    74%  { top:30vh;  left:30vw;  width:32vw; height:32vw; opacity:1;   transform:rotate(0deg)   scaleX(1); }
+    /* exit toward top-center */
+    79%  { top:-25vh; left:38vw;  width:18vw; height:18vw; opacity:0;   transform:rotate(-15deg) scaleX(1); }
+
+    /* ── ENTRY 4: from bottom-center → center (loop reset) ── */
+    80%  { top:115vh; left:38vw;  width:18vw; height:18vw; opacity:0;   transform:rotate(10deg)  scaleX(1); }
+    96%  { top:30vh;  left:30vw;  width:32vw; height:32vw; opacity:1;   transform:rotate(0deg)   scaleX(1); }
+    /* hold, then loop */
+    100% { top:30vh;  left:30vw;  width:32vw; height:32vw; opacity:1;   transform:rotate(0deg)   scaleX(1); }
   }
   .phoenix-fly {
-    animation: phoenix-fly 28s ease-in-out infinite;
+    animation: phoenix-fly 32s ease-in-out infinite;
     position: absolute !important;
-    top: 35vh;
-    left: 35vw;
-    width: 30vw;
-    height: 30vw;
+    top: -25vh;
+    left: -25vw;
+    width: 18vw;
+    height: 18vw;
   }
   @keyframes drynn-dot   { 0%,100%{opacity:.2;transform:scale(.75)} 50%{opacity:1;transform:scale(1.25)} }
   @keyframes drynn-spin  { to{transform:rotate(360deg)} }

@@ -164,44 +164,45 @@ const GLOBAL_CSS = `
   img { max-width: 100%; display: block; }
 
   @keyframes phoenix-fly {
-    /* ── ENTRY 1: from top-left corner → center ── */
-    0%   { top:-25vh; left:-25vw; width:18vw; height:18vw; opacity:0;   transform:rotate(-30deg) scaleX(1); }
-    2%   { top:-25vh; left:-25vw; width:18vw; height:18vw; opacity:0;   transform:rotate(-30deg) scaleX(1); }
-    18%  { top:30vh;  left:30vw;  width:32vw; height:32vw; opacity:1;   transform:rotate(0deg)   scaleX(1); }
-    /* hold at center */
-    22%  { top:30vh;  left:30vw;  width:32vw; height:32vw; opacity:1;   transform:rotate(0deg)   scaleX(1); }
-    /* exit toward top-right */
-    27%  { top:-25vh; left:108vw; width:18vw; height:18vw; opacity:0;   transform:rotate(30deg)  scaleX(1); }
+    /* ENTRY 1: top-left → center */
+    0%   { top:-30vh; left:-30vw;  opacity:0;  transform:rotate(-25deg); }
+    2%   { top:-30vh; left:-30vw;  opacity:0;  transform:rotate(-25deg); }
+    16%  { top:25vh;  left:25vw;   opacity:1;  transform:rotate(0deg); }
+    22%  { top:25vh;  left:25vw;   opacity:1;  transform:rotate(0deg); }
+    /* exit off top-right */
+    27%  { top:-30vh; left:105vw;  opacity:0;  transform:rotate(25deg); }
+    27.1%{ top:-30vh; left:105vw;  opacity:0;  transform:rotate(25deg); }
 
-    /* ── ENTRY 2: from bottom-right → center ── */
-    28%  { top:108vh; left:108vw; width:18vw; height:18vw; opacity:0;   transform:rotate(40deg)  scaleX(-1); }
-    44%  { top:30vh;  left:30vw;  width:32vw; height:32vw; opacity:1;   transform:rotate(0deg)   scaleX(1); }
-    /* hold at center */
-    48%  { top:30vh;  left:30vw;  width:32vw; height:32vw; opacity:1;   transform:rotate(0deg)   scaleX(1); }
-    /* exit toward bottom-left */
-    53%  { top:108vh; left:-25vw; width:18vw; height:18vw; opacity:0;   transform:rotate(-30deg) scaleX(-1); }
+    /* ENTRY 2: bottom-right → center */
+    28%  { top:105vh; left:105vw;  opacity:0;  transform:rotate(35deg); }
+    44%  { top:25vh;  left:25vw;   opacity:1;  transform:rotate(0deg); }
+    50%  { top:25vh;  left:25vw;   opacity:1;  transform:rotate(0deg); }
+    /* exit off bottom-left */
+    55%  { top:105vh; left:-30vw;  opacity:0;  transform:rotate(-35deg); }
+    55.1%{ top:105vh; left:-30vw;  opacity:0;  transform:rotate(-35deg); }
 
-    /* ── ENTRY 3: from right edge → center ── */
-    54%  { top:40vh;  left:115vw; width:18vw; height:18vw; opacity:0;   transform:rotate(15deg)  scaleX(-1); }
-    70%  { top:30vh;  left:30vw;  width:32vw; height:32vw; opacity:1;   transform:rotate(0deg)   scaleX(1); }
-    /* hold at center */
-    74%  { top:30vh;  left:30vw;  width:32vw; height:32vw; opacity:1;   transform:rotate(0deg)   scaleX(1); }
-    /* exit toward top-center */
-    79%  { top:-25vh; left:38vw;  width:18vw; height:18vw; opacity:0;   transform:rotate(-15deg) scaleX(1); }
+    /* ENTRY 3: right edge mid → center */
+    56%  { top:35vh;  left:110vw;  opacity:0;  transform:rotate(15deg); }
+    72%  { top:25vh;  left:25vw;   opacity:1;  transform:rotate(0deg); }
+    78%  { top:25vh;  left:25vw;   opacity:1;  transform:rotate(0deg); }
+    /* exit off top */
+    83%  { top:-30vh; left:35vw;   opacity:0;  transform:rotate(-15deg); }
+    83.1%{ top:-30vh; left:35vw;   opacity:0;  transform:rotate(-15deg); }
 
-    /* ── ENTRY 4: from bottom-center → center (loop reset) ── */
-    80%  { top:115vh; left:38vw;  width:18vw; height:18vw; opacity:0;   transform:rotate(10deg)  scaleX(1); }
-    96%  { top:30vh;  left:30vw;  width:32vw; height:32vw; opacity:1;   transform:rotate(0deg)   scaleX(1); }
-    /* hold, then loop */
-    100% { top:30vh;  left:30vw;  width:32vw; height:32vw; opacity:1;   transform:rotate(0deg)   scaleX(1); }
+    /* ENTRY 4: bottom-center → center → loop */
+    84%  { top:110vh; left:35vw;   opacity:0;  transform:rotate(10deg); }
+    98%  { top:25vh;  left:25vw;   opacity:1;  transform:rotate(0deg); }
+    100% { top:25vh;  left:25vw;   opacity:1;  transform:rotate(0deg); }
   }
-  .phoenix-fly {
+  .phoenix-wrap {
     animation: phoenix-fly 32s ease-in-out infinite;
-    position: absolute !important;
-    top: -25vh;
-    left: -25vw;
-    width: 18vw;
-    height: 18vw;
+    position: absolute;
+    width: 50vmin;
+    height: 50vmin;
+    top: -30vh;
+    left: -30vw;
+    z-index: 0;
+    pointer-events: none;
   }
   @keyframes drynn-dot   { 0%,100%{opacity:.2;transform:scale(.75)} 50%{opacity:1;transform:scale(1.25)} }
   @keyframes drynn-spin  { to{transform:rotate(360deg)} }
@@ -320,18 +321,18 @@ function SplashScreen({ onDone }) {
   return (
     <div style={{ minHeight:'100vh', background:'#fff', position:'relative', overflow:'hidden', display:'flex', alignItems:'center', justifyContent:'center', flexDirection:'column' }}>
       <Script type="module" src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js" strategy="afterInteractive" />
-      <model-viewer
-        src="/phoenix_bird.glb"
-        autoplay
-        auto-rotate
-        rotation-per-second="30deg"
-        camera-controls={false}
-        disable-zoom
-        interaction-prompt="none"
-        className="phoenix-fly"
-        style={{ position:'absolute', zIndex:0, pointerEvents:'none' }}
-      ></model-viewer>
-      <div style={{ textAlign:'center', position:'relative', zIndex:1 }} className="fade-in">
+      <div className="phoenix-wrap">
+        <model-viewer
+          src="/phoenix_bird.glb"
+          autoplay
+          auto-rotate
+          rotation-per-second="30deg"
+          camera-controls={false}
+          disable-zoom
+          interaction-prompt="none"
+          style={{ width:'100%', height:'100%', display:'block', pointerEvents:'none' }}
+        ></model-viewer>
+      </div>      <div style={{ textAlign:'center', position:'relative', zIndex:1 }} className="fade-in">
         <div style={{ height:220 }} />
         <div style={{ display:'flex', justifyContent:'center', gap:4, marginBottom:16, marginTop:8 }}>
           <div style={{ width:36, height:4, background:'#c8102e', borderRadius:2 }} />

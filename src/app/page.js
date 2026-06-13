@@ -284,6 +284,8 @@ function SplashScreen({ onDone }) {
         <model-viewer
           src="/phoenix_bird.glb"
           autoplay
+          auto-rotate
+          rotation-per-second="30deg"
           camera-controls={false}
           disable-zoom
           interaction-prompt="none"

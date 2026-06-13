@@ -363,128 +363,122 @@ function SplashScreen({ onDone }) {
 }
 
 function BirdScreen({ onDone }) {
-  const wrapRef   = useRef(null)
-  const animRef   = useRef(null)
-  const posRef    = useRef({ x: window.innerWidth * 0.5, y: window.innerHeight * 0.4 })
-  const targetRef = useRef(null)   // null = auto-fly mode
-  const isDragging = useRef(false)
+  const wrapRef     = useRef(null)
+  const animRef     = useRef(null)
   const everTouched = useRef(false)
+  const isDragging  = useRef(false)
+  const targetRef   = useRef(null)
 
-  // Smoothly animate bird toward target using rAF
+  // Bird lives in the TOP 55% of screen only
+  const BIRD_ZONE_H = () => window.innerHeight * 0.52
+  const BIRD_SIZE   = () => Math.min(window.innerWidth * 0.75, window.innerHeight * 0.45)
+
+  const posRef = useRef({
+    x: window.innerWidth  * 0.5,
+    y: window.innerHeight * 0.26,
+  })
+
   useEffect(() => {
-    let autoAngle = 0
-    const SIZE = Math.min(window.innerWidth, window.innerHeight) * 0.5
+    let angle = 0
 
     function tick() {
       const el = wrapRef.current
       if (!el) { animRef.current = requestAnimationFrame(tick); return }
 
+      const size = BIRD_SIZE()
+      const zoneH = BIRD_ZONE_H()
+
       if (targetRef.current) {
-        // Chase finger/cursor
-        const dx = targetRef.current.x - posRef.current.x
-        const dy = targetRef.current.y - posRef.current.y
-        const speed = isDragging.current ? 0.18 : 0.07
-        posRef.current.x += dx * speed
-        posRef.current.y += dy * speed
+        const speed = isDragging.current ? 0.2 : 0.08
+        posRef.current.x += (targetRef.current.x - posRef.current.x) * speed
+        posRef.current.y += (targetRef.current.y - posRef.current.y) * speed
+        // Clamp bird inside top zone
+        posRef.current.y = Math.min(posRef.current.y, zoneH - size * 0.1)
       } else if (!everTouched.current) {
-        // Auto-fly only before first touch
-        autoAngle += 0.008
-        const cx = window.innerWidth  * 0.5
-        const cy = window.innerHeight * 0.38
-        const rx = window.innerWidth  * 0.38
-        const ry = window.innerHeight * 0.28
-        posRef.current.x = cx + rx * Math.sin(autoAngle)
-        posRef.current.y = cy + ry * Math.sin(autoAngle * 2) * 0.5
+        // Smooth figure-8 inside top 50% of screen
+        angle += 0.007
+        posRef.current.x = window.innerWidth  * 0.5  + window.innerWidth  * 0.3  * Math.sin(angle)
+        posRef.current.y = window.innerHeight * 0.26 + window.innerHeight * 0.12 * Math.sin(angle * 2)
       }
 
-      el.style.left    = (posRef.current.x - SIZE / 2) + 'px'
-      el.style.top     = (posRef.current.y - SIZE / 2) + 'px'
-      animRef.current  = requestAnimationFrame(tick)
+      el.style.width  = size + 'px'
+      el.style.height = size + 'px'
+      el.style.left   = (posRef.current.x - size / 2) + 'px'
+      el.style.top    = (posRef.current.y - size / 2) + 'px'
+      animRef.current = requestAnimationFrame(tick)
     }
 
     animRef.current = requestAnimationFrame(tick)
     return () => cancelAnimationFrame(animRef.current)
   }, [])
 
-  const getPos = (e) => {
-    if (e.touches) return { x: e.touches[0].clientX, y: e.touches[0].clientY }
-    return { x: e.clientX, y: e.clientY }
-  }
+  const getPos = (e) => e.touches
+    ? { x: e.touches[0].clientX, y: e.touches[0].clientY }
+    : { x: e.clientX, y: e.clientY }
 
-  const handleDown = (e) => {
-    isDragging.current  = true
-    everTouched.current = true
-    targetRef.current   = getPos(e)
-  }
-  const handleMove = (e) => {
-    if (!isDragging.current) return
-    e.preventDefault()
-    targetRef.current = getPos(e)
-  }
-  const handleUp = () => {
-    isDragging.current = false
-    // Stay at last touch position — do NOT reset to auto-fly
-  }
-  const handleTap = (e) => {
-    // Tap anywhere → bird flies there and STAYS
-    everTouched.current = true
-    targetRef.current = getPos(e)
-  }
+  const handleDown = (e) => { isDragging.current = true; everTouched.current = true; targetRef.current = getPos(e) }
+  const handleMove = (e) => { if (!isDragging.current) return; e.preventDefault(); targetRef.current = getPos(e) }
+  const handleUp   = ()  => { isDragging.current = false }
+  const handleTap  = (e) => { everTouched.current = true; targetRef.current = getPos(e) }
 
   return (
     <div
-      onMouseDown={handleDown}  onMouseMove={handleMove}  onMouseUp={handleUp}
-      onTouchStart={handleDown} onTouchMove={handleMove}  onTouchEnd={handleUp}
+      onMouseDown={handleDown} onMouseMove={handleMove} onMouseUp={handleUp}
+      onTouchStart={handleDown} onTouchMove={handleMove} onTouchEnd={handleUp}
       onClick={handleTap}
-      style={{ minHeight:'100vh', background:'#fff', position:'relative', overflow:'hidden',
-               display:'flex', alignItems:'center', justifyContent:'center', flexDirection:'column',
-               cursor:'crosshair', userSelect:'none' }}
+      style={{ position:'fixed', inset:0, background:'#fff',
+               overflow:'hidden', cursor:'crosshair', userSelect:'none' }}
     >
       <Script type="module" src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js" strategy="afterInteractive" />
 
-      {/* Bird — position driven by rAF, no CSS animation */}
+      {/* ── BIRD zone: top 55% ── */}
       <div ref={wrapRef} style={{
-        position: 'absolute',
-        width:  `${Math.min(window.innerWidth, window.innerHeight) * 0.5}px`,
-        height: `${Math.min(window.innerWidth, window.innerHeight) * 0.5}px`,
-        top: '0px', left: '0px',
-        zIndex: 0, pointerEvents: 'none',
-        transition: 'opacity .3s',
+        position:'absolute', zIndex:1, pointerEvents:'none',
+        top:'0px', left:'0px',
+        width: BIRD_SIZE() + 'px', height: BIRD_SIZE() + 'px',
       }}>
         <model-viewer
           src="/phoenix_bird.glb"
-          autoplay
-          auto-rotate
-          rotation-per-second="30deg"
-          camera-controls={false}
-          disable-zoom
-          interaction-prompt="none"
+          autoplay auto-rotate rotation-per-second="30deg"
+          camera-controls={false} disable-zoom interaction-prompt="none"
           style={{ width:'100%', height:'100%', display:'block', pointerEvents:'none' }}
         ></model-viewer>
       </div>
 
-      {/* Hint label */}
-      <div style={{ position:'absolute', bottom:100, left:0, right:0, textAlign:'center',
-                    fontSize:10, fontWeight:700, letterSpacing:'.18em', color:'#bbb',
-                    textTransform:'uppercase', zIndex:2, pointerEvents:'none' }}>
-        Touch anywhere to guide the bird
+      {/* Touch hint — inside bird zone */}
+      <div style={{
+        position:'absolute', top:'48%', left:0, right:0,
+        textAlign:'center', zIndex:2, pointerEvents:'none',
+        fontSize:9, fontWeight:700, letterSpacing:'.18em',
+        color:'#ccc', textTransform:'uppercase',
+      }}>
+        Touch to guide the bird
       </div>
 
-      {/* Logo — fixed center of screen */}
-      <div style={{ position:'absolute', bottom:'12vh', left:0, right:0,
-                    textAlign:'center', zIndex:1, pointerEvents:'none' }}>
-        <div style={{ display:'flex', justifyContent:'center', gap:4, marginBottom:16 }}>
+      {/* ── LOGO zone: bottom 45% ── */}
+      <div style={{
+        position:'absolute', bottom:0, left:0, right:0,
+        height:'46vh',
+        display:'flex', flexDirection:'column',
+        alignItems:'center', justifyContent:'center',
+        zIndex:3, pointerEvents:'none',
+        borderTop:'1px solid #f0f0f0',
+        background:'#fff',
+      }}>
+        <div style={{ display:'flex', gap:4, marginBottom:14 }}>
           <div style={{ width:36, height:4, background:'#c8102e', borderRadius:2 }} />
           <div style={{ width:36, height:4, background:'#0a1f5d', borderRadius:2 }} />
         </div>
-        <div style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:'clamp(72px,20vw,140px)', letterSpacing:'.2em', color:'#0a0a0a', lineHeight:1 }}>DRYNN</div>
-        <div style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:10, marginTop:8 }}>
+        <div style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:'clamp(64px,18vw,120px)', letterSpacing:'.2em', color:'#0a0a0a', lineHeight:1 }}>
+          DRYNN
+        </div>
+        <div style={{ display:'flex', alignItems:'center', gap:10, marginTop:8 }}>
           <div style={{ width:20, height:1.5, background:'#c8102e' }} />
           <span style={{ fontSize:9, fontWeight:700, letterSpacing:'.28em', textTransform:'uppercase', color:'#aaa' }}>Custom Print · Tamil Nadu</span>
           <div style={{ width:20, height:1.5, background:'#0a1f5d' }} />
         </div>
         <button onClick={onDone} className="btn-primary"
-          style={{ marginTop:32, padding:'14px 48px', fontSize:13, letterSpacing:'.1em',
+          style={{ marginTop:28, padding:'14px 52px', fontSize:13, letterSpacing:'.1em',
                    textTransform:'uppercase', pointerEvents:'all', cursor:'pointer' }}>
           Start
         </button>

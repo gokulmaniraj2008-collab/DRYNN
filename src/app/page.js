@@ -341,7 +341,7 @@ function BirdScreen({ onDone }) {
 
   const posRef = useRef({
     x: window.innerWidth  * 0.5,
-    y: window.innerHeight * 0.22,
+    y: window.innerHeight * 0.26,
   })
 
   useEffect(() => {
@@ -363,8 +363,8 @@ function BirdScreen({ onDone }) {
       } else if (!everTouched.current) {
         // Smooth figure-8 inside top 50% of screen
         angle += 0.007
-        posRef.current.x = window.innerWidth  * 0.5  + window.innerWidth  * 0.28 * Math.sin(angle)
-        posRef.current.y = window.innerHeight * 0.22 + window.innerHeight * 0.10 * Math.sin(angle * 2)
+        posRef.current.x = window.innerWidth  * 0.5  + window.innerWidth  * 0.3  * Math.sin(angle)
+        posRef.current.y = window.innerHeight * 0.26 + window.innerHeight * 0.12 * Math.sin(angle * 2)
       }
 
       el.style.width  = size + 'px'
@@ -393,12 +393,11 @@ function BirdScreen({ onDone }) {
       onTouchStart={handleDown} onTouchMove={handleMove} onTouchEnd={handleUp}
       onClick={handleTap}
       style={{ position:'fixed', inset:0, background:'#fff',
-               overflow:'hidden', cursor:'crosshair', userSelect:'none',
-               display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center' }}
+               overflow:'hidden', cursor:'crosshair', userSelect:'none' }}
     >
       <Script type="module" src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js" strategy="afterInteractive" />
 
-      {/* ── BIRD: positioned absolutely, flies in top half ── */}
+      {/* ── BIRD zone: top 55% ── */}
       <div ref={wrapRef} style={{
         position:'absolute', zIndex:1, pointerEvents:'none',
         top:'0px', left:'0px',
@@ -412,25 +411,22 @@ function BirdScreen({ onDone }) {
         ></model-viewer>
       </div>
 
-      {/* ── CONTENT: bird area + logo block stacked, all centred on screen ── */}
+      {/* ── CENTRE block: DRYNN + subtitle + button sit in true screen centre ── */}
       <div style={{
-        position:'relative', zIndex:3, pointerEvents:'none',
-        display:'flex', flexDirection:'column', alignItems:'center',
-        width:'100%',
+        position:'absolute', inset:0,
+        display:'flex', flexDirection:'column',
+        alignItems:'center', justifyContent:'center',
+        zIndex:3, pointerEvents:'none',
       }}>
-        {/* Space that matches the bird height so logo sits just below it */}
-        <div style={{ height: BIRD_SIZE() + 'px' }} />
-
-        {/* Touch hint — between bird space and logo */}
+        {/* Touch hint just above the logo block */}
         <div style={{
-          textAlign:'center', marginBottom:16,
+          position:'absolute', top:'52%', left:0, right:0,
+          textAlign:'center',
           fontSize:9, fontWeight:700, letterSpacing:'.18em',
           color:'#ccc', textTransform:'uppercase',
         }}>
           Touch to guide the bird
         </div>
-
-        {/* colour bars */}
         <div style={{ display:'flex', gap:4, marginBottom:14 }}>
           <div style={{ width:36, height:4, background:'#c8102e', borderRadius:2 }} />
           <div style={{ width:36, height:4, background:'#0a1f5d', borderRadius:2 }} />
@@ -442,28 +438,31 @@ function BirdScreen({ onDone }) {
           fontFamily:'Bebas Neue,sans-serif',
           fontSize:'clamp(64px,18vw,120px)',
           letterSpacing:'.2em', lineHeight:1,
+          minWidth: '5ch',   /* reserve space so layout does not jump */
         }}>
           {DRYNN_LETTERS.map((letter, i) => (
-            <span key={i} style={{
-              color:'#0a0a0a',
-              opacity: i < visibleCount ? 1 : 0,
-              transform: i < visibleCount ? 'translateY(0)' : 'translateY(18px)',
-              transition:'opacity 220ms ease, transform 220ms ease',
-              display:'inline-block',
-            }}>
+            <span
+              key={i}
+              style={{
+                color:'#0a0a0a',
+                opacity: i < visibleCount ? 1 : 0,
+                transform: i < visibleCount ? 'translateY(0)' : 'translateY(18px)',
+                transition:'opacity 220ms ease, transform 220ms ease',
+                display:'inline-block',
+              }}
+            >
               {letter}
             </span>
           ))}
         </div>
 
-        {/* Subtitle */}
         <div style={{ display:'flex', alignItems:'center', gap:10, marginTop:8 }}>
           <div style={{ width:20, height:1.5, background:'#c8102e' }} />
           <span style={{ fontSize:9, fontWeight:700, letterSpacing:'.28em', textTransform:'uppercase', color:'#aaa' }}>Custom Print · Tamil Nadu</span>
           <div style={{ width:20, height:1.5, background:'#0a1f5d' }} />
         </div>
 
-        {/* START — fades in after all letters */}
+        {/* START button only appears after all letters have shown */}
         <button onClick={onDone} className="btn-primary"
           style={{
             marginTop:28, padding:'14px 52px', fontSize:13, letterSpacing:'.1em',

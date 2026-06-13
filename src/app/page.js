@@ -164,19 +164,51 @@ const GLOBAL_CSS = `
   img { max-width: 100%; display: block; }
 
   @keyframes phoenix-fly {
-    0%   { transform: translate(0,0) scale(1) rotate(0deg);          opacity:1; }
-    10%  { transform: translate(55vw,-40vh) scale(0.7) rotate(18deg); opacity:0.6; }
-    22%  { transform: translate(130vw,-15vh) scale(0.45) rotate(35deg); opacity:0; }
-    23%  { transform: translate(-130vw,55vh) scale(0.45) rotate(-35deg); opacity:0; }
-    35%  { transform: translate(-55vw,75vh) scale(0.7) rotate(-18deg); opacity:0.6; }
-    50%  { transform: translate(0,0) scale(1) rotate(0deg);          opacity:1; }
-    60%  { transform: translate(-60vw,-45vh) scale(0.7) rotate(-18deg); opacity:0.6; }
-    72%  { transform: translate(-130vw,-90vh) scale(0.45) rotate(-35deg); opacity:0; }
-    73%  { transform: translate(130vw,60vh) scale(0.45) rotate(35deg); opacity:0; }
-    85%  { transform: translate(50vw,40vh) scale(0.7) rotate(18deg); opacity:0.6; }
-    100% { transform: translate(0,0) scale(1) rotate(0deg);          opacity:1; }
+    /* Start: center screen */
+    0%   { top:35vh;  left:35vw;  width:30vw; height:30vw; opacity:1;   transform:rotate(0deg) scaleX(1); }
+    /* Sweep up toward top-right */
+    8%   { top:-5vh;  left:70vw;  width:22vw; height:22vw; opacity:0.7; transform:rotate(20deg) scaleX(1); }
+    /* Exit off top-right edge — fully invisible */
+    14%  { top:-30vh; left:110vw; width:16vw; height:16vw; opacity:0;   transform:rotate(35deg) scaleX(1); }
+    /* Teleport: appear off bottom-left while still invisible */
+    15%  { top:110vh; left:-30vw; width:16vw; height:16vw; opacity:0;   transform:rotate(-35deg) scaleX(-1); }
+    /* Fly in from bottom-left toward center */
+    23%  { top:60vh;  left:5vw;   width:22vw; height:22vw; opacity:0.7; transform:rotate(-15deg) scaleX(-1); }
+    /* Return to center */
+    33%  { top:35vh;  left:35vw;  width:30vw; height:30vw; opacity:1;   transform:rotate(0deg) scaleX(1); }
+    /* Hover at center briefly */
+    40%  { top:35vh;  left:35vw;  width:30vw; height:30vw; opacity:1;   transform:rotate(0deg) scaleX(1); }
+    /* Dive down toward bottom-right */
+    48%  { top:75vh;  left:68vw;  width:22vw; height:22vw; opacity:0.7; transform:rotate(25deg) scaleX(1); }
+    /* Exit off bottom-right */
+    54%  { top:115vh; left:105vw; width:16vw; height:16vw; opacity:0;   transform:rotate(40deg) scaleX(1); }
+    /* Teleport: appear off top-left while invisible */
+    55%  { top:-25vh; left:-25vw; width:16vw; height:16vw; opacity:0;   transform:rotate(-40deg) scaleX(-1); }
+    /* Swoop in from top-left */
+    63%  { top:5vh;   left:10vw;  width:22vw; height:22vw; opacity:0.7; transform:rotate(-20deg) scaleX(-1); }
+    /* Return to center */
+    73%  { top:35vh;  left:35vw;  width:30vw; height:30vw; opacity:1;   transform:rotate(0deg) scaleX(1); }
+    /* Hover briefly */
+    78%  { top:35vh;  left:35vw;  width:30vw; height:30vw; opacity:1;   transform:rotate(0deg) scaleX(1); }
+    /* Arc across left side */
+    86%  { top:20vh;  left:-5vw;  width:22vw; height:22vw; opacity:0.6; transform:rotate(-10deg) scaleX(-1); }
+    /* Exit left */
+    91%  { top:50vh;  left:-30vw; width:16vw; height:16vw; opacity:0;   transform:rotate(-25deg) scaleX(-1); }
+    /* Teleport: appear off right */
+    92%  { top:50vh;  left:110vw; width:16vw; height:16vw; opacity:0;   transform:rotate(25deg) scaleX(1); }
+    /* Fly back to center from right */
+    98%  { top:38vh;  left:60vw;  width:24vw; height:24vw; opacity:0.8; transform:rotate(8deg) scaleX(1); }
+    /* End: center (loop) */
+    100% { top:35vh;  left:35vw;  width:30vw; height:30vw; opacity:1;   transform:rotate(0deg) scaleX(1); }
   }
-  .phoenix-fly { animation: phoenix-fly 24s ease-in-out infinite; }
+  .phoenix-fly {
+    animation: phoenix-fly 28s ease-in-out infinite;
+    position: absolute !important;
+    top: 35vh;
+    left: 35vw;
+    width: 30vw;
+    height: 30vw;
+  }
   @keyframes drynn-dot   { 0%,100%{opacity:.2;transform:scale(.75)} 50%{opacity:1;transform:scale(1.25)} }
   @keyframes drynn-spin  { to{transform:rotate(360deg)} }
   @keyframes drynn-fade  { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
@@ -303,7 +335,7 @@ function SplashScreen({ onDone }) {
         disable-zoom
         interaction-prompt="none"
         className="phoenix-fly"
-        style={{ position:'absolute', top:0, left:0, width:'100vw', height:'100vh', zIndex:0, pointerEvents:'none' }}
+        style={{ position:'absolute', zIndex:0, pointerEvents:'none' }}
       ></model-viewer>
       <div style={{ textAlign:'center', position:'relative', zIndex:1 }} className="fade-in">
         <div style={{ height:220 }} />

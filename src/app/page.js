@@ -307,64 +307,14 @@ const GLOBAL_CSS = `
 `
 
 // ══════════════════════════════════════════════════════════════
-// SPLASH — letters D R Y N N then bird screen
+// SPLASH — bird screen with D R Y N N letters appearing one-by-one
+//           in the centre, each letter stays visible (no hide)
 // ══════════════════════════════════════════════════════════════
 
-const SPLASH_LETTERS = [
-  { letter:'D', bg:'#ffffff', color:'#0a0a0a' },
-  { letter:'R', bg:'#0a0a0a', color:'#ffffff' },
-  { letter:'Y', bg:'#ffffff', color:'#0a0a0a' },
-  { letter:'N', bg:'#0a0a0a', color:'#ffffff' },
-  { letter:'N', bg:'#ffffff', color:'#0a0a0a' },
-]
+const DRYNN_LETTERS = ['D','R','Y','N','N']
 
 function SplashScreen({ onDone }) {
-  // step 0-4 = letters, step 5 = bird screen
-  const [step,    setStep]    = useState(0)
-  const [opacity, setOpacity] = useState(1)
-
-  useEffect(() => {
-    if (step >= SPLASH_LETTERS.length) return   // bird screen, no timer
-
-    // Show letter for 600ms, fade out 150ms, advance
-    const showTimer = setTimeout(() => {
-      setOpacity(0)
-      const nextTimer = setTimeout(() => {
-        setStep(s => s + 1)
-        setOpacity(1)
-      }, 150)
-      return () => clearTimeout(nextTimer)
-    }, 600)
-
-    return () => clearTimeout(showTimer)
-  }, [step])
-
-  // ── Bird screen ──
-  if (step >= SPLASH_LETTERS.length) {
-    return <BirdScreen onDone={onDone} />
-  }
-
-  // ── Letter screen ──
-  const { letter, bg, color } = SPLASH_LETTERS[step]
-  return (
-    <div style={{
-      position:'fixed', inset:0, zIndex:999,
-      background: bg,
-      display:'flex', alignItems:'center', justifyContent:'center',
-      opacity,
-      transition: opacity === 0 ? 'opacity 150ms ease' : 'none',
-    }}>
-      <span style={{
-        fontFamily:'Bebas Neue,sans-serif',
-        fontSize:'70vw',
-        color,
-        lineHeight:1,
-        userSelect:'none',
-      }}>
-        {letter}
-      </span>
-    </div>
-  )
+  return <BirdScreen onDone={onDone} />
 }
 
 function BirdScreen({ onDone }) {
@@ -373,6 +323,17 @@ function BirdScreen({ onDone }) {
   const everTouched = useRef(false)
   const isDragging  = useRef(false)
   const targetRef   = useRef(null)
+
+  // ── Letter-reveal state: how many letters are visible so far (0-5) ──
+  const [visibleCount, setVisibleCount] = useState(0)
+  const lettersComplete = visibleCount >= DRYNN_LETTERS.length
+
+  useEffect(() => {
+    if (visibleCount >= DRYNN_LETTERS.length) return
+    // Each letter appears every 550ms
+    const t = setTimeout(() => setVisibleCount(c => c + 1), 550)
+    return () => clearTimeout(t)
+  }, [visibleCount])
 
   // Bird lives in the TOP 55% of screen only
   const BIRD_ZONE_H = () => window.innerHeight * 0.52
@@ -474,17 +435,46 @@ function BirdScreen({ onDone }) {
           <div style={{ width:36, height:4, background:'#c8102e', borderRadius:2 }} />
           <div style={{ width:36, height:4, background:'#0a1f5d', borderRadius:2 }} />
         </div>
-        <div style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:'clamp(64px,18vw,120px)', letterSpacing:'.2em', color:'#0a0a0a', lineHeight:1 }}>
-          DRYNN
+
+        {/* Letters appear one-by-one and STAY visible */}
+        <div style={{
+          display:'flex', alignItems:'center', justifyContent:'center',
+          fontFamily:'Bebas Neue,sans-serif',
+          fontSize:'clamp(64px,18vw,120px)',
+          letterSpacing:'.2em', lineHeight:1,
+          minWidth: '5ch',   /* reserve space so layout does not jump */
+        }}>
+          {DRYNN_LETTERS.map((letter, i) => (
+            <span
+              key={i}
+              style={{
+                color:'#0a0a0a',
+                opacity: i < visibleCount ? 1 : 0,
+                transform: i < visibleCount ? 'translateY(0)' : 'translateY(18px)',
+                transition:'opacity 220ms ease, transform 220ms ease',
+                display:'inline-block',
+              }}
+            >
+              {letter}
+            </span>
+          ))}
         </div>
+
         <div style={{ display:'flex', alignItems:'center', gap:10, marginTop:8 }}>
           <div style={{ width:20, height:1.5, background:'#c8102e' }} />
           <span style={{ fontSize:9, fontWeight:700, letterSpacing:'.28em', textTransform:'uppercase', color:'#aaa' }}>Custom Print · Tamil Nadu</span>
           <div style={{ width:20, height:1.5, background:'#0a1f5d' }} />
         </div>
+
+        {/* START button only appears after all letters have shown */}
         <button onClick={onDone} className="btn-primary"
-          style={{ marginTop:28, padding:'14px 52px', fontSize:13, letterSpacing:'.1em',
-                   textTransform:'uppercase', pointerEvents:'all', cursor:'pointer' }}>
+          style={{
+            marginTop:28, padding:'14px 52px', fontSize:13, letterSpacing:'.1em',
+            textTransform:'uppercase', pointerEvents:'all', cursor:'pointer',
+            opacity: lettersComplete ? 1 : 0,
+            transform: lettersComplete ? 'translateY(0)' : 'translateY(10px)',
+            transition:'opacity 300ms ease 100ms, transform 300ms ease 100ms',
+          }}>
           Start
         </button>
       </div>

@@ -307,53 +307,65 @@ const GLOBAL_CSS = `
 `
 
 // ══════════════════════════════════════════════════════════════
-// SPLASH — letter intro then interactive bird
+// SPLASH — each letter fills screen, then bird screen
 // ══════════════════════════════════════════════════════════════
 
-const DRYNN_LETTERS = [
-  { letter:'D', bg:'#ffffff', color:'#0a0a0a' },
-  { letter:'R', bg:'#0a0a0a', color:'#ffffff' },
-  { letter:'Y', bg:'#ffffff', color:'#0a0a0a' },
-  { letter:'N', bg:'#0a0a0a', color:'#ffffff' },
-  { letter:'N', bg:'#ffffff', color:'#0a0a0a' },
+// Steps 0-4: letters. Step 5: bird screen.
+const SPLASH_STEPS = [
+  { type:'letter', letter:'D', bg:'#ffffff', color:'#0a0a0a' },
+  { type:'letter', letter:'R', bg:'#0a0a0a', color:'#ffffff' },
+  { type:'letter', letter:'Y', bg:'#ffffff', color:'#0a0a0a' },
+  { type:'letter', letter:'N', bg:'#0a0a0a', color:'#ffffff' },
+  { type:'letter', letter:'N', bg:'#ffffff', color:'#0a0a0a' },
+  { type:'bird' },
 ]
-const LETTER_DURATION  = 500
-const LETTER_TRANSITION = 120
 
-function LetterIntro({ onDone }) {
-  const [idx,     setIdx]     = useState(0)
+function SplashScreen({ onDone }) {
+  const [step, setStep]       = useState(0)
   const [visible, setVisible] = useState(true)
 
-  useEffect(() => {
-    if (idx >= DRYNN_LETTERS.length) { onDone(); return }
-    const t = setTimeout(() => {
-      setVisible(false)
-      setTimeout(() => { setIdx(i => i + 1); setVisible(true) }, LETTER_TRANSITION)
-    }, LETTER_DURATION)
-    return () => clearTimeout(t)
-  }, [idx])
+  const next = useCallback(() => {
+    setVisible(false)
+    setTimeout(() => {
+      setStep(s => s + 1)
+      setVisible(true)
+    }, 120)
+  }, [])
 
-  if (idx >= DRYNN_LETTERS.length) return null
-  const { letter, bg, color } = DRYNN_LETTERS[idx]
-  return (
+  useEffect(() => {
+    if (SPLASH_STEPS[step]?.type !== 'letter') return
+    const t = setTimeout(next, 550)
+    return () => clearTimeout(t)
+  }, [step, next])
+
+  const current = SPLASH_STEPS[step]
+  if (!current) return null
+
+  // ── Letter screen ──
+  if (current.type === 'letter') return (
     <div style={{
-      position:'fixed', inset:0, zIndex:999, background:bg,
+      position:'fixed', inset:0, zIndex:999,
+      background: current.bg,
       display:'flex', alignItems:'center', justifyContent:'center',
       opacity: visible ? 1 : 0,
-      transition: `opacity ${LETTER_TRANSITION}ms ease`,
+      transition:'opacity 120ms ease',
     }}>
       <span style={{
-        fontFamily:'Bebas Neue,sans-serif', fontSize:'55vw',
-        color, lineHeight:1, userSelect:'none',
-      }}>{letter}</span>
+        fontFamily:'Bebas Neue,sans-serif',
+        fontSize:'70vw', color: current.color,
+        lineHeight:1, userSelect:'none',
+      }}>{current.letter}</span>
     </div>
   )
+
+  // ── Bird screen (step 5) ──
+  return <BirdScreen onDone={onDone} visible={visible} />
 }
 
 function BirdScreen({ onDone }) {
   const wrapRef   = useRef(null)
   const animRef   = useRef(null)
-  const posRef    = useRef({ x: window.innerWidth * 0.35, y: window.innerHeight * 0.32 })
+  const posRef    = useRef({ x: window.innerWidth * 0.5, y: window.innerHeight * 0.4 })
   const targetRef = useRef(null)   // null = auto-fly mode
   const isDragging = useRef(false)
   const everTouched = useRef(false)
@@ -458,9 +470,10 @@ function BirdScreen({ onDone }) {
         Touch anywhere to guide the bird
       </div>
 
-      <div style={{ textAlign:'center', position:'relative', zIndex:1, pointerEvents:'none' }} className="fade-in">
-        <div style={{ height:220 }} />
-        <div style={{ display:'flex', justifyContent:'center', gap:4, marginBottom:16, marginTop:8 }}>
+      {/* Logo — fixed center of screen */}
+      <div style={{ position:'absolute', bottom:'12vh', left:0, right:0,
+                    textAlign:'center', zIndex:1, pointerEvents:'none' }}>
+        <div style={{ display:'flex', justifyContent:'center', gap:4, marginBottom:16 }}>
           <div style={{ width:36, height:4, background:'#c8102e', borderRadius:2 }} />
           <div style={{ width:36, height:4, background:'#0a1f5d', borderRadius:2 }} />
         </div>
@@ -471,20 +484,13 @@ function BirdScreen({ onDone }) {
           <div style={{ width:20, height:1.5, background:'#0a1f5d' }} />
         </div>
         <button onClick={onDone} className="btn-primary"
-          style={{ marginTop:48, padding:'14px 48px', fontSize:13, letterSpacing:'.1em',
+          style={{ marginTop:32, padding:'14px 48px', fontSize:13, letterSpacing:'.1em',
                    textTransform:'uppercase', pointerEvents:'all', cursor:'pointer' }}>
           Start
         </button>
       </div>
     </div>
   )
-}
-
-function SplashScreen({ onDone }) {
-  const [phase, setPhase] = useState('letters')
-  return phase === 'letters'
-    ? <LetterIntro onDone={() => setPhase('bird')} />
-    : <BirdScreen  onDone={onDone} />
 }
 
 // ══════════════════════════════════════════════════════════════

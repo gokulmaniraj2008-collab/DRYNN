@@ -307,14 +307,56 @@ const GLOBAL_CSS = `
 `
 
 // ══════════════════════════════════════════════════════════════
-// SPLASH
+// SPLASH — letter intro then interactive bird
 // ══════════════════════════════════════════════════════════════
-function SplashScreen({ onDone }) {
+
+const DRYNN_LETTERS = [
+  { letter:'D', bg:'#ffffff', color:'#0a0a0a' },
+  { letter:'R', bg:'#0a0a0a', color:'#ffffff' },
+  { letter:'Y', bg:'#ffffff', color:'#0a0a0a' },
+  { letter:'N', bg:'#0a0a0a', color:'#ffffff' },
+  { letter:'N', bg:'#ffffff', color:'#0a0a0a' },
+]
+const LETTER_DURATION  = 500
+const LETTER_TRANSITION = 120
+
+function LetterIntro({ onDone }) {
+  const [idx,     setIdx]     = useState(0)
+  const [visible, setVisible] = useState(true)
+
+  useEffect(() => {
+    if (idx >= DRYNN_LETTERS.length) { onDone(); return }
+    const t = setTimeout(() => {
+      setVisible(false)
+      setTimeout(() => { setIdx(i => i + 1); setVisible(true) }, LETTER_TRANSITION)
+    }, LETTER_DURATION)
+    return () => clearTimeout(t)
+  }, [idx])
+
+  if (idx >= DRYNN_LETTERS.length) return null
+  const { letter, bg, color } = DRYNN_LETTERS[idx]
+  return (
+    <div style={{
+      position:'fixed', inset:0, zIndex:999, background:bg,
+      display:'flex', alignItems:'center', justifyContent:'center',
+      opacity: visible ? 1 : 0,
+      transition: `opacity ${LETTER_TRANSITION}ms ease`,
+    }}>
+      <span style={{
+        fontFamily:'Bebas Neue,sans-serif', fontSize:'55vw',
+        color, lineHeight:1, userSelect:'none',
+      }}>{letter}</span>
+    </div>
+  )
+}
+
+function BirdScreen({ onDone }) {
   const wrapRef   = useRef(null)
   const animRef   = useRef(null)
   const posRef    = useRef({ x: window.innerWidth * 0.35, y: window.innerHeight * 0.32 })
   const targetRef = useRef(null)   // null = auto-fly mode
   const isDragging = useRef(false)
+  const everTouched = useRef(false)
 
   // Smoothly animate bird toward target using rAF
   useEffect(() => {
@@ -332,8 +374,8 @@ function SplashScreen({ onDone }) {
         const speed = isDragging.current ? 0.18 : 0.07
         posRef.current.x += dx * speed
         posRef.current.y += dy * speed
-      } else {
-        // Auto-fly: slow figure-8 path across full screen
+      } else if (!everTouched.current) {
+        // Auto-fly only before first touch
         autoAngle += 0.008
         const cx = window.innerWidth  * 0.5
         const cy = window.innerHeight * 0.38
@@ -359,6 +401,7 @@ function SplashScreen({ onDone }) {
 
   const handleDown = (e) => {
     isDragging.current  = true
+    everTouched.current = true
     targetRef.current   = getPos(e)
   }
   const handleMove = (e) => {
@@ -368,13 +411,12 @@ function SplashScreen({ onDone }) {
   }
   const handleUp = () => {
     isDragging.current = false
-    // Hold at last touch position for 1.5s, then resume auto-fly
-    setTimeout(() => { targetRef.current = null }, 1500)
+    // Stay at last touch position — do NOT reset to auto-fly
   }
   const handleTap = (e) => {
-    // Single tap anywhere → bird flies there
-    if (!isDragging.current) targetRef.current = getPos(e)
-    setTimeout(() => { targetRef.current = null }, 2000)
+    // Tap anywhere → bird flies there and STAYS
+    everTouched.current = true
+    targetRef.current = getPos(e)
   }
 
   return (
@@ -436,6 +478,13 @@ function SplashScreen({ onDone }) {
       </div>
     </div>
   )
+}
+
+function SplashScreen({ onDone }) {
+  const [phase, setPhase] = useState('letters')
+  return phase === 'letters'
+    ? <LetterIntro onDone={() => setPhase('bird')} />
+    : <BirdScreen  onDone={onDone} />
 }
 
 // ══════════════════════════════════════════════════════════════

@@ -336,7 +336,7 @@ function BirdScreen({ onDone }) {
   }, [visibleCount])
 
   // Bird lives in the TOP 55% of screen only
-  const BIRD_ZONE_H = () => window.innerHeight * 0.52
+  const BIRD_ZONE_H = () => window.innerHeight * 0.46  // clamp bird so it touches the logo zone
   const BIRD_SIZE   = () => Math.min(window.innerWidth * 0.75, window.innerHeight * 0.45)
 
   const posRef = useRef({
@@ -411,26 +411,24 @@ function BirdScreen({ onDone }) {
         ></model-viewer>
       </div>
 
-      {/* Touch hint — inside bird zone */}
-      <div style={{
-        position:'absolute', top:'48%', left:0, right:0,
-        textAlign:'center', zIndex:2, pointerEvents:'none',
-        fontSize:9, fontWeight:700, letterSpacing:'.18em',
-        color:'#ccc', textTransform:'uppercase',
-      }}>
-        Touch to guide the bird
-      </div>
-
-      {/* ── LOGO zone: bottom 45% ── */}
+      {/* ── LOGO zone: bottom 58% — extends up to meet the bird, no gap ── */}
       <div style={{
         position:'absolute', bottom:0, left:0, right:0,
-        height:'46vh',
+        height:'58vh',
         display:'flex', flexDirection:'column',
         alignItems:'center', justifyContent:'center',
         zIndex:3, pointerEvents:'none',
-        borderTop:'1px solid #f0f0f0',
         background:'#fff',
       }}>
+        {/* Touch hint near top of logo zone, just below bird */}
+        <div style={{
+          position:'absolute', top:12, left:0, right:0,
+          textAlign:'center',
+          fontSize:9, fontWeight:700, letterSpacing:'.18em',
+          color:'#ccc', textTransform:'uppercase',
+        }}>
+          Touch to guide the bird
+        </div>
         <div style={{ display:'flex', gap:4, marginBottom:14 }}>
           <div style={{ width:36, height:4, background:'#c8102e', borderRadius:2 }} />
           <div style={{ width:36, height:4, background:'#0a1f5d', borderRadius:2 }} />

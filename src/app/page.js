@@ -3761,15 +3761,6 @@ function AdminOrderPreview({ order, label }) {
         ))}
       </div>
 
-      {/* Open design link */}
-      {designs[activeSide] && (
-        <div style={{ marginTop:6 }}>
-          <a href={designs[activeSide]} target="_blank" rel="noopener noreferrer"
-            style={{ fontSize:11, color:'#c8102e', fontWeight:700, textDecoration:'underline' }}>
-            Open full design ↗
-          </a>
-        </div>
-      )}
     </div>
   )
 }
@@ -6291,7 +6282,7 @@ function MainSite({ user }) {
               <svg width="11" height="11" viewBox="0 0 24 24" fill="#fff"><polygon points="5,3 19,12 5,21"/></svg>
             )}
           </button>
-          <span style={{ fontSize:10, fontWeight:700, letterSpacing:'.14em', color: playing ? '#fff' : 'rgba(255,255,255,.6)', transition:'color .3s', whiteSpace:'nowrap' }}>♪ PAVAZHA MALLI</span>
+          <span style={{ fontSize:10, fontWeight:700, letterSpacing:'.14em', color: playing ? '#fff' : 'rgba(255,255,255,.6)', transition:'color .3s', whiteSpace:'nowrap' }}>♪ MUSIC</span>
         </div>
         {/* Right: Clock */}
         <div style={{ display:'flex', alignItems:'center', gap:6 }}>

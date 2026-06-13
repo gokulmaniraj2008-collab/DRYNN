@@ -307,59 +307,64 @@ const GLOBAL_CSS = `
 `
 
 // ══════════════════════════════════════════════════════════════
-// SPLASH — each letter fills screen, then bird screen
+// SPLASH — letters D R Y N N then bird screen
 // ══════════════════════════════════════════════════════════════
 
-// Steps 0-4: letters. Step 5: bird screen.
-const SPLASH_STEPS = [
-  { type:'letter', letter:'D', bg:'#ffffff', color:'#0a0a0a' },
-  { type:'letter', letter:'R', bg:'#0a0a0a', color:'#ffffff' },
-  { type:'letter', letter:'Y', bg:'#ffffff', color:'#0a0a0a' },
-  { type:'letter', letter:'N', bg:'#0a0a0a', color:'#ffffff' },
-  { type:'letter', letter:'N', bg:'#ffffff', color:'#0a0a0a' },
-  { type:'bird' },
+const SPLASH_LETTERS = [
+  { letter:'D', bg:'#ffffff', color:'#0a0a0a' },
+  { letter:'R', bg:'#0a0a0a', color:'#ffffff' },
+  { letter:'Y', bg:'#ffffff', color:'#0a0a0a' },
+  { letter:'N', bg:'#0a0a0a', color:'#ffffff' },
+  { letter:'N', bg:'#ffffff', color:'#0a0a0a' },
 ]
 
 function SplashScreen({ onDone }) {
-  const [step, setStep]       = useState(0)
-  const [visible, setVisible] = useState(true)
-
-  const next = useCallback(() => {
-    setVisible(false)
-    setTimeout(() => {
-      setStep(s => s + 1)
-      setVisible(true)
-    }, 120)
-  }, [])
+  // step 0-4 = letters, step 5 = bird screen
+  const [step,    setStep]    = useState(0)
+  const [opacity, setOpacity] = useState(1)
 
   useEffect(() => {
-    if (SPLASH_STEPS[step]?.type !== 'letter') return
-    const t = setTimeout(next, 550)
-    return () => clearTimeout(t)
-  }, [step, next])
+    if (step >= SPLASH_LETTERS.length) return   // bird screen, no timer
 
-  const current = SPLASH_STEPS[step]
-  if (!current) return null
+    // Show letter for 600ms, fade out 150ms, advance
+    const showTimer = setTimeout(() => {
+      setOpacity(0)
+      const nextTimer = setTimeout(() => {
+        setStep(s => s + 1)
+        setOpacity(1)
+      }, 150)
+      return () => clearTimeout(nextTimer)
+    }, 600)
+
+    return () => clearTimeout(showTimer)
+  }, [step])
+
+  // ── Bird screen ──
+  if (step >= SPLASH_LETTERS.length) {
+    return <BirdScreen onDone={onDone} />
+  }
 
   // ── Letter screen ──
-  if (current.type === 'letter') return (
+  const { letter, bg, color } = SPLASH_LETTERS[step]
+  return (
     <div style={{
       position:'fixed', inset:0, zIndex:999,
-      background: current.bg,
+      background: bg,
       display:'flex', alignItems:'center', justifyContent:'center',
-      opacity: visible ? 1 : 0,
-      transition:'opacity 120ms ease',
+      opacity,
+      transition: opacity === 0 ? 'opacity 150ms ease' : 'none',
     }}>
       <span style={{
         fontFamily:'Bebas Neue,sans-serif',
-        fontSize:'70vw', color: current.color,
-        lineHeight:1, userSelect:'none',
-      }}>{current.letter}</span>
+        fontSize:'70vw',
+        color,
+        lineHeight:1,
+        userSelect:'none',
+      }}>
+        {letter}
+      </span>
     </div>
   )
-
-  // ── Bird screen (step 5) ──
-  return <BirdScreen onDone={onDone} visible={visible} />
 }
 
 function BirdScreen({ onDone }) {

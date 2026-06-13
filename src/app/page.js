@@ -164,14 +164,14 @@ const GLOBAL_CSS = `
   img { max-width: 100%; display: block; }
 
   @keyframes phoenix-fly {
-    0%   { transform: translate(0,0) scale(1); }
-    20%  { transform: translate(40px,-30px) scale(1.05); }
-    40%  { transform: translate(-35px,-55px) scale(0.95); }
-    60%  { transform: translate(-55px,15px) scale(1.05); }
-    80%  { transform: translate(25px,45px) scale(0.97); }
-    100% { transform: translate(0,0) scale(1); }
+    0%   { transform: translate(0,0) scale(1) rotate(0deg); }
+    20%  { transform: translate(18vw,-14vh) scale(0.85) rotate(8deg); }
+    40%  { transform: translate(-16vw,-20vh) scale(0.7) rotate(-6deg); }
+    60%  { transform: translate(-20vw,10vh) scale(0.8) rotate(5deg); }
+    80%  { transform: translate(14vw,16vh) scale(0.75) rotate(-8deg); }
+    100% { transform: translate(0,0) scale(1) rotate(0deg); }
   }
-  .phoenix-fly { animation: phoenix-fly 14s ease-in-out infinite; }
+  .phoenix-fly { animation: phoenix-fly 16s ease-in-out infinite; }
   @keyframes drynn-dot   { 0%,100%{opacity:.2;transform:scale(.75)} 50%{opacity:1;transform:scale(1.25)} }
   @keyframes drynn-spin  { to{transform:rotate(360deg)} }
   @keyframes drynn-fade  { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
@@ -287,20 +287,21 @@ const GLOBAL_CSS = `
 // ══════════════════════════════════════════════════════════════
 function SplashScreen({ onDone }) {
   return (
-    <div style={{ minHeight:'100vh', background:'#fff', display:'flex', alignItems:'center', justifyContent:'center', flexDirection:'column' }}>
+    <div style={{ minHeight:'100vh', background:'#fff', position:'relative', overflow:'hidden', display:'flex', alignItems:'center', justifyContent:'center', flexDirection:'column' }}>
       <Script type="module" src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js" strategy="afterInteractive" />
-      <div style={{ textAlign:'center' }} className="fade-in">
-        <model-viewer
-          src="/phoenix_bird.glb"
-          autoplay
-          auto-rotate
-          rotation-per-second="30deg"
-          camera-controls={false}
-          disable-zoom
-          interaction-prompt="none"
-          className="phoenix-fly"
-          style={{ width: '220px', height: '220px', margin: '0 auto', display: 'block' }}
-        ></model-viewer>
+      <model-viewer
+        src="/phoenix_bird.glb"
+        autoplay
+        auto-rotate
+        rotation-per-second="30deg"
+        camera-controls={false}
+        disable-zoom
+        interaction-prompt="none"
+        className="phoenix-fly"
+        style={{ position:'absolute', top:0, left:0, width:'100vw', height:'100vh', zIndex:0, pointerEvents:'none' }}
+      ></model-viewer>
+      <div style={{ textAlign:'center', position:'relative', zIndex:1 }} className="fade-in">
+        <div style={{ height:220 }} />
         <div style={{ display:'flex', justifyContent:'center', gap:4, marginBottom:16, marginTop:8 }}>
           <div style={{ width:36, height:4, background:'#c8102e', borderRadius:2 }} />
           <div style={{ width:36, height:4, background:'#0a1f5d', borderRadius:2 }} />

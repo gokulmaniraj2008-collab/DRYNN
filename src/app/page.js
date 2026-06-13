@@ -164,37 +164,34 @@ const GLOBAL_CSS = `
   img { max-width: 100%; display: block; }
 
   @keyframes phoenix-fly {
-    /* PASS 1: LEFT edge — flies in from left, swoops to center, exits back left */
-    0%   { top:35vh;  left:-60vw;  opacity:0;  transform:rotate(-10deg); }
-    2%   { top:35vh;  left:-60vw;  opacity:0;  transform:rotate(-10deg); }
-    14%  { top:30vh;  left:25vw;   opacity:1;  transform:rotate(0deg); }
-    20%  { top:30vh;  left:25vw;   opacity:1;  transform:rotate(0deg); }
-    30%  { top:35vh;  left:-60vw;  opacity:0;  transform:rotate(10deg); }
-    33%  { top:35vh;  left:-60vw;  opacity:0;  transform:rotate(10deg); }
+    /* PASS 1: LEFT → center → RIGHT */
+    0%   { top:38vh;  left:-60vw;  opacity:0;  transform:rotate(-8deg); }
+    2%   { top:38vh;  left:-60vw;  opacity:0;  transform:rotate(-8deg); }
+    14%  { top:32vh;  left:25vw;   opacity:1;  transform:rotate(0deg); }
+    20%  { top:32vh;  left:25vw;   opacity:1;  transform:rotate(0deg); }
+    30%  { top:38vh;  left:115vw;  opacity:0;  transform:rotate(8deg); }
+    33%  { top:38vh;  left:115vw;  opacity:0;  transform:rotate(8deg); }
 
-    /* PASS 2: TOP edge — flies in from top, swoops to center, exits back top */
-    34%  { top:-60vh; left:30vw;   opacity:0;  transform:rotate(-15deg); }
-    46%  { top:30vh;  left:25vw;   opacity:1;  transform:rotate(0deg); }
-    52%  { top:30vh;  left:25vw;   opacity:1;  transform:rotate(0deg); }
-    62%  { top:-60vh; left:30vw;   opacity:0;  transform:rotate(15deg); }
-    65%  { top:-60vh; left:30vw;   opacity:0;  transform:rotate(15deg); }
+    /* PASS 2: TOP → center → BOTTOM */
+    34%  { top:-60vh; left:32vw;   opacity:0;  transform:rotate(-12deg); }
+    46%  { top:32vh;  left:25vw;   opacity:1;  transform:rotate(0deg); }
+    52%  { top:32vh;  left:25vw;   opacity:1;  transform:rotate(0deg); }
+    62%  { top:115vh; left:32vw;   opacity:0;  transform:rotate(12deg); }
+    65%  { top:115vh; left:32vw;   opacity:0;  transform:rotate(12deg); }
 
-    /* PASS 3: RIGHT edge — flies in from right, swoops to center, exits back right */
-    66%  { top:35vh;  left:110vw;  opacity:0;  transform:rotate(10deg); }
-    78%  { top:30vh;  left:25vw;   opacity:1;  transform:rotate(0deg); }
-    84%  { top:30vh;  left:25vw;   opacity:1;  transform:rotate(0deg); }
-    94%  { top:35vh;  left:110vw;  opacity:0;  transform:rotate(-10deg); }
-    97%  { top:35vh;  left:110vw;  opacity:0;  transform:rotate(-10deg); }
-
-    /* brief pause before loop */
-    100% { top:35vh;  left:110vw;  opacity:0;  transform:rotate(-10deg); }
+    /* PASS 3: RIGHT → center → LEFT */
+    66%  { top:38vh;  left:115vw;  opacity:0;  transform:rotate(8deg); }
+    78%  { top:32vh;  left:25vw;   opacity:1;  transform:rotate(0deg); }
+    84%  { top:32vh;  left:25vw;   opacity:1;  transform:rotate(0deg); }
+    96%  { top:38vh;  left:-60vw;  opacity:0;  transform:rotate(-8deg); }
+    100% { top:38vh;  left:-60vw;  opacity:0;  transform:rotate(-8deg); }
   }
   .phoenix-wrap {
     animation: phoenix-fly 36s ease-in-out infinite;
     position: absolute;
     width: 50vmin;
     height: 50vmin;
-    top: 35vh;
+    top: 38vh;
     left: -60vw;
     z-index: 0;
     pointer-events: none;

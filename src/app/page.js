@@ -164,14 +164,19 @@ const GLOBAL_CSS = `
   img { max-width: 100%; display: block; }
 
   @keyframes phoenix-fly {
-    0%   { transform: translate(0,0) scale(1) rotate(0deg); }
-    20%  { transform: translate(18vw,-14vh) scale(0.85) rotate(8deg); }
-    40%  { transform: translate(-16vw,-20vh) scale(0.7) rotate(-6deg); }
-    60%  { transform: translate(-20vw,10vh) scale(0.8) rotate(5deg); }
-    80%  { transform: translate(14vw,16vh) scale(0.75) rotate(-8deg); }
-    100% { transform: translate(0,0) scale(1) rotate(0deg); }
+    0%   { transform: translate(0,0) scale(1) rotate(0deg);          opacity:1; }
+    10%  { transform: translate(55vw,-40vh) scale(0.7) rotate(18deg); opacity:0.6; }
+    22%  { transform: translate(130vw,-15vh) scale(0.45) rotate(35deg); opacity:0; }
+    23%  { transform: translate(-130vw,55vh) scale(0.45) rotate(-35deg); opacity:0; }
+    35%  { transform: translate(-55vw,75vh) scale(0.7) rotate(-18deg); opacity:0.6; }
+    50%  { transform: translate(0,0) scale(1) rotate(0deg);          opacity:1; }
+    60%  { transform: translate(-60vw,-45vh) scale(0.7) rotate(-18deg); opacity:0.6; }
+    72%  { transform: translate(-130vw,-90vh) scale(0.45) rotate(-35deg); opacity:0; }
+    73%  { transform: translate(130vw,60vh) scale(0.45) rotate(35deg); opacity:0; }
+    85%  { transform: translate(50vw,40vh) scale(0.7) rotate(18deg); opacity:0.6; }
+    100% { transform: translate(0,0) scale(1) rotate(0deg);          opacity:1; }
   }
-  .phoenix-fly { animation: phoenix-fly 16s ease-in-out infinite; }
+  .phoenix-fly { animation: phoenix-fly 24s ease-in-out infinite; }
   @keyframes drynn-dot   { 0%,100%{opacity:.2;transform:scale(.75)} 50%{opacity:1;transform:scale(1.25)} }
   @keyframes drynn-spin  { to{transform:rotate(360deg)} }
   @keyframes drynn-fade  { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }

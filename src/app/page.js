@@ -79,9 +79,11 @@ function usePublicProducts() {
 }
 
 // Only studio-only products - used in StudioPage
+// Note: studio_only and home_and_shop_only are mutually exclusive (enforced in UI)
 function useStudioProducts() {
   return useProducts().filter(p => p.studio_only)
 }
+
 
 // Shared hook — loads admin-managed media (videos + song) from drynn_settings
 const DEFAULT_MEDIA = {
@@ -1184,9 +1186,9 @@ function colorToFilter(hex) {
 // DRYNN UNIFIED STUDIO  — 6-step flow
 // ══════════════════════════════════════════════════════════════
 function StudioPage({ user, onNav, onAddToCart }) {
-  // ── All admin products ────────────────────────────────────
+  // ── All admin products (excluding home & shop only products) ──────────────
   const mediaSettings = useMediaSettings()
-  const allProducts = useProducts()
+  const allProducts = useProducts().filter(p => !p.home_and_shop_only)
 
   // ── Step tracking ─────────────────────────────────────────
   const STEPS_LIST = ['Product','Colour','Design','Customise','Preview','Order']
@@ -4315,7 +4317,7 @@ function AdminPanel({ onBack }) {
   const [products,       setProducts]       = useState(PRODUCTS.map(p=>({...p})))
   const [editProd,       setEditProd]       = useState(null)
   const [showAddProduct, setShowAddProduct] = useState(false)
-  const [newProduct,     setNewProduct]     = useState({ name:'', price:'', mrp:'', tag:'', category:'T-Shirts', emoji:'.', rating:'4.5', reviews:'0', studio_only:false, image_url:'', img_front:'', img_back:'', img_left:'', img_right:'' })
+  const [newProduct,     setNewProduct]     = useState({ name:'', price:'', mrp:'', tag:'', category:'T-Shirts', emoji:'.', rating:'4.5', reviews:'0', studio_only:false, home_and_shop_only:false, image_url:'', img_front:'', img_back:'', img_left:'', img_right:'' })
   const [addingProduct,  setAddingProduct]  = useState(false)
   const [prodImgFile,    setProdImgFile]    = useState(null)
   const [prodImgUploading, setProdImgUploading] = useState(false)
@@ -4535,6 +4537,7 @@ function AdminPanel({ onBack }) {
       tag:p.tag, tag_color:p.tagColor||p.tag_color, category:p.category,
       emoji:p.emoji, rating:Number(p.rating), reviews:Number(p.reviews),
       image_url:p.image_url||null, studio_only:p.studio_only||false,
+      home_and_shop_only:p.home_and_shop_only||false,
       img_front:p.img_front||null, img_back:p.img_back||null,
       img_left:p.img_left||null, img_right:p.img_right||null,
     }, { onConflict:'id' })
@@ -4561,11 +4564,12 @@ function AdminPanel({ onBack }) {
       img_front:newProduct.img_front||imageUrl||null, img_back:newProduct.img_back||null,
       img_left:newProduct.img_left||null, img_right:newProduct.img_right||null,
       studio_only:newProduct.studio_only||false,
+      home_and_shop_only:newProduct.home_and_shop_only||false,
     }
     const { error } = await supabase.from('drynn_products').insert(product)
     if (error) { showToast('Add failed: ' + error.message); setAddingProduct(false); return }
     setProducts(ps => [...ps, product])
-    setNewProduct({ name:'', price:'', mrp:'', tag:'', category:'T-Shirts', emoji:'.', rating:'4.5', reviews:'0', studio_only:false })
+    setNewProduct({ name:'', price:'', mrp:'', tag:'', category:'T-Shirts', emoji:'.', rating:'4.5', reviews:'0', studio_only:false, home_and_shop_only:false })
     setProdImgFile(null)
     setShowAddProduct(false)
     setAddingProduct(false)
@@ -4925,8 +4929,12 @@ function AdminPanel({ onBack }) {
                   </div>
                 </div>
                 <div style={{ display:'flex', alignItems:'center', gap:8, marginTop:10 }}>
-                  <input type="checkbox" id="studio_only_new" checked={newProduct.studio_only} onChange={e=>setNewProduct(p=>({...p,studio_only:e.target.checked}))} />
+                  <input type="checkbox" id="studio_only_new" checked={newProduct.studio_only} onChange={e=>setNewProduct(p=>({...p,studio_only:e.target.checked,home_and_shop_only:false}))} />
                   <label htmlFor="studio_only_new" style={{ fontSize:12, color:'#555', cursor:'pointer' }}>Studio Only (not shown in public shop)</label>
+                </div>
+                <div style={{ display:'flex', alignItems:'center', gap:8, marginTop:6 }}>
+                  <input type="checkbox" id="home_and_shop_only_new" checked={newProduct.home_and_shop_only} onChange={e=>setNewProduct(p=>({...p,home_and_shop_only:e.target.checked,studio_only:false}))} />
+                  <label htmlFor="home_and_shop_only_new" style={{ fontSize:12, color:'#555', cursor:'pointer' }}>Home & Shop Only (not shown in Studio)</label>
                 </div>
                 <button className="btn-primary" style={{ marginTop:14, padding:'10px 24px', fontSize:13, opacity:addingProduct?.6:1 }}
                   onClick={addProduct} disabled={addingProduct}>
@@ -4944,6 +4952,7 @@ function AdminPanel({ onBack }) {
                       ? <img src={p.image_url} alt={p.name} style={{ width:'100%', height:'100%', objectFit:'contain' }} />
                       : <span style={{ fontSize:64 }}>{p.emoji||'.'}</span>}
                     {p.studio_only && <div style={{ position:'absolute', top:6, right:6, background:'#0a1f5d', color:'#fff', fontSize:8, fontWeight:700, padding:'2px 6px', borderRadius:3 }}>STUDIO</div>}
+                    {p.home_and_shop_only && <div style={{ position:'absolute', top:6, right:6, background:'#00a86b', color:'#fff', fontSize:8, fontWeight:700, padding:'2px 6px', borderRadius:3 }}>HOME & SHOP</div>}
                   </div>
                   {editProd===p.id ? (
                     <div style={{ padding:'12px' }}>
@@ -4968,10 +4977,15 @@ function AdminPanel({ onBack }) {
                           {p[key] && <img src={p[key]} style={{ width:'100%', height:50, objectFit:'contain', marginTop:3, borderRadius:4, background:'#f8f8f8' }} alt={label} />}
                         </div>
                       ))}
-                      <div style={{ display:'flex', alignItems:'center', gap:6, marginBottom:8, marginTop:4 }}>
+                      <div style={{ display:'flex', alignItems:'center', gap:6, marginBottom:4, marginTop:4 }}>
                         <input type="checkbox" id={`so_${p.id}`} checked={!!p.studio_only}
-                          onChange={e=>setProducts(ps=>ps.map(x=>x.id===p.id?{...x,studio_only:e.target.checked}:x))} />
+                          onChange={e=>setProducts(ps=>ps.map(x=>x.id===p.id?{...x,studio_only:e.target.checked,home_and_shop_only:false}:x))} />
                         <label htmlFor={`so_${p.id}`} style={{ fontSize:11, color:'#555', cursor:'pointer' }}>Studio Only</label>
+                      </div>
+                      <div style={{ display:'flex', alignItems:'center', gap:6, marginBottom:8 }}>
+                        <input type="checkbox" id={`hso_${p.id}`} checked={!!p.home_and_shop_only}
+                          onChange={e=>setProducts(ps=>ps.map(x=>x.id===p.id?{...x,home_and_shop_only:e.target.checked,studio_only:false}:x))} />
+                        <label htmlFor={`hso_${p.id}`} style={{ fontSize:11, color:'#555', cursor:'pointer' }}>Home & Shop Only</label>
                       </div>
                       <div style={{ display:'flex', gap:6 }}>
                         <button className="btn-primary" style={{ flex:1, padding:'8px', fontSize:12 }} onClick={()=>saveProduct(p)}>Save</button>

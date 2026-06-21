@@ -1536,6 +1536,7 @@ function StudioPage({ user, onNav, onAddToCart }) {
         size,
         color,
         image_url: designUrls.front || selectedProduct?.image_url || null,
+        product_id: selectedProduct?.id || null,
         isCustom:  true,
         customDetails: {
           garment:       garmentLabel,
@@ -2925,7 +2926,7 @@ function CartPage({ cart, onRemove, onClear, user, onNav }) {
         size:             item.size  || 'Various',
         qty:              item.qty,
         order_type:       item.isCustom ? 'custom' : 'catalog',
-        product_id:       item.isCustom ? null : (item.id || null),
+        product_id:       item.isCustom ? (item.product_id || null) : (item.id || null),
         product_image:    item.isCustom ? null : (item.image_url || null),
         // design_file: full JSON blob (backward compat)
         design_file:      item.isCustom ? (cd?.designUrls ? JSON.stringify(cd.designUrls) : '') : 'catalog-order',
@@ -3892,12 +3893,12 @@ function AdminOrderPreview({ order, label }) {
   })
 
   React.useEffect(() => {
-    if (!o.garment) return
-    const keyword = o.garment.replace('Custom ','').split(' ').slice(0,3).join(' ')
-    supabase.from('drynn_products')
-      .select('img_front,img_back,img_left,img_right,image_url')
-      .ilike('name', '%' + keyword + '%').limit(1)
-      .then(({ data }) => {
+    if (!o.garment && !o.product_id) return
+    // Prefer exact product_id lookup — avoids wrong image from fuzzy name match
+    const query = o.product_id
+      ? supabase.from('drynn_products').select('img_front,img_back,img_left,img_right,image_url').eq('id', o.product_id).limit(1)
+      : supabase.from('drynn_products').select('img_front,img_back,img_left,img_right,image_url').ilike('name', '%' + (o.garment || '').replace('Custom ','').split(' ').slice(0,3).join(' ') + '%').limit(1)
+    query.then(({ data }) => {
         if (data && data[0]) {
           const p = data[0]
           setGarmentImgs({
@@ -3908,7 +3909,7 @@ function AdminOrderPreview({ order, label }) {
           })
         }
       })
-  }, [o.garment])
+  }, [o.product_id, o.garment])
 
   // Parse design_file — JSON {front,back,left,right} with comma-joined multi-design URLs
   // designs[side] = array of URLs

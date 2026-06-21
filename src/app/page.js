@@ -3293,10 +3293,12 @@ function OrdersPage({ user, onBack, onNav }) {
             <span style={{ fontSize:12, fontWeight:700, padding:'5px 14px', borderRadius:20, background:sc.bg, color:sc.color, border:`1px solid ${sc.border}` }}>{selected.status || 'Received'}</span>
           </div>
 
-          {/* Studio design preview — same view as admin */}
+          {/* Design / product preview */}
           {selected.order_type === 'custom' || (selected.design_file && selected.design_file !== 'catalog-order' && selected.design_file !== '{}')
             ? <div style={{ marginBottom:24 }}><AdminOrderPreview order={selected} /></div>
-            : null
+            : (selected.order_type === 'catalog' || selected.design_file === 'catalog-order')
+              ? <div style={{ marginBottom:24 }}><CatalogOrderPreview order={selected} /></div>
+              : null
           }
 
           {/* Order info card */}
@@ -3724,6 +3726,147 @@ function TermsPage({ onBack }) {
 }
 
 // ══════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════════
+// CATALOG ORDER PREVIEW — shows product images for Home & Shop orders
+// Swipeable 4-side viewer matching the Studio preview UX
+// ══════════════════════════════════════════════════════════════
+function CatalogOrderPreview({ order }) {
+  const SIDE_LABELS = { front:'Front', back:'Back', left:'Left Side', right:'Right Side' }
+  const SIDES = ['front','back','left','right']
+
+  const [imgs, setImgs] = React.useState({
+    front: order.product_image || null,
+    back:  null,
+    left:  null,
+    right: null,
+  })
+  const [loaded, setLoaded] = React.useState(false)
+
+  React.useEffect(() => {
+    if (!order.product_id && !order.product_name) { setLoaded(true); return }
+    const query = order.product_id
+      ? supabase.from('drynn_products').select('img_front,img_back,img_left,img_right,image_url').eq('id', order.product_id).limit(1)
+      : supabase.from('drynn_products').select('img_front,img_back,img_left,img_right,image_url').ilike('name', '%' + (order.product_name||'').split(' ').slice(0,3).join(' ') + '%').limit(1)
+    query.then(({ data }) => {
+      if (data && data[0]) {
+        const p = data[0]
+        setImgs({
+          front: p.img_front || p.image_url || order.product_image || null,
+          back:  p.img_back  || p.image_url || order.product_image || null,
+          left:  p.img_left  || p.image_url || order.product_image || null,
+          right: p.img_right || p.image_url || order.product_image || null,
+        })
+      }
+      setLoaded(true)
+    })
+  }, [order.product_id, order.product_name])
+
+  const [activeIdx, setActiveIdx] = React.useState(0)
+  const dragX = React.useRef(null)
+  const onDown = e => { dragX.current = e.touches ? e.touches[0].clientX : e.clientX }
+  const onUp   = e => {
+    if (dragX.current === null) return
+    const endX = e.changedTouches ? e.changedTouches[0].clientX : e.clientX
+    const dx = endX - dragX.current
+    if (Math.abs(dx) > 40) setActiveIdx(i => ((i + (dx < 0 ? 1 : -1)) + 4) % 4)
+    dragX.current = null
+  }
+
+  // Determine which sides have a unique image (not just fallback)
+  const hasMultiSide = imgs.back && imgs.back !== imgs.front
+  const visibleSides = hasMultiSide ? SIDES : ['front']
+
+  if (!loaded) return (
+    <div style={{ height:200, display:'flex', alignItems:'center', justifyContent:'center', color:'#ccc', fontSize:13 }}>
+      Loading product…
+    </div>
+  )
+
+  if (!imgs.front) return null
+
+  const activeSide = hasMultiSide ? SIDES[activeIdx] : 'front'
+
+  return (
+    <div style={{ marginBottom:16 }}>
+      <div style={{ fontSize:9, fontWeight:700, letterSpacing:'.12em', textTransform:'uppercase', color:'#00a86b', marginBottom:8 }}>
+        🛍️ Product Preview
+      </div>
+
+      {/* Main viewer */}
+      <div style={{ position:'relative', borderRadius:12, overflow:'hidden', background:'#f8f8f8',
+        border:'1.5px solid #e8e8e8', maxWidth:320, userSelect:'none', touchAction:'none' }}
+        onMouseDown={onDown} onMouseUp={onUp}
+        onTouchStart={onDown} onTouchEnd={onUp}>
+
+        {(hasMultiSide ? SIDES : ['front']).map((side, i) => (
+          <div key={side} style={{ position: i===0?'relative':'absolute', inset:0,
+            opacity: hasMultiSide ? (i===activeIdx ? 1 : 0) : 1,
+            transition:'opacity .15s ease', pointerEvents:'none' }}>
+            <img
+              src={imgs[side] || imgs.front}
+              alt={side}
+              style={{ width:'100%', display:'block', minHeight:220, objectFit:'contain', background:'#f8f8f8' }}
+              onError={e=>{ if(imgs.front) e.target.src = imgs.front }}
+            />
+          </div>
+        ))}
+
+        {/* Side label */}
+        {hasMultiSide && (
+          <div style={{ position:'absolute', bottom:8, left:'50%', transform:'translateX(-50%)',
+            background:'rgba(0,0,0,.55)', borderRadius:20, padding:'3px 12px',
+            fontSize:10, fontWeight:700, color:'#fff', pointerEvents:'none' }}>
+            {SIDE_LABELS[activeSide]}
+          </div>
+        )}
+
+        {/* Colour badge if available */}
+        {order.color && order.color !== 'Various' && (
+          <div style={{ position:'absolute', top:8, right:8, display:'flex', alignItems:'center', gap:4,
+            background:'rgba(255,255,255,.95)', borderRadius:20, padding:'3px 8px', fontSize:9, fontWeight:700, border:'1px solid #e0e0e0' }}>
+            <div style={{ width:10, height:10, borderRadius:'50%', background:order.color, border:'1px solid #ccc' }} />
+            {order.color}
+          </div>
+        )}
+
+        {/* Arrow hints — only if multi-side */}
+        {hasMultiSide && [['‹', -1, 8], ['›', 1, 'auto']].map(([arrow, dir, left]) => (
+          <button key={arrow} onClick={()=>setActiveIdx(i=>((i+dir)+4)%4)}
+            style={{ position:'absolute', top:'50%', left: typeof left==='number'?left:undefined,
+              right: left==='auto'?8:undefined, transform:'translateY(-50%)',
+              background:'rgba(0,0,0,.35)', border:'none', color:'#fff', fontSize:18,
+              width:28, height:28, borderRadius:'50%', cursor:'pointer', display:'flex',
+              alignItems:'center', justifyContent:'center', fontWeight:700, padding:0 }}>
+            {arrow}
+          </button>
+        ))}
+      </div>
+
+      {/* Thumbnail tabs — only if multi-side */}
+      {hasMultiSide && (
+        <div style={{ display:'flex', gap:6, marginTop:8 }}>
+          {SIDES.map((side, i) => (
+            <button key={side} onClick={()=>setActiveIdx(i)}
+              style={{ position:'relative', flex:1, aspectRatio:'1', borderRadius:8, overflow:'hidden',
+                border:'2px solid ' + (i===activeIdx ? '#00a86b' : '#e0e0e0'),
+                background:'#f8f8f8', padding:0, cursor:'pointer' }}>
+              <img src={imgs[side] || imgs.front} alt={side}
+                style={{ width:'100%', height:'100%', objectFit:'contain' }}
+                onError={e=>{ if(imgs.front) e.target.src=imgs.front }} />
+              <div style={{ position:'absolute', bottom:0, left:0, right:0, textAlign:'center',
+                fontSize:8, fontWeight:700,
+                color: i===activeIdx ? '#00a86b' : '#888',
+                background:'rgba(255,255,255,.88)', padding:'2px 0' }}>
+                {SIDE_LABELS[side]}
+              </div>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ORDER PREVIEW — replicates Studio view for both customer + admin
 // Shows garment + design composited at exact saved position/scale/rotation/colour
 // ══════════════════════════════════════════════════════════════

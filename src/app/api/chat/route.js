@@ -51,7 +51,7 @@ async function fetchStoreContext() {
       // '*' only returns whatever columns actually exist, so it can't break this way.
       supabase.from('drynn_products').select('*'),
       // Read recent orders summary (last 50, just status counts — no personal data)
-      supabase.from('drynn_orders').select('status,total,created_at').order('created_at', { ascending: false }).limit(50),
+      supabase.from('drynn_orders').select('status,total,placed_at').order('placed_at', { ascending: false }).limit(50),
     ])
 
     // Supabase does NOT throw on query errors — it returns { data: null, error }.
@@ -290,4 +290,4 @@ export async function GET() {
     keys_configured: GROQ_KEYS.length,
     model: 'llama-3.3-70b-versatile',
   })
-}
+      }

@@ -46,11 +46,20 @@ async function fetchStoreContext() {
     const [settingsRes, productsRes, ordersRes] = await Promise.all([
       // Read ALL rows from drynn_settings — every key admin sets is passed to AI
       supabase.from('drynn_settings').select('key,value'),
-      // Read ALL products including studio_only samples
-      supabase.from('drynn_products').select('name,price,mrp,category,tag,rating,reviews,studio_only,description'),
+      // select('*') on purpose — a named-column select fails ENTIRELY if even one
+      // column doesn't exist yet (e.g. 'description'), silently emptying the list.
+      // '*' only returns whatever columns actually exist, so it can't break this way.
+      supabase.from('drynn_products').select('*'),
       // Read recent orders summary (last 50, just status counts — no personal data)
       supabase.from('drynn_orders').select('status,total,created_at').order('created_at', { ascending: false }).limit(50),
     ])
+
+    // Supabase does NOT throw on query errors — it returns { data: null, error }.
+    // Log each one explicitly so a broken query is visible in Vercel logs,
+    // instead of silently falling back to demo data with no trace.
+    if (settingsRes.error) console.error('[DRYNN Chat] drynn_settings query failed:', settingsRes.error.message)
+    if (productsRes.error) console.error('[DRYNN Chat] drynn_products query failed:', productsRes.error.message)
+    if (ordersRes.error)   console.error('[DRYNN Chat] drynn_orders query failed:', ordersRes.error.message)
 
     // Build settings object from ALL keys admin has saved
     const settings = {}
@@ -71,7 +80,7 @@ async function fetchStoreContext() {
 
     return { settings, products, orderStats }
   } catch (e) {
-    console.error('[DRYNN Chat] Supabase error:', e.message)
+    console.error('[DRYNN Chat] Unexpected error fetching store context:', e.message)
     return { settings: {}, products: [], orderStats: {} }
   }
 }

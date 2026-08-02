@@ -9,7 +9,7 @@ npm install
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000)
+Open [https://drynn-zxx.vercel.app/](https://drynn-zxx.vercel.app/)
 
 ## Deploy to Vercel
 

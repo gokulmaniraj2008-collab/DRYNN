@@ -7119,8 +7119,8 @@ export default function Home() {
       <style>{GLOBAL_CSS}</style>
       {screen==='splash'  && <SplashScreen onDone={()=>setScreen('intro')} />}
       {screen==='intro'   && <IntroPage    onGoToLogin={()=>setScreen('login')} />}
-      {screen==='login'   && <LoginPage    onBack={()=>setScreen('intro')} onDemoLogin={handleDemoLogin} />
-      {screen==='main'    && <MainSite     user={user} isDemo={isDemo} onExitDemo={exitDemo} />
+      {screen==='login'   && <LoginPage    onBack={()=>setScreen('intro')} onDemoLogin={handleDemoLogin} />}
+      {screen==='main'    && <MainSite     user={user} isDemo={isDemo} onExitDemo={exitDemo} />}
     </>
   )
 }

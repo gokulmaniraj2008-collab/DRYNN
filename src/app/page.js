@@ -613,7 +613,7 @@ function IntroPage({ onGoToLogin }) {
 // ══════════════════════════════════════════════════════════════
 // LOGIN PAGE (separate from intro)
 // ══════════════════════════════════════════════════════════════
-function LoginPage({ onBack }) {
+function LoginPage({ onBack, onDemoLogin }) {
   const [loading, setLoading] = useState(false)
   const [error, setError]     = useState('')
 
@@ -681,6 +681,14 @@ function LoginPage({ onBack }) {
             )}
             {loading ? 'Signing in…' : 'Continue with Google'}
           </button>
+
+          <button type="button" onClick={onDemoLogin} disabled={loading}
+            style={{ width:'100%', marginTop:12, padding:'13px 16px', background:'#0a1f5d', color:'#fff', border:'none', borderRadius:8, fontSize:13, fontWeight:700, letterSpacing:'.04em', cursor:loading?'not-allowed':'pointer' }}>
+            Continue as Guest — Demo
+          </button>
+          <p style={{ fontSize:11, color:'#888', textAlign:'center', marginTop:8, lineHeight:1.5 }}>
+            Explore the store without creating an account. Orders and checkout require Google sign-in.
+          </p>
 
           {error && (
             <div style={{ marginTop:14, fontSize:12, color:'#c8102e', background:'rgba(200,16,46,.05)', border:'1px solid rgba(200,16,46,.2)', borderRadius:6, padding:'10px 14px', textAlign:'center' }}>
@@ -2894,7 +2902,7 @@ function ContactPage({ onNav }) {
   )
 }
 
-function CartPage({ cart, onRemove, onClear, user, onNav }) {
+function CartPage({ cart, onRemove, onClear, user, onNav, isDemo = false }) {
   const [shippingCharge,    setShippingCharge]    = React.useState(99)
   const [freeShipThreshold, setFreeShipThreshold] = React.useState(1500)
 
@@ -2989,6 +2997,10 @@ function CartPage({ cart, onRemove, onClear, user, onNav }) {
   }
 
   const placeOrder = async () => {
+    if (isDemo) {
+      alert('You are viewing DRYNN in demo mode. Continue with Google to place a real order.');
+      return;
+    }
     if (!form.name || !form.phone || !form.address || !form.pincode) {
       alert('Please fill all delivery details.'); return
     }
@@ -6548,7 +6560,7 @@ function JoinGroupOrder({ user }) {
 // ══════════════════════════════════════════════════════════════
 // MAIN SITE SHELL (navbar + bottom nav + router)
 // ══════════════════════════════════════════════════════════════
-function MainSite({ user }) {
+function MainSite({ user, isDemo = false, onExitDemo }) {
   const mediaSettings = useMediaSettings()
   const [page, setPageRaw]     = useState('home')
 
@@ -6607,7 +6619,7 @@ function MainSite({ user }) {
   const pagesVisitedRef = useRef([])
 
   useEffect(() => {
-    if (!user?.email) return // only track logged-in users
+    if (!user?.email || isDemo) return // skip demo visitors and unauthenticated users
 
     const sessionId   = crypto.randomUUID()
     sessionIdRef.current    = sessionId
@@ -6658,7 +6670,7 @@ function MainSite({ user }) {
       window.removeEventListener('beforeunload', endSession)
       endSession()
     }
-  }, [user?.email])
+  }, [user?.email, isDemo])
 
   // Track page changes
   useEffect(() => {
@@ -6688,7 +6700,10 @@ function MainSite({ user }) {
     showToast(`${product.name} added to cart`)
   }
 
-  const handleLogout = async () => { await supabase.auth.signOut(); window.location.reload() }
+  const handleLogout = async () => {
+    if (isDemo) { onExitDemo?.(); return }
+    await supabase.auth.signOut(); window.location.reload()
+  }
 
   // Overlay pages (full-screen replacements)
   if (page === 'privacy') return <PrivacyPage onBack={()=>setPage('home')} />
@@ -6742,6 +6757,11 @@ function MainSite({ user }) {
           </button>
         </div>
       </nav>
+      {isDemo && (
+        <div role="status" style={{ background:'#fff7e6', borderBottom:'1px solid #f2d49b', padding:'9px 16px', textAlign:'center', fontSize:12, color:'#704b00', fontWeight:600 }}>
+          DEMO MODE — Browsing is enabled. Google sign-in is required for checkout and real orders.
+        </div>
+      )}
 
       {/* ── AUDIO ── */}
       <audio ref={audioRef} src="https://res.cloudinary.com/dfhdyp4oq/video/upload/v1780988236/Pavazha_Malli_ihrawx.mp3" loop preload="auto" />
@@ -6786,7 +6806,7 @@ function MainSite({ user }) {
       {page==='studio'   && <StudioPage   user={user} onNav={setPage} onAddToCart={addToCart} />}
       {page==='about'    && <AboutPage    onNav={setPage} />}
       {page==='contact'  && <ContactPage  onNav={setPage} />}
-      {page==='cart'     && <CartPage cart={cart} onRemove={i=>setCart(c=>c.filter((_,idx)=>idx!==i))} onClear={()=>setCart([])} user={user} onNav={setPage} />}
+      {page==='cart'     && <CartPage cart={cart} onRemove={i=>setCart(c=>c.filter((_,idx)=>idx!==i))} onClear={()=>setCart([])} user={user} onNav={setPage} isDemo={isDemo} />}
       {page==='account'  && <AccountPage user={user} onLogout={handleLogout} onNav={setPage} />}
       {page==='orders'   && <OrdersPage  user={user} onBack={()=>setPage('account')} onNav={setPage} />}
       {page==='track'    && <OrderTrackingPage onNav={setPage} />}
@@ -7025,7 +7045,20 @@ function ChatBot() {
 export default function Home() {
   const [screen,   setScreen]   = useState('splash')  // splash | intro | login | main
   const [user,     setUser]     = useState(null)
+  const [isDemo,   setIsDemo]   = useState(false)
   const [checking, setChecking] = useState(true)
+
+  const handleDemoLogin = () => {
+    setIsDemo(true)
+    setUser({ id:'00000000-0000-4000-8000-000000000000', email:'demo-guest@drynn.local', user_metadata:{ full_name:'Demo Guest' } })
+    setScreen('main')
+  }
+
+  const exitDemo = () => {
+    setIsDemo(false)
+    setUser(null)
+    setScreen('intro')
+  }
 
   const sendToSheet = (u) => {
     if (!GOOGLE_SHEET_WEBHOOK) return
@@ -7046,6 +7079,7 @@ export default function Home() {
     // Check existing session  -  auto-login returning users immediately
     supabase.auth.getSession().then(({ data:{ session } }) => {
       if (session?.user) {
+        setIsDemo(false)
         setUser(session.user)
         setScreen('main')
         sendToSheet(session.user)
@@ -7059,11 +7093,13 @@ export default function Home() {
         (event === 'SIGNED_IN' || event === 'INITIAL_SESSION' || event === 'TOKEN_REFRESHED') &&
         session?.user
       ) {
+        setIsDemo(false)
         setUser(session.user)
         setScreen('main')
         sendToSheet(session.user)
       }
       if (event === 'SIGNED_OUT') {
+        setIsDemo(false)
         setUser(null)
         setScreen('intro')
       }
@@ -7083,8 +7119,8 @@ export default function Home() {
       <style>{GLOBAL_CSS}</style>
       {screen==='splash'  && <SplashScreen onDone={()=>setScreen('intro')} />}
       {screen==='intro'   && <IntroPage    onGoToLogin={()=>setScreen('login')} />}
-      {screen==='login'   && <LoginPage    onBack={()=>setScreen('intro')} />}
-      {screen==='main'    && <MainSite     user={user} />}
+      {screen==='login'   && <LoginPage    onBack={()=>setScreen('intro')} onDemoLogin={handleDemoLogin} />
+      {screen==='main'    && <MainSite     user={user} isDemo={isDemo} onExitDemo={exitDemo} />
     </>
   )
 }

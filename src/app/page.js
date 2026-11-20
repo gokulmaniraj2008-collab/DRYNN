@@ -5984,7 +5984,7 @@ function OrderTrackingPage({ onNav }) {
 // ══════════════════════════════════════════════════════════════
 // GROUP ORDER PAGE
 // ══════════════════════════════════════════════════════════════
-function GroupOrderPage({ user, onNav }) {
+function GroupOrderPage({ user, onNav, isDemo = false }) {
   const [tab, setTab] = useState('create') // create | join
   const allProducts = usePublicProducts()
   const [selectedProduct, setSelectedProduct] = useState(null)
@@ -6073,17 +6073,17 @@ function GroupOrderPage({ user, onNav }) {
               </button>
             </div>
           ) : (
-            <CreateGroupOrder user={user} selectedProduct={selectedProduct} onChangeProduct={()=>setStep('pick')} />
+            <CreateGroupOrder user={user} selectedProduct={selectedProduct} onChangeProduct={()=>setStep('pick')} isDemo={isDemo} />
           )
         ) : (
-          <JoinGroupOrder user={user} />
+          <JoinGroupOrder user={user} isDemo={isDemo} />
         )}
       </div>
     </div>
   )
 }
 
-function CreateGroupOrder({ user, selectedProduct, onChangeProduct }) {
+function CreateGroupOrder({ user, selectedProduct, onChangeProduct, isDemo = false }) {
   const sharedSwatches = useSwatches()
   const [form, setForm]         = useState({ title:'', color:'#ffffff', deadline:'', organizer: user?.user_metadata?.full_name||'', phone:'' })
   const [created, setCreated]   = useState(null)
@@ -6133,6 +6133,7 @@ function CreateGroupOrder({ user, selectedProduct, onChangeProduct }) {
   }
 
   const create = async () => {
+    if (isDemo) { alert('Demo mode is read-only. Sign in with Google to create a group order.'); return }
     if (!form.title||!form.organizer||!form.phone) { alert('Fill all required fields'); return }
     setSaving(true)
     // Upload all sides that have files
@@ -6389,7 +6390,7 @@ function CreateGroupOrder({ user, selectedProduct, onChangeProduct }) {
   )
 }
 
-function JoinGroupOrder({ user }) {
+function JoinGroupOrder({ user, isDemo = false }) {
   const [code, setCode]         = useState('')
   const [group, setGroup]       = useState(null)
   const [loading, setLoading]   = useState(false)
@@ -6421,6 +6422,7 @@ function JoinGroupOrder({ user }) {
   }
 
   const joinGroup = async () => {
+    if (isDemo) { alert('Demo mode is read-only. Sign in with Google to join a group order.'); return }
     if (!form.name||!form.phone||!form.address) { alert('Fill all fields'); return }
     setSaving(true)
     const { error } = await supabase.from('drynn_group_members').insert({
@@ -6748,7 +6750,7 @@ function MainSite({ user, isDemo = false, onExitDemo }) {
               {cart.length>0 && <div className="cart-badge">{cart.length}</div>}
             </button>
             {isAdmin && <button onClick={()=>setPage('admin')} style={{ background:'none', border:'1px solid rgba(200,16,46,.3)', padding:'5px 10px', fontSize:10, fontWeight:700, letterSpacing:'.08em', textTransform:'uppercase', cursor:'pointer', color:'#c8102e', borderRadius:4 }}>Admin</button>}
-            <button onClick={handleLogout} style={{ background:'none', border:'1px solid #e0e0e0', padding:'5px 10px', fontSize:10, fontWeight:700, letterSpacing:'.08em', textTransform:'uppercase', cursor:'pointer', color:'#888', borderRadius:4 }}>Logout</button>
+            <button onClick={handleLogout} style={{ background:'none', border:'1px solid #e0e0e0', padding:'5px 10px', fontSize:10, fontWeight:700, letterSpacing:'.08em', textTransform:'uppercase', cursor:'pointer', color:'#888', borderRadius:4 }}>{isDemo ? 'Exit Demo' : 'Logout'}</button>
           </div>
           {/* Mobile cart icon */}
           <button className="hide-desktop" onClick={()=>setPage('cart')} style={{ position:'relative', background:'none', border:'none', cursor:'pointer', padding:4 }}>
@@ -6810,7 +6812,7 @@ function MainSite({ user, isDemo = false, onExitDemo }) {
       {page==='account'  && <AccountPage user={user} onLogout={handleLogout} onNav={setPage} />}
       {page==='orders'   && <OrdersPage  user={user} onBack={()=>setPage('account')} onNav={setPage} />}
       {page==='track'    && <OrderTrackingPage onNav={setPage} />}
-      {page==='group'    && <GroupOrderPage user={user} onNav={setPage} />}
+      {page==='group'    && <GroupOrderPage user={user} onNav={setPage} isDemo={isDemo} />}
 
       {/* ── FOOTER (only on main pages) ── */}
       {['home','products','about','contact','track','group'].includes(page) && (
